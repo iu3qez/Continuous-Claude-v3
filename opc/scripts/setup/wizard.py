@@ -495,7 +495,7 @@ async def run_setup_wizard() -> None:
     console.print("  The sandbox requires PostgreSQL and Redis for:")
     console.print("  - Agent coordination and scheduling")
     console.print("  - Build cache and LSP index storage")
-    console.print("  - Real-time agent status (opc status)")
+    console.print("  - Real-time agent status")
     if Confirm.ask("Start Docker stack (PostgreSQL, Redis)?", default=True):
         from scripts.setup.docker_setup import run_migrations, start_docker_stack, wait_for_services
 
@@ -509,23 +509,6 @@ async def run_setup_wizard() -> None:
             health = await wait_for_services(timeout=60)
             if health["all_healthy"]:
                 console.print("  [green]OK[/green] All services healthy")
-                # Verify sandbox CLI
-                console.print("  Verifying sandbox CLI...")
-                try:
-                    import subprocess
-
-                    result = subprocess.run(
-                        ["python", "-m", "scripts.opc_cli", "status"],
-                        capture_output=True,
-                        text=True,
-                        timeout=5,
-                    )
-                    if result.returncode == 0:
-                        console.print("  [green]OK[/green] Sandbox CLI working (opc status)")
-                    else:
-                        console.print("  [yellow]WARN[/yellow] Sandbox CLI returned error")
-                except Exception:
-                    console.print("  [yellow]WARN[/yellow] Could not verify sandbox CLI")
             else:
                 console.print("  [yellow]WARN[/yellow] Some services may not be healthy")
         else:
@@ -1015,17 +998,13 @@ async def run_setup_wizard() -> None:
     # Done!
     console.print("\n" + "=" * 60)
     console.print("[bold green]Setup complete![/bold green]")
-    console.print("\nSandbox commands:")
-    console.print("  [bold]opc status[/bold]        - View agent dashboard")
-    console.print("  [bold]opc cache status[/bold]  - View cache usage")
-    console.print("  [bold]opc queue[/bold]         - View task queue")
     console.print("\nTLDR commands:")
     console.print("  [bold]tldr tree .[/bold]       - See project structure")
     console.print("  [bold]tldr daemon start[/bold] - Start daemon (155x faster)")
     console.print("  [bold]tldr --help[/bold]       - See all commands")
     console.print("\nNext steps:")
     console.print("  1. Start Claude Code: [bold]claude[/bold]")
-    console.print("  2. View docs: [bold]docs/getting-started.md[/bold]")
+    console.print("  2. View docs: [bold]docs/QUICKSTART.md[/bold]")
 
 
 async def main():
