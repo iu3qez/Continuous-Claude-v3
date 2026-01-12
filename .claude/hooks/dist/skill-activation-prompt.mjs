@@ -2,12 +2,14 @@
 
 // src/skill-activation-prompt.ts
 import { readFileSync as readFileSync2, existsSync as existsSync2 } from "fs";
-import { join } from "path";
+import { join as join2 } from "path";
 import { spawnSync } from "child_process";
-import { tmpdir } from "os";
+import { tmpdir as tmpdir2 } from "os";
 
 // src/shared/resource-reader.ts
 import { readFileSync, existsSync } from "fs";
+import { tmpdir } from "os";
+import { join } from "path";
 var DEFAULT_RESOURCE_STATE = {
   freeMemMB: 4096,
   activeAgents: 0,
@@ -18,7 +20,7 @@ function getSessionId() {
   return process.env.CLAUDE_SESSION_ID || String(process.ppid || process.pid);
 }
 function getResourceFilePath(sessionId) {
-  return `/tmp/claude-resources-${sessionId}.json`;
+  return join(tmpdir(), `claude-resources-${sessionId}.json`);
 }
 function readResourceState() {
   const sessionId = getSessionId();
@@ -148,7 +150,7 @@ var PATTERN_AGENT_MAP = {
 };
 function runPatternInference(prompt, projectDir) {
   try {
-    const scriptPath = join(projectDir, "scripts", "agentica_patterns", "pattern_inference.py");
+    const scriptPath = join2(projectDir, "scripts", "agentica_patterns", "pattern_inference.py");
     if (!existsSync2(scriptPath)) {
       return null;
     }
@@ -269,8 +271,8 @@ async function main() {
     const prompt = data.prompt.toLowerCase();
     const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
     const homeDir = process.env.HOME || process.env.USERPROFILE || "";
-    const projectRulesPath = join(projectDir, ".claude", "skills", "skill-rules.json");
-    const globalRulesPath = join(homeDir, ".claude", "skills", "skill-rules.json");
+    const projectRulesPath = join2(projectDir, ".claude", "skills", "skill-rules.json");
+    const globalRulesPath = join2(homeDir, ".claude", "skills", "skill-rules.json");
     let rulesPath = "";
     if (existsSync2(projectRulesPath)) {
       rulesPath = projectRulesPath;
@@ -482,7 +484,7 @@ async function main() {
     }
     const rawSessionId = data.session_id || process.env.CLAUDE_SESSION_ID || process.env.CLAUDE_PPID || "default";
     const sessionId = rawSessionId.slice(0, 8);
-    const contextFile = join(tmpdir(), `claude-context-pct-${sessionId}.txt`);
+    const contextFile = join2(tmpdir2(), `claude-context-pct-${sessionId}.txt`);
     if (existsSync2(contextFile)) {
       try {
         const pct = parseInt(readFileSync2(contextFile, "utf-8").trim(), 10);

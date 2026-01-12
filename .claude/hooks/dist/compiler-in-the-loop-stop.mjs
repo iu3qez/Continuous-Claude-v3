@@ -1,7 +1,8 @@
 // src/compiler-in-the-loop-stop.ts
 import { readFileSync, existsSync, unlinkSync } from "fs";
 import { join } from "path";
-var STATE_DIR = process.env.CLAUDE_PROJECT_DIR ? join(process.env.CLAUDE_PROJECT_DIR, ".claude", "cache", "lean") : "/tmp/claude-lean";
+import { tmpdir } from "os";
+var STATE_DIR = process.env.CLAUDE_PROJECT_DIR ? join(process.env.CLAUDE_PROJECT_DIR, ".claude", "cache", "lean") : join(tmpdir(), "claude-lean");
 var STATE_FILE = join(STATE_DIR, "compiler-state.json");
 var MAX_STATE_AGE_MS = 5 * 60 * 1e3;
 function readStdin() {
