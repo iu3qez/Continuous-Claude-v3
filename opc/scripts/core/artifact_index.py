@@ -29,13 +29,14 @@ from datetime import datetime
 from pathlib import Path
 
 # Load .env files for DATABASE_URL (cross-platform)
+# Always override shell env vars to ensure .env files are authoritative
 try:
     from dotenv import load_dotenv
-    # Global ~/.claude/.env
+    # Global ~/.claude/.env (primary config)
     global_env = Path.home() / ".claude" / ".env"
     if global_env.exists():
-        load_dotenv(global_env)
-    # Local opc/.env
+        load_dotenv(global_env, override=True)
+    # Local opc/.env (project-specific overrides)
     opc_env = Path(__file__).parent.parent.parent / ".env"
     if opc_env.exists():
         load_dotenv(opc_env, override=True)

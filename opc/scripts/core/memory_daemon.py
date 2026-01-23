@@ -38,16 +38,16 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # Load .env files for DATABASE_URL (cross-platform)
-# 1. Global ~/.claude/.env (API keys, may have DB config)
+# Always override shell env vars to ensure .env files are authoritative
+# 1. Global ~/.claude/.env (primary config)
 global_env = Path.home() / ".claude" / ".env"
 if global_env.exists():
-    load_dotenv(global_env)
+    load_dotenv(global_env, override=True)
 
-# 2. Local opc/.env (relative to script location)
-# Script is at opc/scripts/core/memory_daemon.py, .env is at opc/.env
+# 2. Local opc/.env (project-specific overrides)
 opc_env = Path(__file__).parent.parent.parent / ".env"
 if opc_env.exists():
-    load_dotenv(opc_env, override=True)  # Override with project-specific values
+    load_dotenv(opc_env, override=True)
 
 # Global config
 POLL_INTERVAL = 60  # seconds
