@@ -101,14 +101,26 @@ Skills are pre-built workflows you trigger by describing what you want:
 
 **The Problem:** Every Claude conversation starts fresh. You waste time re-explaining your project, preferences, and past decisions.
 
-**Our Solution:** A PostgreSQL database stores learnings from every session:
+**Our Solution:** Two complementary systems work together:
 
+**1. Learning Memory (PostgreSQL + Embeddings)**
 - **What worked** — Successful approaches get remembered and reused
 - **What failed** — Mistakes get flagged so you don't repeat them
 - **Your preferences** — How you like things done
 - **Project context** — What you're building and why
 
-**In Practice:** Start a new session, and Claude already knows your project, your preferences, and what you tried last time.
+**2. Document Intelligence ([PageIndex](https://github.com/VectifyAI/PageIndex))**
+
+We integrated PageIndex — a reasoning-based retrieval system that achieved 98.7% accuracy on financial document benchmarks:
+
+- **No chunking** — Understands documents as structured wholes, not fragments
+- **No vector similarity** — Uses LLM reasoning to navigate, like a human expert would
+- **Works with complex documents** — PDFs, financial reports, legal contracts, technical specs
+- **Traceable results** — Shows exactly which page and section answers came from
+
+**How it's different:** Traditional RAG chops documents into pieces and matches by similarity. PageIndex builds a table-of-contents-like tree and reasons through it — the way you'd actually read a 200-page report.
+
+**In Practice:** Start a new session, and Claude already knows your project, your preferences, what you tried last time, AND can intelligently navigate your reference documents.
 
 ### 🔍 95% Token Efficiency (TLDR System)
 
