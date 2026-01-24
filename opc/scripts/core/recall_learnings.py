@@ -41,9 +41,8 @@ if global_env.exists():
     load_dotenv(global_env)
 load_dotenv()
 
-# Add project root to path for imports (opc/)
-project_dir = os.environ.get("CLAUDE_PROJECT_DIR", str(Path(__file__).parent.parent.parent))
-sys.path.insert(0, project_dir)
+# Add scripts to path for imports
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 
 def format_result_preview(content: str, max_length: int = 200) -> str:
@@ -68,8 +67,8 @@ def get_backend() -> str:
     if backend in ("sqlite", "postgres"):
         return backend
 
-    # Check if CONTINUOUS_CLAUDE_DB_URL or DATABASE_URL is set (canonical first)
-    if os.environ.get("CONTINUOUS_CLAUDE_DB_URL") or os.environ.get("DATABASE_URL"):
+    # Check if DATABASE_URL or CONTINUOUS_CLAUDE_DB_URL is set
+    if os.environ.get("DATABASE_URL") or os.environ.get("CONTINUOUS_CLAUDE_DB_URL"):
         return "postgres"
 
     # Default to sqlite for simplicity
@@ -82,7 +81,7 @@ async def search_learnings_text_only_postgres(query: str, k: int = 5) -> list[di
     Uses tsvector/tsquery with GIN index. Automatic stopword handling.
     Falls back to ILIKE if tsquery fails (e.g., all stopwords).
     """
-    from scripts.core.db.postgres_pool import get_pool
+    from db.postgres_pool import get_pool
 
     pool = await get_pool()
 
@@ -112,7 +111,10 @@ async def search_learnings_text_only_postgres(query: str, k: int = 5) -> list[di
                 created_at,
                 ts_rank(to_tsvector('english', content), to_tsquery('english', $1)) as similarity
             FROM archival_memory
-            WHERE metadata->>'type' = 'session_learning'
+            WHERE (metadata->>'type' IS NULL OR metadata->>'type' IN (
+                'session_learning', 'WORKING_SOLUTION', 'ERROR_FIX',
+                'ARCHITECTURAL_DECISION', 'CODEBASE_PATTERN', 'FAILED_APPROACH',
+                'USER_PREFERENCE', 'OPEN_THREAD'))
                 AND to_tsvector('english', content) @@ to_tsquery('english', $1)
             ORDER BY similarity DESC, created_at DESC
             LIMIT $2
@@ -135,7 +137,10 @@ async def search_learnings_text_only_postgres(query: str, k: int = 5) -> list[di
                     created_at,
                     0.1 as similarity
                 FROM archival_memory
-                WHERE metadata->>'type' = 'session_learning'
+                WHERE (metadata->>'type' IS NULL OR metadata->>'type' IN (
+                    'session_learning', 'WORKING_SOLUTION', 'ERROR_FIX',
+                    'ARCHITECTURAL_DECISION', 'CODEBASE_PATTERN', 'FAILED_APPROACH',
+                    'USER_PREFERENCE', 'OPEN_THREAD'))
                     AND content ILIKE '%' || $1 || '%'
                 ORDER BY created_at DESC
                 LIMIT $2
@@ -260,8 +265,8 @@ async def search_learnings_hybrid_rrf(
     Returns:
         List of learnings with RRF scores
     """
-    from scripts.core.db.embedding_service import EmbeddingService
-    from scripts.core.db.postgres_pool import get_pool, init_pgvector
+    from db.embedding_service import EmbeddingService
+    from db.postgres_pool import get_pool, init_pgvector
 
     pool = await get_pool()
 
@@ -288,7 +293,10 @@ async def search_learnings_hybrid_rrf(
                         ) DESC
                     ) as fts_rank
                 FROM archival_memory
-                WHERE metadata->>'type' = 'session_learning'
+                WHERE (metadata->>'type' IS NULL OR metadata->>'type' IN (
+                    'session_learning', 'WORKING_SOLUTION', 'ERROR_FIX',
+                    'ARCHITECTURAL_DECISION', 'CODEBASE_PATTERN', 'FAILED_APPROACH',
+                    'USER_PREFERENCE', 'OPEN_THREAD'))
                 AND to_tsvector('english', content) @@ plainto_tsquery('english', $1)
             ),
             vector_ranked AS (
@@ -296,7 +304,10 @@ async def search_learnings_hybrid_rrf(
                     id,
                     ROW_NUMBER() OVER (ORDER BY embedding <=> $2::vector) as vec_rank
                 FROM archival_memory
-                WHERE metadata->>'type' = 'session_learning'
+                WHERE (metadata->>'type' IS NULL OR metadata->>'type' IN (
+                    'session_learning', 'WORKING_SOLUTION', 'ERROR_FIX',
+                    'ARCHITECTURAL_DECISION', 'CODEBASE_PATTERN', 'FAILED_APPROACH',
+                    'USER_PREFERENCE', 'OPEN_THREAD'))
                 AND embedding IS NOT NULL
             ),
             combined AS (
@@ -378,8 +389,8 @@ async def search_learnings_postgres(
     Returns:
         List of matching learnings with similarity scores
     """
-    from scripts.core.db.embedding_service import EmbeddingService
-    from scripts.core.db.postgres_pool import get_pool
+    from db.embedding_service import EmbeddingService
+    from db.postgres_pool import get_pool
 
     pool = await get_pool()
 
@@ -388,7 +399,10 @@ async def search_learnings_postgres(
         count_row = await conn.fetchrow(
             """
             SELECT COUNT(*) as cnt FROM archival_memory
-            WHERE metadata->>'type' = 'session_learning'
+            WHERE (metadata->>'type' IS NULL OR metadata->>'type' IN (
+                'session_learning', 'WORKING_SOLUTION', 'ERROR_FIX',
+                'ARCHITECTURAL_DECISION', 'CODEBASE_PATTERN', 'FAILED_APPROACH',
+                'USER_PREFERENCE', 'OPEN_THREAD'))
                 AND embedding IS NOT NULL
             """
         )
@@ -403,7 +417,7 @@ async def search_learnings_postgres(
             await embedder.aclose()
 
         async with pool.acquire() as conn:
-            from scripts.core.db.postgres_pool import init_pgvector
+            from db.postgres_pool import init_pgvector
             await init_pgvector(conn)
 
             if recency_weight > 0:
@@ -421,7 +435,10 @@ async def search_learnings_postgres(
                             1 - (embedding <=> $1::vector) as similarity,
                             GREATEST(0, 1.0 - EXTRACT(EPOCH FROM NOW() - created_at) / (30 * 86400)) as recency
                         FROM archival_memory
-                        WHERE metadata->>'type' = 'session_learning'
+                        WHERE (metadata->>'type' IS NULL OR metadata->>'type' IN (
+                            'session_learning', 'WORKING_SOLUTION', 'ERROR_FIX',
+                            'ARCHITECTURAL_DECISION', 'CODEBASE_PATTERN', 'FAILED_APPROACH',
+                            'USER_PREFERENCE', 'OPEN_THREAD'))
                             AND embedding IS NOT NULL
                     )
                     SELECT
@@ -446,7 +463,10 @@ async def search_learnings_postgres(
                         created_at,
                         1 - (embedding <=> $1::vector) as similarity
                     FROM archival_memory
-                    WHERE metadata->>'type' = 'session_learning'
+                    WHERE (metadata->>'type' IS NULL OR metadata->>'type' IN (
+                        'session_learning', 'WORKING_SOLUTION', 'ERROR_FIX',
+                        'ARCHITECTURAL_DECISION', 'CODEBASE_PATTERN', 'FAILED_APPROACH',
+                        'USER_PREFERENCE', 'OPEN_THREAD'))
                         AND embedding IS NOT NULL
                     ORDER BY embedding <=> $1::vector
                     LIMIT $2
@@ -467,7 +487,10 @@ async def search_learnings_postgres(
                     created_at,
                     0.5 as similarity
                 FROM archival_memory
-                WHERE metadata->>'type' = 'session_learning'
+                WHERE (metadata->>'type' IS NULL OR metadata->>'type' IN (
+                    'session_learning', 'WORKING_SOLUTION', 'ERROR_FIX',
+                    'ARCHITECTURAL_DECISION', 'CODEBASE_PATTERN', 'FAILED_APPROACH',
+                    'USER_PREFERENCE', 'OPEN_THREAD'))
                     AND content ILIKE '%' || $1 || '%'
                 ORDER BY created_at DESC
                 LIMIT $2
@@ -607,13 +630,15 @@ async def main() -> int:
     args = parser.parse_args()
 
     # JSON mode: suppress human-readable output
+    backend = get_backend()
+
     if not args.json:
         print(f'Recalling learnings for: "{args.query}"')
-        print(f"Provider: {args.provider}")
+        print(f"Backend: {backend}")
+        print(f"Embedding provider: {args.provider}")
         print()
 
     try:
-        backend = get_backend()
 
         if backend == "sqlite":
             # SQLite only supports text search (no pgvector)

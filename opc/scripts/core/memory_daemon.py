@@ -38,16 +38,16 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # Load .env files for DATABASE_URL (cross-platform)
-# Always override shell env vars to ensure .env files are authoritative
-# 1. Global ~/.claude/.env (primary config)
+# 1. Global ~/.claude/.env (API keys, may have DB config)
 global_env = Path.home() / ".claude" / ".env"
 if global_env.exists():
-    load_dotenv(global_env, override=True)
+    load_dotenv(global_env)
 
-# 2. Local opc/.env (project-specific overrides)
+# 2. Local opc/.env (relative to script location)
+# Script is at opc/scripts/core/memory_daemon.py, .env is at opc/.env
 opc_env = Path(__file__).parent.parent.parent / ".env"
 if opc_env.exists():
-    load_dotenv(opc_env, override=True)
+    load_dotenv(opc_env, override=True)  # Override with project-specific values
 
 # Global config
 POLL_INTERVAL = 60  # seconds
@@ -58,26 +58,7 @@ LOG_FILE = Path.home() / ".claude" / "memory-daemon.log"
 
 # Worker queue state (module-level for daemon process)
 active_extractions: dict[int, str] = {}  # pid -> session_id
-pending_queue: list[tuple[str, str]] = []  # [(session_id, project), ...]
-
-
-def _process_exists(pid: int) -> bool:
-    """Check if a process exists, cross-platform."""
-    if sys.platform == "win32":
-        import ctypes
-        kernel32 = ctypes.windll.kernel32
-        PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
-        handle = kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
-        if handle:
-            kernel32.CloseHandle(handle)
-            return True
-        return False
-    else:
-        try:
-            os.kill(pid, 0)
-            return True
-        except (ProcessLookupError, PermissionError):
-            return False
+pending_queue: list[tuple[str, str, any]] = []  # [(session_id, project, started_at), ...]
 
 
 def log(msg: str):
@@ -93,8 +74,8 @@ def log(msg: str):
 
 
 def get_postgres_url() -> str | None:
-    """Get PostgreSQL URL from environment (canonical first)."""
-    return os.environ.get("CONTINUOUS_CLAUDE_DB_URL") or os.environ.get("DATABASE_URL")
+    """Get PostgreSQL URL from environment."""
+    return os.environ.get("DATABASE_URL") or os.environ.get("CONTINUOUS_CLAUDE_DB_URL")
 
 
 def use_postgres() -> bool:
@@ -124,26 +105,15 @@ def pg_ensure_column():
 
 
 def pg_get_stale_sessions() -> list:
-    """Get sessions with stale heartbeat that need extraction.
-
-    Extracts sessions that are:
-    1. Stale (heartbeat older than threshold) AND
-    2. Either never extracted OR have new activity since last extraction
-
-    This supports "session resurrection" - if a user resumes an idle session,
-    the new work will be extracted when it goes stale again.
-    """
+    """Get sessions with stale heartbeat that haven't been extracted."""
     import psycopg2
     conn = psycopg2.connect(get_postgres_url())
     cur = conn.cursor()
-    threshold = datetime.now() - timedelta(seconds=STALE_THRESHOLD)
+    threshold = datetime.utcnow() - timedelta(seconds=STALE_THRESHOLD)
     cur.execute("""
-        SELECT id, project FROM sessions
+        SELECT id, project, started_at FROM sessions
         WHERE last_heartbeat < %s
-        AND (
-            memory_extracted_at IS NULL
-            OR last_activity_at > memory_extracted_at
-        )
+        AND memory_extracted_at IS NULL
     """, (threshold,))
     rows = cur.fetchall()
     conn.close()
@@ -181,37 +151,29 @@ def sqlite_ensure_table():
             working_on TEXT,
             started_at TIMESTAMP,
             last_heartbeat TIMESTAMP,
-            last_activity_at TIMESTAMP,
             memory_extracted_at TIMESTAMP
         )
     """)
-    # Add columns if table already exists without them
-    for col in ["memory_extracted_at", "last_activity_at"]:
-        try:
-            conn.execute(f"ALTER TABLE sessions ADD COLUMN {col} TIMESTAMP")
-        except sqlite3.OperationalError:
-            pass  # Column already exists
+    # Add column if table already exists without it
+    try:
+        conn.execute("ALTER TABLE sessions ADD COLUMN memory_extracted_at TIMESTAMP")
+    except sqlite3.OperationalError:
+        pass  # Column already exists
     conn.commit()
     conn.close()
 
 
 def sqlite_get_stale_sessions() -> list:
-    """Get sessions with stale heartbeat that need extraction.
-
-    Same logic as PostgreSQL version - supports session resurrection.
-    """
+    """Get sessions with stale heartbeat that haven't been extracted."""
     db_path = get_sqlite_path()
     if not db_path.exists():
         return []
     conn = sqlite3.connect(db_path)
     threshold = (datetime.now() - timedelta(seconds=STALE_THRESHOLD)).isoformat()
     cursor = conn.execute("""
-        SELECT id, project FROM sessions
+        SELECT id, project, started_at FROM sessions
         WHERE last_heartbeat < ?
-        AND (
-            memory_extracted_at IS NULL
-            OR last_activity_at > memory_extracted_at
-        )
+        AND memory_extracted_at IS NULL
     """, (threshold,))
     rows = cursor.fetchall()
     conn.close()
@@ -253,24 +215,40 @@ def mark_extracted(session_id: str):
         sqlite_mark_extracted(session_id)
 
 
-def extract_memories(session_id: str, project_dir: str):
+def extract_memories(session_id: str, project_dir: str, started_at=None):
     """Run memory extraction for a session."""
     log(f"Extracting memories for session {session_id} in {project_dir}")
 
-    # Find the most recent JSONL for this session
+    # Find JSONL by project folder and modification time
     jsonl_dir = Path.home() / ".opc-dev" / "projects"
     if not jsonl_dir.exists():
         jsonl_dir = Path.home() / ".claude" / "projects"
 
-    # Look for session JSONL
+    # Convert project path to folder name (C:\Users\david -> C--Users-david)
+    project_folder = project_dir.replace("\\", "-").replace("/", "-").replace(":", "-").replace(".", "-").rstrip("-")
+    project_path = jsonl_dir / project_folder
+
     jsonl_path = None
-    for f in sorted(jsonl_dir.glob("*/*.jsonl"), key=lambda x: x.stat().st_mtime, reverse=True):
-        if session_id in f.name or f.stem == session_id:
-            jsonl_path = f
-            break
+    if project_path.exists():
+        # Find most recent JSONL modified after session started
+        jsonl_files = sorted(project_path.glob("*.jsonl"), key=lambda x: x.stat().st_mtime, reverse=True)
+        if started_at:
+            # Convert started_at to timestamp for comparison
+            if isinstance(started_at, str):
+                started_ts = datetime.fromisoformat(started_at).timestamp()
+            else:
+                started_ts = started_at.timestamp()
+            # Find JSONL modified after session started
+            for f in jsonl_files:
+                if f.stat().st_mtime >= started_ts:
+                    jsonl_path = f
+                    break
+        if not jsonl_path and jsonl_files:
+            # Fallback: use most recent JSONL
+            jsonl_path = jsonl_files[0]
 
     if not jsonl_path:
-        log(f"No JSONL found for session {session_id}, skipping")
+        log(f"No JSONL found for session {session_id} in {project_path}, skipping")
         return
 
     # Run headless memory extraction
@@ -295,30 +273,19 @@ def extract_memories(session_id: str, project_dir: str):
 Look for decisions, what worked, what failed, and patterns discovered.
 Store each learning using store_learning.py with appropriate type and tags."""
 
-        cmd = [
-            "claude", "-p",
-            "--model", "sonnet",
-            "--dangerously-skip-permissions",
-            "--max-turns", "15",
-            "--append-system-prompt", agent_prompt,
-            f"Extract learnings from session {session_id}. JSONL path: {jsonl_path}"
-        ]
-        if sys.platform == "win32":
-            DETACHED_PROCESS = getattr(subprocess, "DETACHED_PROCESS", 0x00000008)
-            proc = subprocess.Popen(
-                cmd,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                stdin=subprocess.DEVNULL,
-                creationflags=DETACHED_PROCESS
-            )
-        else:
-            proc = subprocess.Popen(
-                cmd,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                start_new_session=True
-            )
+        proc = subprocess.Popen(
+            [
+                "claude", "-p",
+                "--model", "sonnet",  # Better extraction quality
+                "--dangerously-skip-permissions",
+                "--max-turns", "15",
+                "--append-system-prompt", agent_prompt,
+                f"Extract learnings from session {session_id}. JSONL path: {jsonl_path}"
+            ],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True  # Detach from parent
+        )
         active_extractions[proc.pid] = session_id
         log(f"Started extraction for {session_id} (pid={proc.pid}, active={len(active_extractions)})")
     except Exception as e:
@@ -329,9 +296,31 @@ def reap_completed_extractions():
     """Check for completed extraction processes and remove from active set."""
     completed = []
     for pid, session_id in active_extractions.items():
-        if not _process_exists(pid):
+        try:
+            if sys.platform == "win32":
+                # Windows: use ctypes to check process existence
+                import ctypes
+                kernel32 = ctypes.windll.kernel32
+                PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+                handle = kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
+                if handle:
+                    kernel32.CloseHandle(handle)
+                    # Process still running
+                    continue
+                else:
+                    # Process finished
+                    completed.append(pid)
+                    log(f"Extraction completed for {session_id} (pid={pid})")
+            else:
+                # Unix: signal 0 to check existence
+                os.kill(pid, 0)
+        except ProcessLookupError:
+            # Process finished
             completed.append(pid)
             log(f"Extraction completed for {session_id} (pid={pid})")
+        except PermissionError:
+            # Process exists but we can't signal it - assume still running
+            pass
 
     for pid in completed:
         del active_extractions[pid]
@@ -343,20 +332,20 @@ def process_pending_queue():
     """Spawn extractions from queue if under concurrency limit."""
     spawned = 0
     while pending_queue and len(active_extractions) < MAX_CONCURRENT_EXTRACTIONS:
-        session_id, project = pending_queue.pop(0)
+        session_id, project, started_at = pending_queue.pop(0)
         log(f"Dequeuing {session_id} (queue remaining: {len(pending_queue)})")
-        extract_memories(session_id, project)
+        extract_memories(session_id, project, started_at)
         spawned += 1
     return spawned
 
 
-def queue_or_extract(session_id: str, project: str):
+def queue_or_extract(session_id: str, project: str, started_at=None):
     """Queue extraction if at limit, otherwise extract immediately."""
     if len(active_extractions) >= MAX_CONCURRENT_EXTRACTIONS:
-        pending_queue.append((session_id, project))
+        pending_queue.append((session_id, project, started_at))
         log(f"Queued {session_id} (active={len(active_extractions)}, queue={len(pending_queue)})")
     else:
-        extract_memories(session_id, project)
+        extract_memories(session_id, project, started_at)
 
 
 def daemon_loop():
@@ -367,16 +356,14 @@ def daemon_loop():
 
     while True:
         try:
-            # Reap completed processes and process pending queue
             reap_completed_extractions()
             process_pending_queue()
 
-            # Find new stale sessions
             stale = get_stale_sessions()
             if stale:
                 log(f"Found {len(stale)} stale sessions")
-                for session_id, project in stale:
-                    queue_or_extract(session_id, project or "")
+                for session_id, project, started_at in stale:
+                    queue_or_extract(session_id, project or "", started_at)
                     mark_extracted(session_id)
         except Exception as e:
             log(f"Error in daemon loop: {e}")
@@ -391,12 +378,24 @@ def is_running() -> tuple[bool, int | None]:
 
     try:
         pid = int(PID_FILE.read_text().strip())
-        if _process_exists(pid):
-            return True, pid
+        # Check if process exists - Windows compatible
+        if sys.platform == "win32":
+            import ctypes
+            kernel32 = ctypes.windll.kernel32
+            PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+            handle = kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
+            if handle:
+                kernel32.CloseHandle(handle)
+                return True, pid
+            else:
+                # Process doesn't exist
+                PID_FILE.unlink(missing_ok=True)
+                return False, None
         else:
-            PID_FILE.unlink(missing_ok=True)
-            return False, None
-    except (ValueError, OSError):
+            os.kill(pid, 0)
+            return True, pid
+    except (ValueError, ProcessLookupError, PermissionError, OSError):
+        # Stale PID file
         PID_FILE.unlink(missing_ok=True)
         return False, None
 
@@ -407,10 +406,10 @@ def _run_as_daemon():
     PID_FILE.parent.mkdir(parents=True, exist_ok=True)
     PID_FILE.write_text(str(os.getpid()))
 
-    # Close standard file descriptors
-    sys.stdin.close()
-    sys.stdout.close()
-    sys.stderr.close()
+    # Redirect standard file descriptors to devnull (closing breaks some libraries)
+    devnull = open(os.devnull, 'w')
+    sys.stdout = devnull
+    sys.stderr = devnull
 
     # Run daemon
     try:
@@ -436,9 +435,15 @@ def start_daemon():
         # Reference: MongoDB pymongo/daemon.py pattern
         DETACHED_PROCESS = getattr(subprocess, "DETACHED_PROCESS", 0x00000008)
         try:
+            import shutil
+            uv_path = shutil.which("uv")
+            if uv_path:
+                cmd = [uv_path, "run", "python", __file__, "--daemon-subprocess"]
+            else:
+                cmd = [sys.executable, __file__, "--daemon-subprocess"]
             with open(os.devnull, "r+b") as devnull:
                 subprocess.Popen(
-                    [sys.executable, __file__, "--daemon-subprocess"],
+                    cmd,
                     creationflags=DETACHED_PROCESS,
                     stdin=devnull,
                     stdout=devnull,
@@ -473,11 +478,17 @@ def stop_daemon():
         return 0
 
     try:
-        os.kill(pid, signal.SIGTERM)
+        if sys.platform == "win32":
+            # Windows: use taskkill or TerminateProcess
+            import subprocess
+            subprocess.run(["taskkill", "/F", "/PID", str(pid)],
+                           capture_output=True, check=False)
+        else:
+            os.kill(pid, signal.SIGTERM)
         print(f"Stopped memory daemon (PID {pid})")
         PID_FILE.unlink(missing_ok=True)
         return 0
-    except ProcessLookupError:
+    except (ProcessLookupError, OSError):
         PID_FILE.unlink(missing_ok=True)
         return 0
 
