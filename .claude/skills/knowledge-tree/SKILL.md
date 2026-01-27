@@ -21,22 +21,22 @@ Navigate and query the project's knowledge tree - a persistent map of what the p
 
 ```bash
 # Generate or update the knowledge tree
-uv run python ~/.claude/scripts/core/core/knowledge_tree.py --project .
+cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/knowledge_tree.py --project .
 
 # Query the tree
-uv run python ~/.claude/scripts/core/core/query_tree.py --project . --query "where to add tests"
+cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/query_tree.py --project . --query "where to add tests"
 
 # Show current goals
-uv run python ~/.claude/scripts/core/core/query_tree.py --project . --goals
+cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/query_tree.py --project . --goals
 
 # Show project description
-uv run python ~/.claude/scripts/core/core/query_tree.py --project . --describe
+cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/query_tree.py --project . --describe
 
 # Show structure
-uv run python ~/.claude/scripts/core/core/query_tree.py --project . --structure
+cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/query_tree.py --project . --structure
 
 # JSON output for processing
-uv run python ~/.claude/scripts/core/core/query_tree.py --project . --query "auth" --json
+cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/query_tree.py --project . --query "auth" --json
 ```
 
 ## Tree Location
@@ -61,14 +61,16 @@ The tree daemon continuously updates the knowledge tree when files change:
 
 ```bash
 # Start daemon in background
-uv run python ~/.claude/scripts/core/core/tree_daemon.py --project . --background
+cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/tree_daemon.py --project . --background
 
 # Check daemon status
-uv run python ~/.claude/scripts/core/core/tree_daemon.py --project . --status
+cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/tree_daemon.py --project . --status
 
 # Stop daemon
-uv run python ~/.claude/scripts/core/core/tree_daemon.py --project . --stop
+cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/tree_daemon.py --project . --stop
 ```
+
+**Note**: The daemon auto-starts on session start via the `session-start-tree-daemon.sh` hook.
 
 ## ROADMAP.md Format
 
@@ -129,10 +131,11 @@ The planning hook automatically maintains ROADMAP.md:
 
 ## Workflow
 
-1. **Initial setup**: Run `knowledge_tree.py --project .` to generate tree
-2. **Start daemon**: Optionally run daemon for auto-updates
+1. **Automatic**: Tree daemon starts on session start (via hook)
+2. **Initial project**: If no tree exists, daemon generates it on first start
 3. **Query as needed**: Use `query_tree.py` to find locations
 4. **Goals sync**: Planning hook updates ROADMAP.md on plan acceptance
+5. **Manual refresh**: Run `knowledge_tree.py` after major refactors
 
 ## Limitations
 

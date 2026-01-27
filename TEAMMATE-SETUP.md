@@ -180,6 +180,31 @@ When multiple Claude instances run:
 - File conflict warnings if editing same files
 - Shared memory pool via PostgreSQL
 
+### Knowledge Tree
+
+Per-project navigation map that helps Claude understand your codebase:
+
+- **Auto-starts**: Tree daemon launches on session start via hook
+- **Live updates**: Watches for file changes and updates tree
+- **Project context**: Stores structure, goals, and navigation hints
+- **ROADMAP.md**: Tracks current goals and planning decisions
+
+**Files:**
+- `{project}/.claude/knowledge-tree.json` - Project structure map
+- `{project}/ROADMAP.md` - Current goals and planning history
+
+**Query the tree:**
+```bash
+cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/query_tree.py --project . --describe
+cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/query_tree.py --project . --goals
+cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/query_tree.py --project . --structure
+```
+
+**Manual refresh** (after major refactors):
+```bash
+cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/knowledge_tree.py --project .
+```
+
 ---
 
 ## Troubleshooting

@@ -114,6 +114,11 @@
             "type": "command",
             "command": "uv run $HOME/.claude/hooks/hook_launcher.py session-symbol-index",
             "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "bash $HOME/.claude/hooks/session-start-tree-daemon.sh",
+            "timeout": 15
           }
         ]
       },
