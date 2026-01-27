@@ -292,6 +292,89 @@ docker exec continuous-claude-postgres psql -U claude -d continuous_claude \
 
 ---
 
+## Sync Workflow
+
+The repository includes a sync script for bidirectional syncing between your active `~/.claude` directory and the shared `continuous-claude/.claude` repository.
+
+### How It Works
+
+```
+┌─────────────────┐     sync-claude.sh     ┌─────────────────┐
+│   ~/.claude     │ ────────────────────▶  │ continuous-     │
+│   (your setup)  │   converts paths       │ claude/.claude  │
+│                 │   to $HOME             │ (repo)          │
+└─────────────────┘                        └────────┬────────┘
+                                                    │
+                                                    ▼ git push
+                                           ┌─────────────────┐
+                                           │   GitHub Repo   │
+                                           │   (team pulls)  │
+                                           └─────────────────┘
+```
+
+### Syncing Your Improvements to the Repo
+
+After making improvements to hooks/skills in `~/.claude`:
+
+```bash
+cd continuous-claude/scripts
+
+# Preview what will sync (dry run)
+source ./sync-claude.sh --to-repo --dry-run
+
+# Actually sync files
+source ./sync-claude.sh --to-repo
+
+# Commit and push
+cd ..
+git add .claude/
+git commit -m "Sync latest hooks and skills"
+git push
+```
+
+### Pulling Team Updates to Your Setup
+
+After teammates push updates:
+
+```bash
+cd continuous-claude
+git pull
+
+# Sync repo changes to your ~/.claude
+cd scripts
+source ./sync-claude.sh --from-repo
+
+# Rebuild TypeScript hooks
+cd ~/.claude/hooks
+npm run build
+```
+
+### What Gets Synced
+
+**Shareable (synced):**
+- `hooks/*.sh`, `hooks/*.py`, `hooks/src/*.ts`, `hooks/dist/*.mjs`
+- `rules/*.md`, `agents/*.md`
+- `skills/*/`
+- `scripts/*`
+- `settings.json` (with path conversion)
+
+**Personal (never synced):**
+- `CLAUDE.md`, `RULES.md` (your personal configuration)
+- `.env`, `.credentials.json` (secrets)
+- `cache/`, `node_modules/` (build artifacts)
+- `knowledge-tree.json` (project-specific)
+
+### Path Conversion
+
+The sync script automatically converts Windows-specific paths to portable `$HOME` paths:
+
+- **Before (Windows)**: `C:/Users/david.hayes/.claude/hooks/dist/...`
+- **After (portable)**: `$HOME/.claude/hooks/dist/...`
+
+This allows the same `settings.json` to work on Windows, Mac, and Linux.
+
+---
+
 ## Next Steps
 
 Once setup is complete:
