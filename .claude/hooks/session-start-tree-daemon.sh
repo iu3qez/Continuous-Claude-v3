@@ -19,7 +19,12 @@ if [ ! -f "$DAEMON_SCRIPT" ]; then
 fi
 
 # Check if daemon is already running for this project
-cd "$OPC_DIR" 2>/dev/null || exit 0
+if ! cd "$OPC_DIR" 2>/dev/null; then
+    # OPC directory not available, continue silently
+    echo '{"result":"continue"}'
+    exit 0
+fi
+
 STATUS=$(PYTHONPATH=. uv run python scripts/core/tree_daemon.py --project "$PROJECT_DIR" --status 2>/dev/null)
 
 if [[ "$STATUS" == *"running"* ]]; then
