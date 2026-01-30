@@ -55,6 +55,80 @@ interface PromptTriggers {
     intentPatterns?: string[];
 }
 
+// Phase 2: High-confidence workflow triggers
+// These trigger auto-invoke (blocking with clear instruction) when confidence > 0.9
+interface WorkflowTrigger {
+    skill: string;
+    pattern: RegExp;
+    antiPattern?: RegExp;
+    confidence: number;
+    description: string;
+}
+
+const WORKFLOW_TRIGGERS: WorkflowTrigger[] = [
+    {
+        skill: 'fix',
+        pattern: /\b(fix|debug|broken|failing)\s+(the\s+)?(bug|error|issue|problem)/i,
+        antiPattern: /\b(don't|do\s+not|no\s+need\s+to)\s+fix/i,
+        confidence: 0.95,
+        description: 'Bug/error investigation and resolution'
+    },
+    {
+        skill: 'build',
+        pattern: /\b(build|create|implement)\s+(?:a\s+)?(?:new\s+)?(feature|component|page|module|api|endpoint)/i,
+        antiPattern: /\b(don't|do\s+not)\s+(build|create|implement)/i,
+        confidence: 0.90,
+        description: 'Feature development workflow'
+    },
+    {
+        skill: 'commit',
+        pattern: /\b(commit|save)\s+(these\s+|the\s+|my\s+)?changes/i,
+        antiPattern: /\b(don't|do\s+not|before\s+you)\s+commit/i,
+        confidence: 0.95,
+        description: 'Git commit workflow'
+    },
+    {
+        skill: 'explore',
+        pattern: /\b(explore|understand|navigate|analyze)\s+(the\s+)?(codebase|project|repository|code\s+structure)/i,
+        confidence: 0.90,
+        description: 'Codebase exploration and understanding'
+    },
+    {
+        skill: 'ralph',
+        pattern: /\b(start|run|launch|use)\s+ralph/i,
+        confidence: 0.99,
+        description: 'Ralph autonomous development workflow'
+    },
+    {
+        skill: 'refactor',
+        pattern: /\brefactor\s+(the\s+)?(this\s+)?(code|function|class|module|component)/i,
+        confidence: 0.90,
+        description: 'Code refactoring workflow'
+    },
+    {
+        skill: 'test',
+        pattern: /\b(write|add|create)\s+(unit\s+|integration\s+)?tests?\s+for/i,
+        confidence: 0.85,
+        description: 'Test writing workflow'
+    }
+];
+
+/**
+ * Check if prompt matches a high-confidence workflow trigger.
+ * Returns the workflow to auto-invoke, or null if no match.
+ */
+function checkWorkflowTriggers(prompt: string): WorkflowTrigger | null {
+    for (const trigger of WORKFLOW_TRIGGERS) {
+        if (trigger.pattern.test(prompt)) {
+            if (trigger.antiPattern && trigger.antiPattern.test(prompt)) {
+                continue;
+            }
+            return trigger;
+        }
+    }
+    return null;
+}
+
 interface SkillRule {
     type: 'guardrail' | 'domain';
     enforcement: 'block' | 'suggest' | 'warn';
@@ -244,6 +318,34 @@ async function main() {
             process.exit(0);
         }
         const rules: SkillRules = JSON.parse(readFileSync(rulesPath, 'utf-8'));
+
+        // Phase 2: Check for high-confidence workflow triggers FIRST
+        // Output message directly - UserPromptSubmit hooks inject context, they don't truly block
+        const workflowTrigger = checkWorkflowTriggers(data.prompt);
+        if (workflowTrigger && workflowTrigger.confidence >= 0.90) {
+            const confidencePct = Math.round(workflowTrigger.confidence * 100);
+            const autoInvokeMessage = `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚀 WORKFLOW DETECTED: /${workflowTrigger.skill}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+High-confidence workflow match (${confidencePct}%):
+  → ${workflowTrigger.description}
+
+⚠️ ACTION REQUIRED - INVOKE SKILL FIRST:
+Use the Skill tool with: { "skill": "${workflowTrigger.skill}" }
+
+Do NOT skip this step. The skill provides:
+- Structured methodology for this task type
+- Built-in verification steps
+- Proper agent orchestration
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+`;
+            // Output directly - this gets injected into Claude's context
+            console.log(autoInvokeMessage);
+            process.exit(0);
+        }
 
         // CHANGE 1: Run pattern inference EARLY on all prompts
         const patternInference = runPatternInference(data.prompt, projectDir);

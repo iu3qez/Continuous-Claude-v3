@@ -212,7 +212,36 @@ async function main() {
       storeSessionAffinity(projectDir, terminalPid, sessionName);
     }
 
-    // Always trigger indexing (idempotent, will upsert)
+    // Update local project memory index.json (fast, synchronous-ish)
+    const projectMemoryScript = path.join(homeDir, '.claude', 'scripts', 'core', 'core', 'project_memory.py');
+    if (fs.existsSync(projectMemoryScript)) {
+      try {
+        execSync(`uv run python "${projectMemoryScript}" update --project-dir "${projectDir}" --handoff "${fullPath}"`, {
+          cwd: path.join(homeDir, '.claude', 'scripts', 'core', 'core'),
+          timeout: 5000,
+          stdio: 'ignore'
+        });
+      } catch {
+        // Don't block on index update failures
+      }
+    }
+
+    // Spawn background embedding generation
+    const indexHandoffScript = path.join(homeDir, '.claude', 'scripts', 'core', 'core', 'index_handoff.py');
+    if (fs.existsSync(indexHandoffScript)) {
+      const embedChild = spawn('uv', [
+        'run', 'python', indexHandoffScript,
+        '--handoff', fullPath,
+        '--project-dir', projectDir
+      ], {
+        cwd: path.join(homeDir, '.claude', 'scripts', 'core', 'core'),
+        detached: true,
+        stdio: 'ignore'
+      });
+      embedChild.unref();
+    }
+
+    // Always trigger legacy indexing (idempotent, will upsert)
     const indexScript = path.join(projectDir, 'scripts', 'artifact_index.py');
 
     if (fs.existsSync(indexScript)) {

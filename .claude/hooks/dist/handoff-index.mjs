@@ -137,6 +137,34 @@ ${content}`;
     if (terminalPid && sessionName) {
       storeSessionAffinity(projectDir, terminalPid, sessionName);
     }
+    const projectMemoryScript = path.join(homeDir, ".claude", "scripts", "core", "core", "project_memory.py");
+    if (fs.existsSync(projectMemoryScript)) {
+      try {
+        execSync(`uv run python "${projectMemoryScript}" update --project-dir "${projectDir}" --handoff "${fullPath}"`, {
+          cwd: path.join(homeDir, ".claude", "scripts", "core", "core"),
+          timeout: 5e3,
+          stdio: "ignore"
+        });
+      } catch {
+      }
+    }
+    const indexHandoffScript = path.join(homeDir, ".claude", "scripts", "core", "core", "index_handoff.py");
+    if (fs.existsSync(indexHandoffScript)) {
+      const embedChild = spawn("uv", [
+        "run",
+        "python",
+        indexHandoffScript,
+        "--handoff",
+        fullPath,
+        "--project-dir",
+        projectDir
+      ], {
+        cwd: path.join(homeDir, ".claude", "scripts", "core", "core"),
+        detached: true,
+        stdio: "ignore"
+      });
+      embedChild.unref();
+    }
     const indexScript = path.join(projectDir, "scripts", "artifact_index.py");
     if (fs.existsSync(indexScript)) {
       const child = spawn("uv", ["run", "python", indexScript, "--file", fullPath], {

@@ -160,7 +160,13 @@ function getUnmarkedHandoffs() {
   }
 }
 async function main() {
-  const input = JSON.parse(await readStdin());
+  let input;
+  try {
+    const stdin = await readStdin();
+    input = stdin ? JSON.parse(stdin) : { session_id: "unknown", source: "cli" };
+  } catch (e) {
+    input = { session_id: "unknown", source: "cli" };
+  }
   const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
   const sessionType = input.source || input.type;
   let message = "";
@@ -372,6 +378,31 @@ All handoffs in ${handoffDir}:
         console.error(`\u26A0 No ledger found. Run /continuity_ledger to track session state.`);
         message = `[${sessionType}] No ledger found. Consider running /continuity_ledger to track session state.`;
       }
+    }
+  }
+  const memoryIndexPath = path.join(projectDir, ".claude", "memory", "index.json");
+  if (fs.existsSync(memoryIndexPath)) {
+    try {
+      const indexContent = fs.readFileSync(memoryIndexPath, "utf-8");
+      const index = JSON.parse(indexContent);
+      const sessionCount = Object.keys(index.sessions || {}).length;
+      const topicCount = Object.keys(index.topic_index || {}).length;
+      if (sessionCount > 0 || topicCount > 0) {
+        const memorySummary = `
+
+---
+
+## Local Project Memory
+
+Sessions indexed: ${sessionCount} | Topics: ${topicCount}
+Query with: \`uv run python ~/.claude/scripts/core/core/project_memory.py query "<topic>" --project-dir "${projectDir}"\``;
+        if (additionalContext) {
+          additionalContext += memorySummary;
+        } else if (sessionType === "clear" || sessionType === "compact") {
+          additionalContext = memorySummary;
+        }
+      }
+    } catch {
     }
   }
   const output = { result: "continue" };

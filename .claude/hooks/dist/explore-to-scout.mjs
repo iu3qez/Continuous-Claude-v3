@@ -1,16 +1,24 @@
+#!/usr/bin/env node
+
 // src/explore-to-scout.ts
-import { readFileSync } from "fs";
-function readStdin() {
-  return readFileSync(0, "utf-8");
-}
 async function main() {
-  const input = JSON.parse(readStdin());
-  if (input.tool_name !== "Task") {
+  let input = {};
+  const chunks = [];
+  for await (const chunk of process.stdin) {
+    chunks.push(chunk);
+  }
+  try {
+    const rawInput = Buffer.concat(chunks).toString("utf-8").trim();
+    if (rawInput) {
+      input = JSON.parse(rawInput);
+    }
+  } catch {
     console.log("{}");
     return;
   }
-  const subagentType = input.tool_input.subagent_type;
-  if (!subagentType || subagentType.toLowerCase() !== "explore") {
+  const tool = input.tool || input.tool_name;
+  const subagentType = input.tool_input?.subagent_type;
+  if (tool !== "Task" || subagentType?.toLowerCase() !== "explore") {
     console.log("{}");
     return;
   }
@@ -18,23 +26,19 @@ async function main() {
     hookSpecificOutput: {
       hookEventName: "PreToolUse",
       permissionDecision: "deny",
-      permissionDecisionReason: `REDIRECT: Explore agent uses Haiku which is unreliable. Use subagent_type="scout" instead.
+      permissionDecisionReason: `\u{1F504} REDIRECT: Explore \u2192 scout
 
-Scout uses Sonnet with a detailed 197-line prompt for accurate codebase exploration.
+Per ~/.claude/rules/use-scout-not-explore.md:
+- Explore uses Haiku (inaccurate for codebase exploration)
+- Scout uses Sonnet with detailed prompt (accurate results)
 
-Alternatives by task:
-- Codebase exploration \u2192 scout
-- External research \u2192 oracle
-- Pattern finding \u2192 scout or codebase-pattern-finder
-- Bug investigation \u2192 sleuth
-- File location \u2192 codebase-locator
+**Fix:** Change subagent_type from "Explore" to "scout"
 
-Re-run the Task tool with subagent_type="scout" and the same prompt.`
+Or use tools directly (Grep, Glob, Read) for high-accuracy exploration.`
     }
   };
   console.log(JSON.stringify(output));
 }
-main().catch((err) => {
-  console.error(`explore-to-scout hook error: ${err.message}`);
+main().catch(() => {
   console.log("{}");
 });

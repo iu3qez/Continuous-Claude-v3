@@ -2,6 +2,38 @@
     "version": "1.0",
     "description": "Skill activation triggers for Claude Code. Controls when skills automatically suggest or block actions.",
     "skills": {
+        "ralph": {
+            "type": "workflow",
+            "enforcement": "suggest",
+            "priority": "high",
+            "description": "Autonomous feature development using Ralph methodology - PRD-driven, Docker-sandboxed, deterministic loops",
+            "promptTriggers": {
+                "keywords": [
+                    "/ralph",
+                    "ralph mode",
+                    "ralph build",
+                    "ralph plan",
+                    "ralph loop",
+                    "development loop",
+                    "dev loop",
+                    "create prd",
+                    "generate prd",
+                    "new feature from scratch",
+                    "autonomous development",
+                    "set and forget",
+                    "build feature autonomously"
+                ],
+                "intentPatterns": [
+                    "ralph.*?(mode|build|plan|start|loop|workflow|dev)",
+                    "(development|dev|iterative).*?loop",
+                    "(create|generate|write).*?prd",
+                    "(build|create|implement).*?(new.*?)?feature.*?(from scratch|autonomously)",
+                    "(set|walk).*?(and|away).*?(forget|come back)",
+                    "autonomous.*?(dev|development|implementation)",
+                    "deterministic.*?loop"
+                ]
+            }
+        },
         "compound-learnings": {
             "type": "domain",
             "enforcement": "suggest",
@@ -25,6 +57,59 @@
                     "(what|which).*?pattern.*?(skill|rule|permanent)",
                     "learn.*?from.*?session",
                     "(turn|convert|transform).*?learning.*?(skill|rule|agent)"
+                ]
+            }
+        },
+        "idearalph": {
+            "type": "workflow",
+            "enforcement": "suggest",
+            "priority": "high",
+            "description": "AI co-founder for startup ideation - brainstorm, validate, refine, PRD, design, architecture, checklist",
+            "promptTriggers": {
+                "keywords": [
+                    "startup idea",
+                    "business idea",
+                    "validate idea",
+                    "brainstorm ideas",
+                    "startup validation",
+                    "pmf score",
+                    "product market fit",
+                    "generate prd",
+                    "idearalph",
+                    "idea ralph",
+                    "ralph factor"
+                ],
+                "intentPatterns": [
+                    "(startup|business).*?idea",
+                    "(validate|score|rate).*?(my|this|the)?.*?idea",
+                    "(brainstorm|generate).*?(startup|business|product).*?idea",
+                    "idea.*?(validation|scoring|feedback)",
+                    "(help|assist).*?(with)?.*?(my)?.*?startup",
+                    "pmf.*?(score|analysis|dimensions)",
+                    "(create|generate|write).*?prd.*?(for|from)?.*?idea"
+                ]
+            }
+        },
+        "plan-mode": {
+            "type": "guardrail",
+            "enforcement": "suggest",
+            "priority": "high",
+            "description": "Concise plan format - brevity over grammar, end with unresolved questions",
+            "promptTriggers": {
+                "keywords": [
+                    "plan mode",
+                    "create plan",
+                    "write plan",
+                    "planning",
+                    "make a plan",
+                    "design plan",
+                    "implementation plan"
+                ],
+                "intentPatterns": [
+                    "(enter|in).*?plan.*?mode",
+                    "(write|create|make|design).*?plan",
+                    "EnterPlanMode",
+                    "plan.*?(this|feature|implementation)"
                 ]
             }
         },
@@ -500,38 +585,35 @@
                 ]
             }
         },
-        "recall-reasoning": {
+        "memory": {
             "type": "domain",
             "enforcement": "suggest",
-            "priority": "medium",
-            "description": "Search past work (Artifact Index + reasoning files) for decisions and approaches",
+            "priority": "high",
+            "description": "Query and store learnings in the persistent memory system",
             "promptTriggers": {
                 "keywords": [
                     "recall",
-                    "past reasoning",
-                    "what was tried",
-                    "previous attempts",
-                    "search reasoning",
-                    "past decisions",
-                    "similar problem",
+                    "remember",
+                    "memory",
+                    "past learnings",
+                    "what worked before",
+                    "have we done this",
                     "tried before",
                     "done before",
                     "last time",
                     "precedent",
                     "what worked",
                     "what failed",
-                    "past work",
-                    "similar work",
-                    "search handoffs",
-                    "artifact index"
+                    "store learning",
+                    "save this",
+                    "note this"
                 ],
                 "intentPatterns": [
-                    "(recall|search|find).*?(reasoning|attempts|decisions|precedent|handoffs)",
+                    "(recall|remember|query).*?(learning|memory|past)",
                     "(what|how).*?(tried|done|worked|failed).*?before",
-                    "(similar|past).*?(problem|issue|approach|work|session)",
-                    "(previous|past|last).*?(attempts|work|reasoning|time)",
+                    "(store|save|remember).*?(this|learning|for later)",
                     "what did we do.*?(with|for|last)",
-                    "(find|search).*?(past|previous).*?(work|sessions)"
+                    "(find|search).*?(past|previous).*?(work|sessions|learnings)"
                 ]
             }
         },
@@ -725,63 +807,6 @@
                 ]
             }
         },
-        "tdd-migrate": {
-            "type": "workflow",
-            "enforcement": "suggest",
-            "priority": "high",
-            "description": "TDD workflow for migrations - orchestrate agents, zero main context growth",
-            "promptTriggers": {
-                "keywords": [
-                    "/tdd-migrate",
-                    "tdd migrate",
-                    "port to typescript",
-                    "port to ts",
-                    "create adapters",
-                    "migrate with tdd",
-                    "multiple similar items",
-                    "batch tdd",
-                    "parallel tdd",
-                    "orchestrate agents",
-                    "zero context growth"
-                ],
-                "intentPatterns": [
-                    "(port|migrate|convert).*?(to|from).*?(typescript|ts|python|py)",
-                    "(create|implement).*?(multiple|several|many).*?(adapters|items|modules)",
-                    "(tdd|test.?driven).*?(migrate|migration|port)",
-                    "(batch|parallel).*?(tdd|implement|create)",
-                    "orchestrate.*?agents",
-                    "zero.*?context.*?growth"
-                ]
-            }
-        },
-        "tdd-migration-pipeline": {
-            "type": "workflow",
-            "enforcement": "suggest",
-            "priority": "high",
-            "description": "Orchestrator-only migration workflow - ZERO context growth, all work delegated to agents with TDD",
-            "promptTriggers": {
-                "keywords": [
-                    "/tdd-migration-pipeline",
-                    "migration pipeline",
-                    "rewrite codebase",
-                    "orchestrator mode",
-                    "full tdd migration",
-                    "spec-driven migration",
-                    "behavioral contracts",
-                    "adversarial review",
-                    "zero orchestrator",
-                    "pipe context only"
-                ],
-                "intentPatterns": [
-                    "(migration|rewrite).*?pipeline",
-                    "orchestrator.*?(only|mode)",
-                    "(full|complete|comprehensive).*?tdd.*?(migration|rewrite)",
-                    "(behavioral|spec).*?(contract|driven)",
-                    "(adversarial|premortem).*?(review|pass)",
-                    "zero.*?(context|orchestrator).*?(growth|execution)"
-                ]
-            }
-        },
         "workflow-router": {
             "type": "domain",
             "enforcement": "suggest",
@@ -876,30 +901,7 @@
                 ]
             }
         },
-        "parallel-agent-contracts": {
-            "type": "domain",
-            "enforcement": "suggest",
-            "priority": "high",
-            "description": "Prevent type duplication when launching parallel TypeScript agents",
-            "promptTriggers": {
-                "keywords": [
-                    "parallel agents",
-                    "spawn parallel",
-                    "type duplication",
-                    "type conflict",
-                    "TypeScript agents",
-                    "multiple agents TypeScript",
-                    "agent type contract"
-                ],
-                "intentPatterns": [
-                    "(parallel|multiple).*?agents.*?(TypeScript|ts)",
-                    "(type|interface).*?(duplicate|conflict|collision)",
-                    "(spawn|launch).*?(parallel|multiple).*?(ts|TypeScript)",
-                    "(TypeScript|ts).*?(agents?|parallel)"
-                ]
-            }
-        },
-        "reference-sdk": {
+                "reference-sdk": {
             "type": "domain",
             "enforcement": "suggest",
             "priority": "medium",
@@ -949,21 +951,9 @@
             "type": "domain",
             "enforcement": "suggest",
             "priority": "critical",
-            "description": "Token-efficient code context (95% savings) - AST, call graph, CFG, DFG, PDG analysis. Install: uv tool install llm-tldr",
+            "description": "Token-efficient code context (85% savings) - call graph, CFG, DFG, PDG analysis. USE INSTEAD OF GREP for code understanding.",
             "promptTriggers": {
                 "keywords": [
-                    "tldr",
-                    "tldr tree",
-                    "tldr structure",
-                    "tldr search",
-                    "tldr daemon",
-                    "tldr cfg",
-                    "tldr dfg",
-                    "tldr slice",
-                    "tldr impact",
-                    "tldr semantic",
-                    "tldr calls",
-                    "tldr extract",
                     "call graph",
                     "what calls",
                     "who calls",
@@ -981,12 +971,9 @@
                     "how does function",
                     "trace through",
                     "control flow",
-                    "program slice",
-                    "code analysis",
-                    "token efficient"
+                    "program slice"
                 ],
                 "intentPatterns": [
-                    "tldr.*?(tree|structure|search|daemon|cfg|dfg|slice|impact)",
                     "(what|who).*?calls.*?(this|function|method)",
                     "(how|very).*?complex.*?(is|function|code)",
                     "(where|what).*?(does|sets).*?variable",
@@ -994,8 +981,7 @@
                     "(what|which).*?affects.*?(line|code)",
                     "(understand|explain).*?(function|method|code)",
                     "(trace|follow).*?(calls|execution)",
-                    "(cyclomatic|complexity).*?(of|for|is)",
-                    "(run|use).*?tldr"
+                    "(cyclomatic|complexity).*?(of|for|is)"
                 ]
             }
         },
@@ -1498,75 +1484,7 @@
                 ]
             }
         },
-        "dead-code": {
-            "type": "domain",
-            "enforcement": "suggest",
-            "priority": "medium",
-            "description": "Find unused functions and dead code in the codebase",
-            "promptTriggers": {
-                "keywords": [
-                    "/dead-code",
-                    "dead code",
-                    "unused functions",
-                    "find unused",
-                    "unreachable code",
-                    "cleanup unused",
-                    "remove dead code"
-                ],
-                "intentPatterns": [
-                    "(find|detect|check).*?(dead|unused|unreachable).*?code",
-                    "(dead|unused).*?(code|functions?|methods?)",
-                    "(cleanup|remove).*?(unused|dead)"
-                ]
-            }
-        },
-        "recall": {
-            "type": "domain",
-            "enforcement": "suggest",
-            "priority": "high",
-            "description": "Query semantic memory for relevant learnings from past sessions",
-            "promptTriggers": {
-                "keywords": [
-                    "/recall",
-                    "recall learnings",
-                    "search memory",
-                    "what did we learn",
-                    "past learnings",
-                    "memory search",
-                    "search learnings",
-                    "find in memory"
-                ],
-                "intentPatterns": [
-                    "/recall.*",
-                    "(recall|search|query).*?(memory|learnings)",
-                    "(what|any).*?(learned|learnings).*?(about|from)",
-                    "(past|previous).*?learnings"
-                ]
-            }
-        },
-        "remember": {
-            "type": "domain",
-            "enforcement": "suggest",
-            "priority": "high",
-            "description": "Store a learning, pattern, or decision in semantic memory for future recall",
-            "promptTriggers": {
-                "keywords": [
-                    "/remember",
-                    "remember this",
-                    "store learning",
-                    "save this",
-                    "remember that",
-                    "store this pattern",
-                    "save learning"
-                ],
-                "intentPatterns": [
-                    "/remember.*",
-                    "(remember|store|save).*?(this|that|learning|pattern)",
-                    "(add|put).*?(to|in).*?memory"
-                ]
-            }
-        },
-        "migrate": {
+                "migrate": {
             "type": "workflow",
             "enforcement": "suggest",
             "priority": "high",
@@ -1861,6 +1779,190 @@
                     "(lean|lean4).*?(lemma|theorem|find)"
                 ]
             }
+        },
+        "shadcn-create": {
+            "type": "domain",
+            "enforcement": "suggest",
+            "priority": "high",
+            "description": "Interactive UI theming via Shadcn/create platform with Claude in Chrome browser automation",
+            "promptTriggers": {
+                "keywords": [
+                    "shadcn",
+                    "shadcn/ui",
+                    "shadcn create",
+                    "configure shadcn",
+                    "setup shadcn",
+                    "shadcn theme",
+                    "ui.shadcn.com",
+                    "design system",
+                    "component library",
+                    "base color",
+                    "border radius",
+                    "zinc theme",
+                    "ui theming",
+                    "shadcn blocks",
+                    "shadcn components",
+                    "shadcn init",
+                    "shadcn add",
+                    "dashboard block",
+                    "sidebar block",
+                    "vega style",
+                    "nova style",
+                    "maia style",
+                    "lyra style",
+                    "mira style",
+                    "radix ui",
+                    "tailwind components"
+                ],
+                "intentPatterns": [
+                    "(configure|setup|set up).*?shadcn",
+                    "shadcn.*?(theme|config|create|init|add|block|component)",
+                    "(explore|preview).*?(shadcn|components|theme)",
+                    "(ui|design).*?(system|library).*?(shadcn|components)",
+                    "(base|border).*?(color|radius).*?(shadcn|theme)",
+                    "ui\\.shadcn\\.com",
+                    "(add|install).*?(dashboard|sidebar|calendar).*?block",
+                    "(vega|nova|maia|lyra|mira).*?(style|theme)",
+                    "npx.*?shadcn",
+                    "(tailwind|radix).*?(component|ui)"
+                ]
+            }
+        },
+        "systematic-debugging": {
+            "type": "guardrail",
+            "enforcement": "block",
+            "priority": "critical",
+            "blockCondition": "Block 'fix' attempts until root cause analysis documented",
+            "description": "Root cause analysis before fixes - NO fixes without investigation",
+            "promptTriggers": {
+                "keywords": [
+                    "bug",
+                    "error",
+                    "fix",
+                    "debug",
+                    "broken",
+                    "failing",
+                    "issue",
+                    "crash",
+                    "exception",
+                    "not working",
+                    "doesn't work",
+                    "wrong output",
+                    "unexpected behavior"
+                ],
+                "intentPatterns": [
+                    "(fix|debug|solve|resolve).*?(bug|error|issue|problem)",
+                    "(broken|failing|crashed)",
+                    "(why|what).*?(broken|failing|not working)",
+                    "(find|locate).*?(bug|issue|error)"
+                ]
+            }
+        },
+        "databases": {
+            "type": "guardrail",
+            "enforcement": "block",
+            "priority": "critical",
+            "blockCondition": "Block schema changes until backup confirmed and migration reviewed",
+            "description": "Query optimization and migration best practices",
+            "promptTriggers": {
+                "keywords": [
+                    "database",
+                    "query",
+                    "sql",
+                    "postgresql",
+                    "postgres",
+                    "migration",
+                    "schema",
+                    "table",
+                    "index",
+                    "N+1",
+                    "join",
+                    "transaction"
+                ],
+                "intentPatterns": [
+                    "(database|query|sql|schema).*?(change|optimize|migrate|create|alter)",
+                    "(add|create|modify).*?(table|index|column)",
+                    "(write|run|execute).*?(query|sql|migration)",
+                    "(N\\+1|slow query|performance).*?(database|query)"
+                ]
+            }
+        },
+        "code-review": {
+            "type": "guardrail",
+            "enforcement": "block",
+            "priority": "critical",
+            "blockCondition": "Block 'done' claims until verification evidence provided",
+            "description": "Verification before completion claims",
+            "promptTriggers": {
+                "keywords": [
+                    "pr",
+                    "pull request",
+                    "review code",
+                    "merge",
+                    "complete task",
+                    "complete feature",
+                    "ready to merge",
+                    "code review",
+                    "lgtm",
+                    "ship it"
+                ],
+                "intentPatterns": [
+                    "(review|merge|complete).*?(pr|code|changes)",
+                    "(done|finished).*?(feature|task|implementation)",
+                    "(ready|good).*?(merge|ship|deploy)",
+                    "(create|open).*?(pr|pull request)"
+                ]
+            }
+        },
+        "personas": {
+            "type": "domain",
+            "enforcement": "suggest",
+            "priority": "high",
+            "description": "Specialized personas for different contexts",
+            "promptTriggers": {
+                "keywords": [
+                    "/persona",
+                    "persona mode",
+                    "act as",
+                    "be a",
+                    "pretend to be",
+                    "role play",
+                    "expert mode",
+                    "specialist"
+                ],
+                "intentPatterns": [
+                    "/persona:.*",
+                    "(act|behave|respond).*?as.*?(expert|specialist|engineer)",
+                    "(be|pretend).*?(a|an).*?(developer|architect|reviewer)",
+                    "(switch|change).*?persona"
+                ]
+            }
+        },
+        "mcp-guidance": {
+            "type": "domain",
+            "enforcement": "suggest",
+            "priority": "high",
+            "description": "MCP tool usage patterns and best practices",
+            "promptTriggers": {
+                "keywords": [
+                    "mcp",
+                    "context7",
+                    "puppeteer",
+                    "github mcp",
+                    "firecrawl",
+                    "perplexity",
+                    "nia",
+                    "mcp tool",
+                    "mcp server",
+                    "model context protocol"
+                ],
+                "intentPatterns": [
+                    "(use|call|invoke).*?mcp",
+                    "mcp.*?(tool|server)",
+                    "(context7|firecrawl|perplexity|nia).*?(search|get|fetch)",
+                    "(which|what).*?mcp.*?(tool|use)"
+                ]
+            }
         }
     },
     "agents": {
@@ -1868,73 +1970,68 @@
             "type": "exploration",
             "enforcement": "suggest",
             "priority": "critical",
-            "description": "Comprehensive codebase exploration - locating, analyzing, and pattern finding",
+            "description": "INTERNAL codebase exploration - locating, analyzing, and pattern finding in THIS project",
             "promptTriggers": {
                 "keywords": [
                     "explore codebase",
-                    "find files",
-                    "understand code",
+                    "explore this codebase",
+                    "find in codebase",
+                    "understand this code",
                     "brownfield",
                     "existing codebase",
                     "existing project",
                     "legacy code",
                     "understand the codebase",
                     "current implementation",
-                    "understand how",
                     "find all usages",
-                    "where is",
-                    "how does",
                     "search codebase",
                     "code structure",
-                    "what calls",
-                    "who uses",
-                    "trace through",
-                    "analyze code",
-                    "find patterns"
+                    "what calls this",
+                    "who uses this",
+                    "trace through code",
+                    "analyze this code",
+                    "find patterns in code"
                 ],
                 "intentPatterns": [
                     "brownfield.*?(plan|implement|feature)",
                     "(existing|legacy).*?(codebase|project|code)",
-                    "(explore|understand).*?(codebase|code|system)",
-                    "(find|search|locate).*?(files|usages|references)",
-                    "how.*?(does|is).*?(implemented|work)",
-                    "(what|where|which).*?(calls|uses|imports)",
+                    "(explore|understand).*?(this|the).*?(codebase|code)",
+                    "(find|search|locate).*?(in|within).*?(codebase|code|project)",
+                    "how.*?(is|does).*?(this|our).*?(implemented|work)",
+                    "(what|where|which).*?(calls|uses|imports).*?(this|here)",
                     "(before|first).*?(plan|implement).*?(understand|explore)"
                 ]
-            }
+            },
+            "disambiguationNote": "Use SCOUT for internal codebase, ORACLE for external docs/web"
         },
         "oracle": {
             "type": "research",
             "enforcement": "suggest",
             "priority": "critical",
-            "description": "Comprehensive external research using MCP tools (nia, perplexity, firecrawl)",
+            "description": "EXTERNAL research using MCP tools (nia, perplexity, firecrawl) - NOT for codebase exploration",
             "promptTriggers": {
                 "keywords": [
-                    "research",
-                    "investigate",
-                    "find out",
-                    "learn about",
-                    "gather information",
-                    "what are best practices",
-                    "how should we",
-                    "what's the best way",
-                    "how does",
-                    "where is",
-                    "understand",
-                    "explain",
-                    "document",
-                    "codebase",
-                    "architecture"
+                    "external research",
+                    "web search",
+                    "documentation for",
+                    "best practices for",
+                    "how does library",
+                    "API documentation",
+                    "third-party docs",
+                    "look up docs",
+                    "search the web",
+                    "find documentation",
+                    "official docs"
                 ],
                 "intentPatterns": [
-                    "(research|investigate|explore).*?(topic|approach|options)",
-                    "(find out|learn).*?(about|how)",
-                    "(what|how).*?(best practices|recommended|should)",
-                    "(gather|collect).*?(information|data|knowledge)",
-                    "(how|where).*?(does|is|works|implemented)",
-                    "(understand|explain|document).*?(codebase|code|system|architecture)"
+                    "(external|web).*?research",
+                    "(search|find|look up).*?(docs|documentation|web)",
+                    "(how does|what is).*?(library|package|framework|API)",
+                    "(best practices|recommended).*?(for|approach)",
+                    "(third-party|external|official).*?(docs|documentation)"
                 ]
-            }
+            },
+            "disambiguationNote": "Use SCOUT for internal codebase questions, ORACLE for external docs/web research"
         },
         "plan-agent": {
             "type": "planning",
@@ -2075,7 +2172,317 @@
                     "(find|show|get).*?(examples|patterns|similar)"
                 ]
             }
+        },
+        "kraken": {
+            "type": "implementation",
+            "enforcement": "suggest",
+            "priority": "critical",
+            "description": "Complex feature implementation with TDD workflow",
+            "promptTriggers": {
+                "keywords": [
+                    "implement feature",
+                    "build feature",
+                    "full implementation",
+                    "create system",
+                    "build component",
+                    "complex feature",
+                    "large feature",
+                    "multi-file implementation",
+                    "end-to-end feature"
+                ],
+                "intentPatterns": [
+                    "(implement|build|create).*?(feature|component|system|module)",
+                    "(full|complete|end-to-end).*?implementation",
+                    "(complex|large|multi-file).*?(feature|change)"
+                ]
+            }
+        },
+        "spark": {
+            "type": "implementation",
+            "enforcement": "suggest",
+            "priority": "high",
+            "description": "Fast, focused implementation for simple changes",
+            "promptTriggers": {
+                "keywords": [
+                    "quick fix",
+                    "small change",
+                    "simple fix",
+                    "fast",
+                    "tweak",
+                    "minor change",
+                    "quick change",
+                    "hotfix",
+                    "patch"
+                ],
+                "intentPatterns": [
+                    "(quick|fast|simple|small).*?(fix|change|tweak|update)",
+                    "(just|only).*?(fix|change|update).*?(this|one)",
+                    "(minor|trivial).*?(change|fix|update)"
+                ]
+            }
+        },
+        "arbiter": {
+            "type": "testing",
+            "enforcement": "suggest",
+            "priority": "high",
+            "description": "Unit and integration test execution",
+            "promptTriggers": {
+                "keywords": [
+                    "run tests",
+                    "test this",
+                    "verify tests",
+                    "check tests",
+                    "test suite",
+                    "unit tests",
+                    "integration tests",
+                    "pytest",
+                    "jest",
+                    "test coverage"
+                ],
+                "intentPatterns": [
+                    "(run|execute|check).*?tests?",
+                    "(verify|validate).*?(works|code|changes)",
+                    "(unit|integration|e2e).*?tests?",
+                    "test.*?(coverage|suite|all)"
+                ]
+            }
+        },
+        "architect": {
+            "type": "design",
+            "enforcement": "suggest",
+            "priority": "critical",
+            "description": "Feature planning, design documentation, integration planning",
+            "promptTriggers": {
+                "keywords": [
+                    "design system",
+                    "architecture",
+                    "system design",
+                    "design pattern",
+                    "technical design",
+                    "api design",
+                    "schema design",
+                    "high-level design"
+                ],
+                "intentPatterns": [
+                    "(design|architect).*?(system|solution|feature|api)",
+                    "how.*?should.*?(structure|design|architect)",
+                    "(technical|system).*?design",
+                    "(design|architecture).*?(document|doc|spec)"
+                ]
+            }
+        },
+        "phoenix": {
+            "type": "refactoring",
+            "enforcement": "suggest",
+            "priority": "high",
+            "description": "Refactoring planning AND migration planning",
+            "promptTriggers": {
+                "keywords": [
+                    "refactor",
+                    "rebuild",
+                    "restructure",
+                    "rewrite",
+                    "reorganize",
+                    "clean up code",
+                    "technical debt",
+                    "code cleanup"
+                ],
+                "intentPatterns": [
+                    "(refactor|rebuild|restructure|rewrite).*?(code|system|module)",
+                    "(clean up|cleanup).*?(code|technical debt)",
+                    "(reorganize|restructure).*?(files|modules|code)"
+                ]
+            }
+        },
+        "aegis": {
+            "type": "security",
+            "enforcement": "suggest",
+            "priority": "critical",
+            "description": "Security vulnerability analysis and testing",
+            "promptTriggers": {
+                "keywords": [
+                    "security audit",
+                    "check security",
+                    "vulnerabilities",
+                    "security review",
+                    "penetration",
+                    "owasp",
+                    "injection",
+                    "xss",
+                    "csrf",
+                    "authentication security"
+                ],
+                "intentPatterns": [
+                    "security.*?(audit|review|check|scan)",
+                    "(find|check|scan).*?vulnerabilit",
+                    "(owasp|injection|xss|csrf).*?(check|test|scan)",
+                    "(is|are).*?(secure|safe)"
+                ]
+            }
+        },
+        "sleuth": {
+            "type": "investigation",
+            "enforcement": "suggest",
+            "priority": "high",
+            "description": "General bug investigation and root cause analysis",
+            "promptTriggers": {
+                "keywords": [
+                    "investigate",
+                    "root cause",
+                    "deep dive",
+                    "trace through",
+                    "analyze issue",
+                    "find the cause",
+                    "why is this happening",
+                    "what's causing"
+                ],
+                "intentPatterns": [
+                    "(investigate|trace|analyze).*?(issue|bug|problem)",
+                    "root.*?cause",
+                    "(deep|closer).*?(dive|look)",
+                    "(find|what).*?(cause|causing|reason)"
+                ]
+            }
+        },
+        "maestro": {
+            "type": "orchestration",
+            "enforcement": "suggest",
+            "priority": "high",
+            "description": "Multi-agent coordination for complex patterns",
+            "promptTriggers": {
+                "keywords": [
+                    "coordinate",
+                    "orchestrate",
+                    "ralph loop",
+                    "development loop",
+                    "parallel agents",
+                    "multiple agents",
+                    "agent workflow",
+                    "agent pipeline",
+                    "multi-agent"
+                ],
+                "intentPatterns": [
+                    "(coordinate|orchestrate).*?(agents?|tasks?)",
+                    "(parallel|multiple|multi).*?agents?",
+                    "agent.*?(workflow|pipeline|coordination)",
+                    "(ralph|development|dev).*?loop"
+                ]
+            }
+        },
+        "react-perf": {
+            "type": "domain",
+            "enforcement": "suggest",
+            "priority": "high",
+            "description": "React/Next.js performance optimization - 45 rules from Vercel engineering",
+            "promptTriggers": {
+                "keywords": [
+                    "/react-perf",
+                    "react performance",
+                    "next.js optimize",
+                    "bundle size",
+                    "waterfall fix",
+                    "re-render",
+                    "server component",
+                    "react audit",
+                    "next.js performance"
+                ],
+                "intentPatterns": [
+                    "(optimize|improve).*?(react|next)",
+                    "(bundle|waterfall|rerender).*?(fix|reduce|prevent)",
+                    "performance.*?(audit|review|check).*?(react|next|component)",
+                    "(react|next).*?(slow|fast|optimize|performance)"
+                ]
+            }
+        },
+        "ui-audit": {
+            "type": "domain",
+            "enforcement": "suggest",
+            "priority": "high",
+            "description": "UI compliance audit - accessibility, UX, performance (100+ rules)",
+            "promptTriggers": {
+                "keywords": [
+                    "/ui-audit",
+                    "accessibility",
+                    "a11y",
+                    "ui audit",
+                    "design review",
+                    "ux check",
+                    "focus states",
+                    "aria label",
+                    "wcag"
+                ],
+                "intentPatterns": [
+                    "(accessibility|a11y).*?(check|audit|review)",
+                    "(ui|ux|design).*?(audit|review|compliance)",
+                    "(check|verify).*?(accessibility|a11y)",
+                    "(focus|aria|wcag).*?(state|label|compliance)"
+                ]
+            }
+        },
+        "azure-deployment": {
+            "type": "domain",
+            "enforcement": "suggest",
+            "priority": "medium",
+            "description": "Azure SWA + Container Apps deployment workflows",
+            "promptTriggers": {
+                "keywords": [
+                    "/azure-deployment",
+                    "deploy azure",
+                    "azure deploy",
+                    "swa deploy",
+                    "container apps",
+                    "static web app",
+                    "azure static",
+                    "containerapp update"
+                ],
+                "intentPatterns": [
+                    "(deploy|push).*?azure",
+                    "azure.*?(swa|static|container)",
+                    "(frontend|backend).*?deploy.*?azure",
+                    "staticwebapp.*?(config|deploy)"
+                ]
+            }
         }
+    },
+    "patterns": {
+        "refactor": [
+            "refactor",
+            "rename",
+            "change function",
+            "modify function",
+            "modify method",
+            "modify class",
+            "update signature",
+            "move function",
+            "delete function",
+            "delete method",
+            "remove function",
+            "remove method",
+            "extract function",
+            "extract method",
+            "inline function",
+            "inline method"
+        ],
+        "deletion": [
+            "delete",
+            "remove",
+            "cleanup",
+            "clean up",
+            "drop",
+            "destroy",
+            "eliminate",
+            "get rid of"
+        ],
+        "memory_query": [
+            "research",
+            "learn",
+            "similar to",
+            "done before",
+            "tried before",
+            "past work",
+            "previous",
+            "precedent"
+        ]
     },
     "notes": {
         "enforcement_types": {

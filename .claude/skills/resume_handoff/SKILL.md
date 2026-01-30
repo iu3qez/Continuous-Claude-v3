@@ -1,5 +1,4 @@
 ---
-name: resume-handoff
 description: Resume work from handoff document with context analysis and validation
 ---
 

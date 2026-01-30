@@ -1,8 +1,4 @@
 #!/usr/bin/env python3
-# /// script
-# requires-python = ">=3.10"
-# dependencies = ["httpx"]
-# ///
 """Braintrust tracing hooks - Cross-platform Python port.
 
 Replaces the 5 bash hooks + common.sh:
@@ -89,6 +85,19 @@ def get_os() -> str:
     return sys.platform
 
 
+def get_workspace_project_id(workspace: str) -> str:
+    """Generate stable project ID from workspace path (matches memory system).
+
+    Uses SHA-256 hash of absolute path, first 16 chars.
+    This matches the project_id format used in archival_memory for isolation.
+    """
+    import hashlib
+    if not workspace:
+        return "global"
+    abs_path = os.path.abspath(workspace)
+    return hashlib.sha256(abs_path.encode()).hexdigest()[:16]
+
+
 # State management
 def load_session_state(session_id: str) -> dict:
     """Load session state from file."""
@@ -108,7 +117,7 @@ def save_session_state(session_id: str, state: dict):
     state_file = STATE_DIR / f"{session_id}.json"
     temp_file = state_file.with_suffix(".tmp")
     temp_file.write_text(json.dumps(state, indent=2))
-    temp_file.rename(state_file)
+    os.replace(temp_file, state_file)
 
 
 def get_session_value(session_id: str, key: str) -> str | None:
@@ -216,6 +225,7 @@ def session_start(input_data: dict) -> dict:
     timestamp = get_timestamp()
     workspace = input_data.get("cwd", "")
     workspace_name = Path(workspace).name if workspace else "Claude Code"
+    workspace_project_id = get_workspace_project_id(workspace)
 
     event = {
         "id": root_span_id,
@@ -226,6 +236,7 @@ def session_start(input_data: dict) -> dict:
         "metadata": {
             "session_id": session_id,
             "workspace": workspace,
+            "workspace_project_id": workspace_project_id,
             "hostname": get_hostname(),
             "username": get_username(),
             "os": get_os(),

@@ -148,6 +148,64 @@ var PATTERN_AGENT_MAP = {
   "chain_of_responsibility": "maestro",
   "event_driven": "kraken"
 };
+var WORKFLOW_TRIGGERS = [
+  {
+    skill: "fix",
+    pattern: /\b(fix|debug|broken|failing)\s+(the\s+)?(bug|error|issue|problem)/i,
+    antiPattern: /\b(don't|do\s+not|no\s+need\s+to)\s+fix/i,
+    confidence: 0.95,
+    description: "Bug/error investigation and resolution"
+  },
+  {
+    skill: "build",
+    pattern: /\b(build|create|implement)\s+(?:a\s+)?(?:new\s+)?(feature|component|page|module|api|endpoint)/i,
+    antiPattern: /\b(don't|do\s+not)\s+(build|create|implement)/i,
+    confidence: 0.9,
+    description: "Feature development workflow"
+  },
+  {
+    skill: "commit",
+    pattern: /\b(commit|save)\s+(these\s+|the\s+|my\s+)?changes/i,
+    antiPattern: /\b(don't|do\s+not|before\s+you)\s+commit/i,
+    confidence: 0.95,
+    description: "Git commit workflow"
+  },
+  {
+    skill: "explore",
+    pattern: /\b(explore|understand|navigate|analyze)\s+(the\s+)?(codebase|project|repository|code\s+structure)/i,
+    confidence: 0.9,
+    description: "Codebase exploration and understanding"
+  },
+  {
+    skill: "ralph",
+    pattern: /\b(start|run|launch|use)\s+ralph/i,
+    confidence: 0.99,
+    description: "Ralph autonomous development workflow"
+  },
+  {
+    skill: "refactor",
+    pattern: /\brefactor\s+(the\s+)?(this\s+)?(code|function|class|module|component)/i,
+    confidence: 0.9,
+    description: "Code refactoring workflow"
+  },
+  {
+    skill: "test",
+    pattern: /\b(write|add|create)\s+(unit\s+|integration\s+)?tests?\s+for/i,
+    confidence: 0.85,
+    description: "Test writing workflow"
+  }
+];
+function checkWorkflowTriggers(prompt) {
+  for (const trigger of WORKFLOW_TRIGGERS) {
+    if (trigger.pattern.test(prompt)) {
+      if (trigger.antiPattern && trigger.antiPattern.test(prompt)) {
+        continue;
+      }
+      return trigger;
+    }
+  }
+  return null;
+}
 function runPatternInference(prompt, projectDir) {
   try {
     const scriptPath = join2(projectDir, "scripts", "agentica_patterns", "pattern_inference.py");
@@ -282,6 +340,30 @@ async function main() {
       process.exit(0);
     }
     const rules = JSON.parse(readFileSync2(rulesPath, "utf-8"));
+    const workflowTrigger = checkWorkflowTriggers(data.prompt);
+    if (workflowTrigger && workflowTrigger.confidence >= 0.9) {
+      const confidencePct = Math.round(workflowTrigger.confidence * 100);
+      const autoInvokeMessage = `
+\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
+\u{1F680} WORKFLOW DETECTED: /${workflowTrigger.skill}
+\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
+
+High-confidence workflow match (${confidencePct}%):
+  \u2192 ${workflowTrigger.description}
+
+\u26A0\uFE0F ACTION REQUIRED - INVOKE SKILL FIRST:
+Use the Skill tool with: { "skill": "${workflowTrigger.skill}" }
+
+Do NOT skip this step. The skill provides:
+- Structured methodology for this task type
+- Built-in verification steps
+- Proper agent orchestration
+
+\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
+`;
+      console.log(autoInvokeMessage);
+      process.exit(0);
+    }
     const patternInference = runPatternInference(data.prompt, projectDir);
     const semanticQuery = detectSemanticQuery(data.prompt);
     const matchedSkills = [];

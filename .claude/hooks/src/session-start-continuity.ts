@@ -309,7 +309,13 @@ function getUnmarkedHandoffs(): UnmarkedHandoff[] {
 }
 
 async function main() {
-  const input: SessionStartInput = JSON.parse(await readStdin());
+  let input: SessionStartInput;
+  try {
+    const stdin = await readStdin();
+    input = stdin ? JSON.parse(stdin) : { session_id: 'unknown', source: 'cli' };
+  } catch (e) {
+    input = { session_id: 'unknown', source: 'cli' };
+  }
   const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
 
   // Support both 'source' (per docs) and 'type' (legacy) fields
@@ -554,6 +560,31 @@ async function main() {
         message = `[${sessionType}] No ledger found. Consider running /continuity_ledger to track session state.`;
       }
       // For startup without ledger, stay silent (normal case)
+    }
+  }
+
+  // Load local project memory summary if available
+  const memoryIndexPath = path.join(projectDir, '.claude', 'memory', 'index.json');
+  if (fs.existsSync(memoryIndexPath)) {
+    try {
+      const indexContent = fs.readFileSync(memoryIndexPath, 'utf-8');
+      const index = JSON.parse(indexContent);
+      const sessionCount = Object.keys(index.sessions || {}).length;
+      const topicCount = Object.keys(index.topic_index || {}).length;
+
+      if (sessionCount > 0 || topicCount > 0) {
+        const memorySummary = `\n\n---\n\n## Local Project Memory\n\n` +
+          `Sessions indexed: ${sessionCount} | Topics: ${topicCount}\n` +
+          `Query with: \`uv run python ~/.claude/scripts/core/core/project_memory.py query "<topic>" --project-dir "${projectDir}"\``;
+
+        if (additionalContext) {
+          additionalContext += memorySummary;
+        } else if (sessionType === 'clear' || sessionType === 'compact') {
+          additionalContext = memorySummary;
+        }
+      }
+    } catch {
+      // Ignore index parsing errors
     }
   }
 

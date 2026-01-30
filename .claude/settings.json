@@ -1,35 +1,32 @@
 {
-  "statusLine": {
-    "type": "command",
-    "command": "uv run $HOME/.claude/scripts/status.py"
+  "env": {
+    "CONTINUOUS_CLAUDE_COORDINATION": "true",
+    "ENABLE_TOOL_SEARCH": "auto:5"
   },
   "hooks": {
     "PreToolUse": [
       {
+        "matcher": "Task",
         "hooks": [
           {
             "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/pre-tool-use-broadcast.mjs"
-          }
-        ]
-      },
-      {
-        "matcher": "Read|Edit|Write",
-        "hooks": [
+            "command": "node $HOME/.claude/hooks/dist/explore-to-scout.mjs",
+            "timeout": 5000
+          },
           {
             "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/path-rules.mjs",
-            "timeout": 5
-          }
-        ]
-      },
-      {
-        "matcher": "Read",
-        "hooks": [
+            "command": "node $HOME/.claude/hooks/dist/no-haiku-enforcer.mjs",
+            "timeout": 5000
+          },
           {
             "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/tldr-read-enforcer.mjs",
-            "timeout": 20
+            "command": "node $HOME/.claude/hooks/dist/task-router.mjs",
+            "timeout": 5000
+          },
+          {
+            "type": "command",
+            "command": "node $HOME/.claude/hooks/dist/pre-tool-knowledge.mjs",
+            "timeout": 5000
           }
         ]
       },
@@ -39,105 +36,17 @@
           {
             "type": "command",
             "command": "node $HOME/.claude/hooks/dist/smart-search-router.mjs",
-            "timeout": 10
+            "timeout": 30000
           }
         ]
       },
       {
-        "matcher": "Task",
+        "matcher": "Read",
         "hooks": [
           {
             "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/maestro-enforcer.mjs",
-            "timeout": 5
-          },
-          {
-            "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/tldr-context-inject.mjs",
-            "timeout": 30
-          },
-          {
-            "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/arch-context-inject.mjs",
-            "timeout": 30
-          }
-        ]
-      },
-      {
-        "matcher": "Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/file-claims.mjs",
-            "timeout": 5
-          },
-          {
-            "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/edit-context-inject.mjs",
-            "timeout": 5
-          },
-          {
-            "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/signature-helper.mjs",
-            "timeout": 5
-          }
-        ]
-      }
-    ],
-    "PreCompact": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/pre-compact-continuity.mjs"
-          }
-        ]
-      }
-    ],
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node $HOME/.claude/hooks/run-hook.mjs persist-project-dir"
-          },
-          {
-            "type": "command",
-            "command": "node $HOME/.claude/plugins/braintrust-tracing/hooks/session_start.mjs"
-          },
-          {
-            "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/session-register.mjs",
-            "timeout": 10
-          },
-          {
-            "type": "command",
-            "command": "uv run $HOME/.claude/hooks/hook_launcher.py session-symbol-index",
-            "timeout": 5
-          },
-          {
-            "type": "command",
-            "command": "node $HOME/.claude/hooks/run-hook.mjs session-start-tree-daemon",
-            "timeout": 15
-          }
-        ]
-      },
-      {
-        "matcher": "resume|compact|clear",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/session-start-continuity.mjs"
-          }
-        ]
-      },
-      {
-        "matcher": "startup|resume",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/session-start-tldr-cache.mjs",
-            "timeout": 2
+            "command": "node $HOME/.claude/hooks/dist/tldr-read-enforcer.mjs",
+            "timeout": 30000
           }
         ]
       }
@@ -147,150 +56,127 @@
         "hooks": [
           {
             "type": "command",
+            "command": "node $HOME/.claude/hooks/dist/heartbeat.mjs",
+            "timeout": 5000
+          },
+          {
+            "type": "command",
             "command": "node $HOME/.claude/hooks/dist/maestro-state-manager.mjs",
-            "timeout": 5
+            "timeout": 5000
           },
           {
             "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/maestro-detector.mjs",
-            "timeout": 5
+            "command": "node $HOME/.claude/hooks/dist/guardrail-enforcer.mjs",
+            "timeout": 5000
           },
           {
             "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/skill-activation-prompt.mjs"
-          },
-          {
-            "type": "command",
-            "command": "uv run $HOME/.claude/hooks/hook_launcher.py premortem-suggest",
-            "timeout": 5
+            "command": "node $HOME/.claude/hooks/dist/skill-activation-prompt.mjs",
+            "timeout": 10000
           },
           {
             "type": "command",
             "command": "node $HOME/.claude/hooks/dist/memory-awareness.mjs",
-            "timeout": 10
+            "timeout": 10000
           },
           {
             "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/impact-refactor.mjs",
-            "timeout": 10
+            "command": "node $HOME/.claude/hooks/dist/maestro-detector.mjs",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node $HOME/.claude/hooks/dist/session-start-docker.mjs",
+            "timeout": 30000
           },
           {
             "type": "command",
-            "command": "node $HOME/.claude/plugins/braintrust-tracing/hooks/user_prompt_submit.mjs"
+            "command": "node $HOME/.claude/hooks/dist/session-register.mjs",
+            "timeout": 10000
+          },
+          {
+            "type": "command",
+            "command": "node $HOME/.claude/hooks/dist/session-start-continuity.mjs",
+            "timeout": 10000
+          },
+          {
+            "type": "command",
+            "command": "node $HOME/.claude/hooks/dist/session-start-init-check.mjs",
+            "timeout": 5000
+          },
+          {
+            "type": "command",
+            "command": "powershell -ExecutionPolicy Bypass -File $HOME/.claude/hooks/session-start-tree-daemon.ps1",
+            "timeout": 15000
           }
         ]
       }
     ],
     "PostToolUse": [
       {
-        "matcher": "Edit|Write",
+        "matcher": "Grep|Read",
         "hooks": [
           {
             "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/typescript-preflight.mjs",
-            "timeout": 40
-          },
-          {
-            "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/compiler-in-the-loop.mjs",
-            "timeout": 30
-          },
-          {
-            "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/post-edit-notify.mjs",
-            "timeout": 5
-          },
-          {
-            "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/post-edit-diagnostics.mjs",
-            "timeout": 10
+            "command": "node $HOME/.claude/hooks/dist/epistemic-reminder.mjs",
+            "timeout": 5000
           }
         ]
       },
       {
-        "matcher": "Write",
+        "matcher": "ExitPlanMode",
         "hooks": [
           {
             "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/handoff-index.mjs"
+            "command": "node $HOME/.claude/hooks/dist/post-plan-roadmap.mjs",
+            "timeout": 10000
           }
         ]
       },
       {
-        "matcher": "Edit|MultiEdit|Write|Bash",
+        "matcher": "TaskUpdate",
         "hooks": [
           {
             "type": "command",
-            "command": "uv run $HOME/.claude/hooks/hook_launcher.py post-tool-use-tracker",
-            "timeout": 120
+            "command": "node $HOME/.claude/hooks/dist/roadmap-completion.mjs",
+            "timeout": 5000
           }
         ]
       },
       {
-        "matcher": "*",
+        "matcher": "Write|Edit",
         "hooks": [
           {
             "type": "command",
-            "command": "node $HOME/.claude/plugins/braintrust-tracing/hooks/post_tool_use.mjs"
-          }
-        ]
-      },
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/import-validator.mjs",
-            "timeout": 5
-          }
-        ]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/import-error-detector.mjs",
-            "timeout": 5
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "uv run $HOME/.claude/hooks/hook_launcher.py auto-handoff-stop"
+            "command": "node $HOME/.claude/hooks/dist/prd-roadmap-sync.mjs",
+            "timeout": 5000
           },
           {
             "type": "command",
-            "command": "node $HOME/.claude/plugins/braintrust-tracing/hooks/stop_hook.mjs"
-          },
-          {
-            "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/compiler-in-the-loop-stop.mjs"
-          }
-        ]
-      }
-    ],
-    "SessionEnd": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/session-end-cleanup.mjs"
-          },
-          {
-            "type": "command",
-            "command": "node $HOME/.claude/hooks/dist/session-outcome.mjs"
-          },
-          {
-            "type": "command",
-            "command": "node $HOME/.claude/plugins/braintrust-tracing/hooks/session_end.mjs"
+            "command": "node $HOME/.claude/hooks/dist/sync-to-repo.mjs",
+            "timeout": 15000
           }
         ]
       }
     ]
+  },
+  "enabledPlugins": {
+    "frontend-design@claude-plugins-official": true,
+    "claude-hud@claude-hud": true,
+    "braintrust@braintrust-claude-plugin": true,
+    "trace-claude-code@braintrust-claude-plugin": true
+  },
+  "alwaysThinkingEnabled": true,
+  "allowedTools": [],
+  "warningLevel": "medium",
+  "statusLine": {
+    "type": "command",
+    "command": "powershell -Command \"& {$p=(Get-ChildItem $env:USERPROFILE\\.claude\\plugins\\cache\\claude-hud\\claude-hud | Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName; node (Join-Path $p 'dist\\index.js')}\""
   }
 }

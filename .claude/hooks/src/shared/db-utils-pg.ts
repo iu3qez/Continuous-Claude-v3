@@ -34,7 +34,7 @@ export function getPgConnectionString(): string {
   return process.env.CONTINUOUS_CLAUDE_DB_URL ||
     process.env.DATABASE_URL ||
     process.env.OPC_POSTGRES_URL ||
-    'postgresql://claude:claude_dev@localhost:5432/continuous_claude';
+    'postgresql://claude:claude_dev@localhost:5434/continuous_claude';
 }
 
 /**

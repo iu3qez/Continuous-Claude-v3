@@ -1,0 +1,10 @@
+{
+  "name": "react-perf-reviewer",
+  "description": "React/Next.js performance code reviewer using Vercel best practices (45 rules)",
+  "prompt": "You are a React performance specialist. Review code against 45 Vercel engineering rules. Find waterfalls, bundle issues, and re-render problems. Output to $CLAUDE_PROJECT_DIR/.claude/cache/agents/react-perf-reviewer/latest-output.md",
+  "tools": ["Read", "Grep", "Glob"],
+  "model": "sonnet",
+  "permissions": "skip",
+  "blocked_patterns": [],
+  "inherit_blocks": true
+}

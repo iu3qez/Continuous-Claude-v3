@@ -1,5 +1,6 @@
 // src/memory-awareness.ts
-import { readFileSync } from "fs";
+import { readFileSync, existsSync as existsSync2 } from "fs";
+import * as path from "path";
 import { spawnSync } from "child_process";
 
 // src/shared/opc-path.ts
@@ -187,8 +188,48 @@ function extractKeywords(prompt) {
   const words = prompt.toLowerCase().replace(/[^\w\s-]/g, " ").split(/\s+/).filter((w) => w.length > 2 && !stopWords.has(w));
   return [...new Set(words)].slice(0, 5).join(" ");
 }
+function checkLocalMemory(intent, projectDir) {
+  const homeDir = process.env.HOME || process.env.USERPROFILE || "";
+  const projectMemoryScript = path.join(homeDir, ".claude", "scripts", "core", "core", "project_memory.py");
+  if (!existsSync2(projectMemoryScript)) return null;
+  try {
+    const result = spawnSync("uv", [
+      "run",
+      "python",
+      projectMemoryScript,
+      "query",
+      intent,
+      "--project-dir",
+      projectDir,
+      "-k",
+      "3",
+      "--json"
+    ], {
+      encoding: "utf-8",
+      cwd: path.join(homeDir, ".claude", "scripts", "core", "core"),
+      timeout: 3e3
+      // 3s timeout for local check
+    });
+    if (result.status !== 0 || !result.stdout) return null;
+    const data = JSON.parse(result.stdout);
+    if (!data.results || data.results.length === 0) return null;
+    const results = data.results.slice(0, 3).map((r) => ({
+      id: r.task_id || r.id || "local",
+      type: "LOCAL_HANDOFF",
+      content: r.summary || r.content || "",
+      score: r.similarity || 0.5
+    }));
+    return { count: data.count || results.length, results };
+  } catch {
+    return null;
+  }
+}
 function checkMemoryRelevance(intent, projectDir) {
   if (!intent || intent.length < 3) return null;
+  const localMatch = checkLocalMemory(intent, projectDir);
+  if (localMatch) {
+    return localMatch;
+  }
   const opcDir = getOpcDir();
   if (!opcDir) return null;
   const searchTerm = intent.replace(/[_\/]/g, " ").replace(/\b\w{1,2}\b/g, "").replace(/\s+/g, " ").trim();
@@ -198,12 +239,10 @@ function checkMemoryRelevance(intent, projectDir) {
     "scripts/core/recall_learnings.py",
     "--query",
     searchTerm,
-    // Single keyword for text match
     "--k",
     "3",
     "--json",
     "--text-only"
-    // Fast text search for hints
   ], {
     encoding: "utf-8",
     cwd: opcDir,
@@ -212,7 +251,6 @@ function checkMemoryRelevance(intent, projectDir) {
       PYTHONPATH: opcDir
     },
     timeout: 5e3
-    // 5s timeout for fast check
   });
   if (result.status !== 0 || !result.stdout) {
     return null;

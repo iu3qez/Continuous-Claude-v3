@@ -1,8 +1,3 @@
----
-name: tldr-router
-description: Maps questions to the optimal tldr command. Use this to pick the right layer
----
-
 # TLDR Smart Router
 
 Maps questions to the optimal tldr command. Use this to pick the right layer.

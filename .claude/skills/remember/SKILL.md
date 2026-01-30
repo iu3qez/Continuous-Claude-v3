@@ -1,9 +1,3 @@
----
-name: remember
-description: Store a learning, pattern, or decision in the memory system for future recall
-user-invocable: false
----
-
 # Remember - Store Learning in Memory
 
 Store a learning, pattern, or decision in the memory system for future recall.

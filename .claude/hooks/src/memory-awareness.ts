@@ -12,6 +12,7 @@
  */
 
 import { readFileSync, existsSync } from 'fs';
+import * as path from 'path';
 import { spawnSync } from 'child_process';
 import { getOpcDir } from './shared/opc-path.js';
 
@@ -101,31 +102,75 @@ function extractKeywords(prompt: string): string {
 }
 
 /**
+ * Check local project memory index first (topic keyword match).
+ * Returns results from .claude/memory/index.json if available.
+ */
+function checkLocalMemory(intent: string, projectDir: string): MemoryMatch | null {
+  const homeDir = process.env.HOME || process.env.USERPROFILE || '';
+  const projectMemoryScript = path.join(homeDir, '.claude', 'scripts', 'core', 'core', 'project_memory.py');
+
+  if (!existsSync(projectMemoryScript)) return null;
+
+  try {
+    const result = spawnSync('uv', [
+      'run', 'python', projectMemoryScript,
+      'query', intent,
+      '--project-dir', projectDir,
+      '-k', '3',
+      '--json'
+    ], {
+      encoding: 'utf-8',
+      cwd: path.join(homeDir, '.claude', 'scripts', 'core', 'core'),
+      timeout: 3000  // 3s timeout for local check
+    });
+
+    if (result.status !== 0 || !result.stdout) return null;
+
+    const data = JSON.parse(result.stdout);
+    if (!data.results || data.results.length === 0) return null;
+
+    const results: LearningResult[] = data.results.slice(0, 3).map((r: any) => ({
+      id: r.task_id || r.id || 'local',
+      type: 'LOCAL_HANDOFF',
+      content: r.summary || r.content || '',
+      score: r.similarity || 0.5
+    }));
+
+    return { count: data.count || results.length, results };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Fast memory relevance check using text search.
- * For text-only mode, we search by the most significant keyword
- * (text ILIKE looks for substring match, not multi-word).
+ * Local-first: checks project memory, then falls back to global DB.
  */
 function checkMemoryRelevance(intent: string, projectDir: string): MemoryMatch | null {
   if (!intent || intent.length < 3) return null;
 
-  const opcDir = getOpcDir();
-  if (!opcDir) return null;  // Graceful degradation if OPC not available
+  // 1. Try local project memory first (fast topic index)
+  const localMatch = checkLocalMemory(intent, projectDir);
+  if (localMatch) {
+    return localMatch;
+  }
 
-  // PostgreSQL full-text search handles stopwords automatically via plainto_tsquery
-  // Just clean up the intent: remove paths, underscores, short words
+  // 2. Fall back to global DB search
+  const opcDir = getOpcDir();
+  if (!opcDir) return null;
+
   const searchTerm = intent
-    .replace(/[_\/]/g, ' ')           // Convert underscores/slashes to spaces
-    .replace(/\b\w{1,2}\b/g, '')      // Remove 1-2 char words
-    .replace(/\s+/g, ' ')             // Collapse whitespace
+    .replace(/[_\/]/g, ' ')
+    .replace(/\b\w{1,2}\b/g, '')
+    .replace(/\s+/g, ' ')
     .trim();
 
-  // Use text-only for fast checking (< 1s), user can run /recall for semantic
   const result = spawnSync('uv', [
     'run', 'python', 'scripts/core/recall_learnings.py',
-    '--query', searchTerm,  // Single keyword for text match
+    '--query', searchTerm,
     '--k', '3',
     '--json',
-    '--text-only'  // Fast text search for hints
+    '--text-only'
   ], {
     encoding: 'utf-8',
     cwd: opcDir,
@@ -133,7 +178,7 @@ function checkMemoryRelevance(intent: string, projectDir: string): MemoryMatch |
       ...process.env,
       PYTHONPATH: opcDir
     },
-    timeout: 5000  // 5s timeout for fast check
+    timeout: 5000
   });
 
   if (result.status !== 0 || !result.stdout) {
