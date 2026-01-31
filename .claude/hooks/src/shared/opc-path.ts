@@ -41,7 +41,9 @@ export function getOpcDir(): string | null {
   if (homeDir) {
     const globalClaude = join(homeDir, '.claude');
     const globalScripts = join(globalClaude, 'scripts', 'core');
-    if (existsSync(globalScripts)) {
+    // GUARD: Don't use ~/.claude as OPC when CWD IS ~/.claude
+    // This prevents self-referential loops when editing hooks themselves
+    if (existsSync(globalScripts) && globalClaude !== projectDir) {
       return globalClaude;
     }
   }

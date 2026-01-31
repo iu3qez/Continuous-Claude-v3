@@ -138,6 +138,20 @@ async function registerSessionTask(): Promise<TaskResult> {
  */
 export async function main(): Promise<void> {
   const totalStart = Date.now();
+  const project = getProject();
+  const homeDir = process.env.HOME || process.env.USERPROFILE || '';
+  const claudeDir = homeDir ? `${homeDir}/.claude`.replace(/\\/g, '/') : '';
+  const normalizedProject = project.replace(/\\/g, '/');
+
+  // Skip heavy startup ops when editing hooks themselves
+  // Prevents self-referential loops and freezes in ~/.claude
+  if (claudeDir && (normalizedProject === claudeDir || normalizedProject.includes('/.claude'))) {
+    console.log(JSON.stringify({
+      result: 'continue',
+      message: '<system-reminder>\nSessionStart:clear hook success: Success\n</system-reminder>\nStartup hooks skipped in ~/.claude (infrastructure directory)'
+    }));
+    return;
+  }
 
   // Read hook input
   let input: SessionStartInput;

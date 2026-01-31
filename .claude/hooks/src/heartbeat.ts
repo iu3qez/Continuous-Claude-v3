@@ -63,6 +63,17 @@ async function main(): Promise<void> {
   const sessionId = input.session_id || getSessionId();
   const project = input.cwd || process.cwd();
 
+  // Guard: Skip in ~/.claude (infrastructure directory)
+  const homeDir = process.env.HOME || process.env.USERPROFILE || '';
+  if (homeDir) {
+    const claudeDir = homeDir.replace(/\\/g, '/') + '/.claude';
+    const normalizedProject = project.replace(/\\/g, '/');
+    if (normalizedProject === claudeDir || normalizedProject.endsWith('/.claude')) {
+      console.log(JSON.stringify({ result: 'continue' }));
+      return;
+    }
+  }
+
   // Extract first line of prompt as "working on" context (max 100 chars)
   const workingOn = input.prompt
     ? input.prompt.split('\n')[0].substring(0, 100)
