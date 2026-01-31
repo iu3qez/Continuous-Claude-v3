@@ -85,7 +85,7 @@ You: "Approved, go ahead"
 Maestro: [Executes each phase, reports progress, delivers working system]
 ```
 
-### 📚 138 Skills (vs. Original ~50)
+### 📚 150+ Skills (vs. Original ~50)
 
 Skills are pre-built workflows you trigger by describing what you want:
 
@@ -253,9 +253,9 @@ The wizard walks you through 12 steps:
 2. ✅ Checks that prerequisites are installed
 3. ✅ Sets up the database and API keys (optional)
 4. ✅ Starts Docker containers for PostgreSQL
-5. ✅ Installs 32 specialized agents
-6. ✅ Installs 138 skill workflows
-7. ✅ Installs 77 lifecycle hooks
+5. ✅ Installs 40 specialized agents
+6. ✅ Installs 150+ skill workflows
+7. ✅ Installs 61 lifecycle hooks
 8. ✅ Installs code analysis tools (95% efficiency boost)
 9. ✅ Installs math capabilities (optional)
 10. ✅ Configures diagnostics and linting
@@ -352,7 +352,7 @@ Result: Same understanding, 95% fewer tokens
 
 ## What You Get
 
-### 112 Skills (Pre-Built Workflows)
+### 150+ Skills (Pre-Built Workflows)
 
 Skills are like apps you trigger by asking naturally. No need to memorize commands.
 
@@ -373,7 +373,7 @@ Skills are like apps you trigger by asking naturally. No need to memorize comman
 - **Fixing:** /fix (bugs), /security (vulnerabilities), /review (code review)
 - **Continuity:** create_handoff, resume_handoff, continuity_ledger
 
-### 32 Specialized Agents
+### 40 Specialized Agents
 
 Agents are AI assistants focused on specific tasks. Claude delegates to them automatically.
 
@@ -407,7 +407,7 @@ Agents are AI assistants focused on specific tasks. Claude delegates to them aut
 - **arbiter** — Test validation
 - **atlas** — Integration testing
 
-**Specialized (8)**
+**Specialized (10)**
 - **aegis** — Security review
 - **herald** — Release management
 - **scribe** — Documentation generation
@@ -415,7 +415,7 @@ Agents are AI assistants focused on specific tasks. Claude delegates to them aut
 - **memory-extractor** — Learning extraction
 - **onboard** — Codebase onboarding
 
-### 66 Hooks (Automatic Helpers)
+### 61 Hooks (Automatic Helpers)
 
 Hooks run in the background at specific moments — you don't call them directly.
 
@@ -444,7 +444,7 @@ Hooks run in the background at specific moments — you don't call them directly
 - Spawns background analysis to extract learnings
 - Stores memories for future recall
 
-### 12 Rules (System Policies)
+### 15 Rules (System Policies)
 
 Rules keep Claude consistent and safe:
 
@@ -669,6 +669,7 @@ uv run python -m scripts.setup.wizard
 - [GitHub Issues](https://github.com/parcadei/continuous-claude/issues) — file a bug report
 - [Discussions](https://github.com/parcadei/continuous-claude/discussions) — ask questions
 - [Documentation](https://github.com/parcadei/continuous-claude/tree/main/docs) — detailed guides
+- [Architecture Docs](.claude/docs/architecture/INDEX.md) — navigable system diagrams
 
 ### How Do I Uninstall?
 
@@ -783,7 +784,7 @@ Then you can use all features (`/build`, `/fix`, etc.) with full context about y
 │                                                                     │
 │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐             │
 │  │   Skills    │    │   Agents    │    │    Hooks    │             │
-│  │   (112)     │───▶│    (32)     │◀───│    (66)     │             │
+│  │   (150+)    │───▶│    (40)     │◀───│    (61)     │             │
 │  └─────────────┘    └─────────────┘    └─────────────┘             │
 │         │                  │                  │                     │
 │         ▼                  ▼                  ▼                     │
@@ -1017,12 +1018,13 @@ Chain:
 ```
 continuous-claude/
 ├── .claude/
-│   ├── agents/           # 32 specialized AI agents
-│   ├── hooks/            # 66 lifecycle hooks
+│   ├── agents/           # 40 specialized AI agents
+│   ├── hooks/            # 61 lifecycle hooks
 │   │   ├── src/          # TypeScript source
 │   │   └── dist/         # Compiled JavaScript
-│   ├── skills/           # 112 modular capabilities
-│   ├── rules/            # 12 system policies
+│   ├── skills/           # 150+ modular capabilities
+│   ├── rules/            # 15 system policies
+│   ├── docs/architecture/ # Navigable architecture docs
 │   ├── scripts/          # Python utilities
 │   └── settings.json     # Hook configuration
 ├── opc/
