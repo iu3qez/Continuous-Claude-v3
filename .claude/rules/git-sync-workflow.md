@@ -1,47 +1,76 @@
-# Git Sync Workflow: ~/.claude ↔ continuous-claude
+# Git Sync Workflow: continuous-claude → ~/.claude
 
-## Quick Sync (simple changes)
+## Primary Flow (Forward Sync)
+
+```
+continuous-claude (repo)  →  ~/.claude (active)
+        ↓                         ↓
+    Edit here                 Auto-receives
+        ↓                         ↓
+    git commit              post-commit hook
+        ↓                         ↓
+    git push                Hooks rebuilt
+```
+
+## Quick Workflow
+
 ```bash
-bash ~/continuous-claude/scripts/sync-claude.sh --to-repo
-cd ~/continuous-claude && git add .claude/ && git status
-git commit -m "feat(sync): Description"
+# 1. Make changes in continuous-claude
+cd ~/continuous-claude
+# edit files...
+
+# 2. Commit (auto-syncs to ~/.claude)
+git add .claude/
+git commit -m "feat: description"
+
+# 3. Push to remote
 git push
 ```
 
-## When to Branch in ~/.claude
+## Pull from Team
+
+```bash
+cd ~/continuous-claude && git pull
+# If post-commit didn't run, manual sync:
+bash ~/continuous-claude/scripts/sync-to-active.sh
+```
+
+## Quick Fixes in ~/.claude
+
+For urgent fixes made directly in ~/.claude:
+
+```bash
+# 1. Fix is auto-committed by git-auto-commit hook
+
+# 2. Sync back to repo when ready
+bash ~/continuous-claude/scripts/sync-claude.sh --to-repo
+
+# 3. Commit in repo
+cd ~/continuous-claude && git add .claude/ && git commit -m "fix: description"
+```
+
+## Branching in continuous-claude
 
 | Scenario | Branch? |
 |----------|---------|
-| Quick fix, simple skill/rule | No |
+| Quick fix, simple rule | No |
 | New hook development | Yes |
 | Major refactor | Yes |
 | Experimental feature | Yes |
 
-## Branching Workflow
 ```bash
-# Start feature
-cd ~/.claude && git checkout -b feature/name
-
-# Develop, test, auto-commits capture changes
-
-# Merge when done
+cd ~/continuous-claude
+git checkout -b feature/name
+# develop...
 git checkout main && git merge feature/name
 git branch -d feature/name
-
-# Then sync
-bash ~/continuous-claude/scripts/sync-claude.sh --to-repo
-```
-
-## Pull from Team
-```bash
-cd ~/continuous-claude && git pull
-bash ~/continuous-claude/scripts/sync-claude.sh --from-repo
 ```
 
 ## Key Commands
+
 | Task | Command |
 |------|---------|
-| Check branch | `cd ~/.claude && git branch` |
-| See local commits | `cd ~/.claude && git log --oneline -5` |
-| Abandon feature | `git checkout main && git branch -D feature/name` |
-| Compare to main | `git diff main` |
+| Manual forward sync | `bash ~/continuous-claude/scripts/sync-to-active.sh` |
+| Manual reverse sync | `bash ~/continuous-claude/scripts/sync-claude.sh --to-repo` |
+| Rebuild hooks | `cd ~/.claude/hooks && npm run build` |
+| Check repo status | `cd ~/continuous-claude && git status` |

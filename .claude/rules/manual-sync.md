@@ -1,28 +1,44 @@
-# Manual Sync to continuous-claude
+# Manual Sync from continuous-claude
 
-The auto-sync via git post-commit hooks doesn't work reliably in all environments.
+The forward sync workflow: continuous-claude (repo) → ~/.claude (active).
 
-## Manual Sync Command
+## Quick Sync Command
 
-Run this after making changes to ~/.claude:
-
-```bash
-cp -r ~/.claude/rules/* ~/continuous-claude/.claude/rules/ && \
-cp -r ~/.claude/hooks/src/* ~/continuous-claude/.claude/hooks/src/ && \
-cp -r ~/.claude/skills/* ~/continuous-claude/.claude/skills/ && \
-cp -r ~/.claude/agents/* ~/continuous-claude/.claude/agents/ && \
-cd ~/continuous-claude && git add .claude/ && git status
-```
-
-Or use the sync script:
+Run this after making changes in continuous-claude:
 
 ```bash
-bash ~/continuous-claude/scripts/sync-claude.sh --to-repo
+bash ~/continuous-claude/scripts/sync-to-active.sh
 ```
 
-## When to Sync
+Or with verbose output:
 
-- After creating/editing rules
-- After modifying hooks
-- After adding skills or agents
-- Before pushing to continuous-claude
+```bash
+bash ~/continuous-claude/scripts/sync-to-active.sh --verbose
+```
+
+## Automatic Sync
+
+A git post-commit hook auto-syncs after every commit in continuous-claude.
+
+## When to Sync Manually
+
+- After `git pull` in continuous-claude
+- After editing files directly in continuous-claude
+- After switching branches in continuous-claude
+
+## What Gets Synced
+
+| Directory | Synced |
+|-----------|--------|
+| hooks/src/ | ✓ |
+| rules/ | ✓ |
+| agents/ | ✓ |
+| skills/ | ✓ |
+| settings.json | ✗ (local only) |
+| CLAUDE.md | ✗ (local only) |
+
+## Quick Edits in ~/.claude
+
+For quick fixes made directly in ~/.claude:
+- `git-auto-commit.mjs` still creates safety commits
+- Sync back to repo: `bash ~/continuous-claude/scripts/sync-claude.sh --to-repo`
