@@ -451,6 +451,14 @@ def save_tree(tree: dict[str, Any], output_path: Path) -> None:
         json.dump(tree, f, indent=2, ensure_ascii=False)
 
 
+def is_infrastructure_dir(project_path: Path) -> bool:
+    home = Path(os.environ.get("HOME") or os.environ.get("USERPROFILE") or "").resolve()
+    if not home:
+        return False
+    claude_dir = home / ".claude"
+    return project_path == claude_dir or str(project_path).replace("\\", "/").endswith("/.claude")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Generate project knowledge tree")
     parser.add_argument("--project", "-p", required=True, help="Project root directory")
@@ -462,6 +470,10 @@ def main():
     if not project_path.is_dir():
         print(f"Error: {project_path} is not a directory", file=sys.stderr)
         sys.exit(1)
+
+    if is_infrastructure_dir(project_path):
+        print("Skipping ~/.claude (infrastructure directory)", file=sys.stderr)
+        sys.exit(0)
 
     tree = generate_tree(project_path)
 

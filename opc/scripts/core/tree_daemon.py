@@ -275,6 +275,14 @@ def stop_daemon(project_path: Path) -> bool:
         return False
 
 
+def is_infrastructure_dir(project_path: Path) -> bool:
+    home = Path(os.environ.get("HOME") or os.environ.get("USERPROFILE") or "").resolve()
+    if not home:
+        return False
+    claude_dir = home / ".claude"
+    return project_path == claude_dir or str(project_path).replace("\\", "/").endswith("/.claude")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Knowledge tree update daemon")
     parser.add_argument("--project", "-p", required=True, help="Project root directory")
@@ -288,6 +296,10 @@ def main():
     if not project_path.is_dir():
         print(f"Error: {project_path} is not a directory", file=sys.stderr)
         sys.exit(1)
+
+    if is_infrastructure_dir(project_path):
+        print("Skipping ~/.claude (infrastructure directory)", file=sys.stderr)
+        sys.exit(0)
 
     if args.status:
         pid = check_existing_daemon(project_path)

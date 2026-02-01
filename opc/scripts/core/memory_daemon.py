@@ -52,6 +52,7 @@ if opc_env.exists():
 # Global config
 POLL_INTERVAL = 60  # seconds
 STALE_THRESHOLD = 300  # 5 minutes in seconds
+PERIODIC_EXTRACTION_INTERVAL = 1800  # 30 minutes for long-running sessions
 MAX_CONCURRENT_EXTRACTIONS = 2  # Limit concurrent headless claude processes
 PID_FILE = Path.home() / ".claude" / "memory-daemon.pid"
 LOG_FILE = Path.home() / ".claude" / "memory-daemon.log"
@@ -191,13 +192,104 @@ def sqlite_mark_extracted(session_id: str):
     conn.close()
 
 
+# PostgreSQL - periodic extraction for active sessions
+def pg_get_active_sessions_for_periodic() -> list:
+    """Get active sessions due for periodic extraction (30+ min since last extraction)."""
+    import psycopg2
+    conn = psycopg2.connect(get_postgres_url())
+    cur = conn.cursor()
+    stale_threshold = datetime.utcnow() - timedelta(seconds=STALE_THRESHOLD)
+    periodic_threshold = datetime.utcnow() - timedelta(seconds=PERIODIC_EXTRACTION_INTERVAL)
+    cur.execute("""
+        SELECT id, project, started_at, last_periodic_extraction FROM sessions
+        WHERE last_heartbeat >= %s
+        AND (last_periodic_extraction IS NULL OR last_periodic_extraction < %s)
+        AND started_at < %s
+    """, (stale_threshold, periodic_threshold, periodic_threshold))
+    rows = cur.fetchall()
+    conn.close()
+    return rows
+
+
+def pg_ensure_periodic_column():
+    """Ensure last_periodic_extraction column exists."""
+    import psycopg2
+    conn = psycopg2.connect(get_postgres_url())
+    cur = conn.cursor()
+    cur.execute("""
+        ALTER TABLE sessions
+        ADD COLUMN IF NOT EXISTS last_periodic_extraction TIMESTAMP
+    """)
+    conn.commit()
+    conn.close()
+
+
+def pg_mark_periodic_extraction(session_id: str):
+    """Mark session as periodically extracted."""
+    import psycopg2
+    conn = psycopg2.connect(get_postgres_url())
+    cur = conn.cursor()
+    cur.execute("""
+        UPDATE sessions SET last_periodic_extraction = NOW() WHERE id = %s
+    """, (session_id,))
+    conn.commit()
+    conn.close()
+
+
+# SQLite - periodic extraction for active sessions
+def sqlite_get_active_sessions_for_periodic() -> list:
+    """Get active sessions due for periodic extraction."""
+    db_path = get_sqlite_path()
+    if not db_path.exists():
+        return []
+    conn = sqlite3.connect(db_path)
+    stale_threshold = (datetime.now() - timedelta(seconds=STALE_THRESHOLD)).isoformat()
+    periodic_threshold = (datetime.now() - timedelta(seconds=PERIODIC_EXTRACTION_INTERVAL)).isoformat()
+    cursor = conn.execute("""
+        SELECT id, project, started_at, last_periodic_extraction FROM sessions
+        WHERE last_heartbeat >= ?
+        AND (last_periodic_extraction IS NULL OR last_periodic_extraction < ?)
+        AND started_at < ?
+    """, (stale_threshold, periodic_threshold, periodic_threshold))
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
+
+
+def sqlite_ensure_periodic_column():
+    """Ensure last_periodic_extraction column exists."""
+    db_path = get_sqlite_path()
+    if not db_path.exists():
+        return
+    conn = sqlite3.connect(db_path)
+    try:
+        conn.execute("ALTER TABLE sessions ADD COLUMN last_periodic_extraction TIMESTAMP")
+    except sqlite3.OperationalError:
+        pass  # Column already exists
+    conn.commit()
+    conn.close()
+
+
+def sqlite_mark_periodic_extraction(session_id: str):
+    """Mark session as periodically extracted."""
+    db_path = get_sqlite_path()
+    conn = sqlite3.connect(db_path)
+    conn.execute("""
+        UPDATE sessions SET last_periodic_extraction = ? WHERE id = ?
+    """, (datetime.now().isoformat(), session_id))
+    conn.commit()
+    conn.close()
+
+
 # Unified interface
 def ensure_schema():
     """Ensure database schema is ready."""
     if use_postgres():
         pg_ensure_column()
+        pg_ensure_periodic_column()
     else:
         sqlite_ensure_table()
+        sqlite_ensure_periodic_column()
 
 
 def get_stale_sessions() -> list:
@@ -207,12 +299,27 @@ def get_stale_sessions() -> list:
     return sqlite_get_stale_sessions()
 
 
+def get_active_sessions_for_periodic() -> list:
+    """Get active sessions due for periodic extraction."""
+    if use_postgres():
+        return pg_get_active_sessions_for_periodic()
+    return sqlite_get_active_sessions_for_periodic()
+
+
 def mark_extracted(session_id: str):
     """Mark session as extracted."""
     if use_postgres():
         pg_mark_extracted(session_id)
     else:
         sqlite_mark_extracted(session_id)
+
+
+def mark_periodic_extraction(session_id: str):
+    """Mark session as periodically extracted."""
+    if use_postgres():
+        pg_mark_periodic_extraction(session_id)
+    else:
+        sqlite_mark_periodic_extraction(session_id)
 
 
 def extract_memories(session_id: str, project_dir: str, started_at=None):
@@ -351,7 +458,8 @@ def queue_or_extract(session_id: str, project: str, started_at=None):
 def daemon_loop():
     """Main daemon loop."""
     db_type = "PostgreSQL" if use_postgres() else "SQLite"
-    log(f"Memory daemon started (using {db_type}, max_concurrent={MAX_CONCURRENT_EXTRACTIONS})")
+    periodic_mins = PERIODIC_EXTRACTION_INTERVAL // 60
+    log(f"Memory daemon started (using {db_type}, max_concurrent={MAX_CONCURRENT_EXTRACTIONS}, periodic={periodic_mins}min)")
     ensure_schema()
 
     while True:
@@ -359,12 +467,25 @@ def daemon_loop():
             reap_completed_extractions()
             process_pending_queue()
 
+            # 1. Handle stale (ended) sessions - full extraction
             stale = get_stale_sessions()
             if stale:
-                log(f"Found {len(stale)} stale sessions")
+                log(f"Found {len(stale)} stale sessions for final extraction")
                 for session_id, project, started_at in stale:
                     queue_or_extract(session_id, project or "", started_at)
                     mark_extracted(session_id)
+
+            # 2. Handle active sessions - periodic extraction (30 min)
+            active_periodic = get_active_sessions_for_periodic()
+            if active_periodic:
+                log(f"Found {len(active_periodic)} active sessions for periodic extraction")
+                for row in active_periodic:
+                    session_id = row[0]
+                    project = row[1] or ""
+                    started_at = row[2]
+                    queue_or_extract(session_id, project, started_at)
+                    mark_periodic_extraction(session_id)
+
         except Exception as e:
             log(f"Error in daemon loop: {e}")
 
