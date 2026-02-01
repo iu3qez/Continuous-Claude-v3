@@ -101,4 +101,30 @@ if ! $DRY_RUN && ! $SKIP_BUILD; then
     fi
 fi
 
+# Merge mcpServers from repo settings.json into active settings.json
+# This preserves machine-specific settings while syncing MCP server config
+if ! $DRY_RUN && command -v jq &> /dev/null; then
+    REPO_SETTINGS="$REPO_CLAUDE/settings.json"
+    ACTIVE_SETTINGS="$ACTIVE_CLAUDE/settings.json"
+
+    if [[ -f "$REPO_SETTINGS" && -f "$ACTIVE_SETTINGS" ]]; then
+        # Extract mcpServers from repo and merge into active
+        MCP_SERVERS=$(jq '.mcpServers // empty' "$REPO_SETTINGS" 2>/dev/null)
+        if [[ -n "$MCP_SERVERS" && "$MCP_SERVERS" != "null" ]]; then
+            # Create temp file with merged content
+            TEMP_SETTINGS=$(mktemp)
+            jq --argjson mcp "$MCP_SERVERS" '.mcpServers = $mcp' "$ACTIVE_SETTINGS" > "$TEMP_SETTINGS" 2>/dev/null
+            if [[ $? -eq 0 && -s "$TEMP_SETTINGS" ]]; then
+                mv "$TEMP_SETTINGS" "$ACTIVE_SETTINGS"
+                $VERBOSE && echo "Merged mcpServers into ~/.claude/settings.json"
+            else
+                rm -f "$TEMP_SETTINGS"
+                $VERBOSE && echo "Warning: Failed to merge mcpServers"
+            fi
+        fi
+    fi
+elif ! $DRY_RUN; then
+    $VERBOSE && echo "Note: jq not installed, skipping mcpServers merge"
+fi
+
 $VERBOSE && echo "Sync complete: continuous-claude → ~/.claude"
