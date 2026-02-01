@@ -1,0 +1,160 @@
+#!/usr/bin/env node
+/**
+ * Tree Invalidate Hook
+ *
+ * Invalidates the knowledge tree when significant files are edited.
+ * Tree regenerates lazily on next access.
+ *
+ * Hook: PostToolUse (Write|Edit)
+ * Condition: Modified file is a significant project file
+ */
+
+import * as fs from 'fs';
+import * as path from 'path';
+import { execSync } from 'child_process';
+
+interface PostToolUseInput {
+  tool_name: string;
+  tool_input: {
+    file_path?: string;
+    content?: string;
+  };
+  tool_result?: {
+    success?: boolean;
+  };
+}
+
+// Files that should trigger tree invalidation
+const SIGNIFICANT_FILES = new Set([
+  'README.md',
+  'readme.md',
+  'package.json',
+  'pyproject.toml',
+  'Cargo.toml',
+  'go.mod',
+  'ROADMAP.md',
+  'CLAUDE.md',
+  'tsconfig.json',
+  'docker-compose.yml',
+  'Dockerfile',
+]);
+
+// Directories that should trigger tree invalidation when files are added/removed
+const SIGNIFICANT_DIRS = new Set([
+  'src',
+  'lib',
+  'components',
+  'pages',
+  'api',
+  'routes',
+  'models',
+  'services',
+  'hooks',
+  'skills',
+  'agents',
+]);
+
+function isSignificantFile(filePath: string): boolean {
+  const fileName = path.basename(filePath);
+  const dirName = path.dirname(filePath).split(path.sep).pop() || '';
+
+  // Direct significant file match
+  if (SIGNIFICANT_FILES.has(fileName)) {
+    return true;
+  }
+
+  // New file in significant directory
+  if (SIGNIFICANT_DIRS.has(dirName)) {
+    return true;
+  }
+
+  // Any new TypeScript/Python module file at root level
+  const ext = path.extname(fileName);
+  if ((ext === '.ts' || ext === '.py') && !filePath.includes('node_modules')) {
+    const depth = filePath.split(path.sep).length;
+    if (depth <= 4) { // Within first few levels
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function invalidateTree(projectDir: string): boolean {
+  const treePath = path.join(projectDir, '.claude', 'knowledge-tree.json');
+
+  if (fs.existsSync(treePath)) {
+    try {
+      fs.unlinkSync(treePath);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  return false;
+}
+
+async function main() {
+  const input = await readStdin();
+  if (!input.trim()) {
+    console.log(JSON.stringify({ result: 'continue' }));
+    return;
+  }
+
+  let data: PostToolUseInput;
+  try {
+    data = JSON.parse(input);
+  } catch {
+    console.log(JSON.stringify({ result: 'continue' }));
+    return;
+  }
+
+  // Only process Write/Edit
+  if (!['Write', 'Edit'].includes(data.tool_name)) {
+    console.log(JSON.stringify({ result: 'continue' }));
+    return;
+  }
+
+  // Check if tool succeeded
+  if (data.tool_result?.success === false) {
+    console.log(JSON.stringify({ result: 'continue' }));
+    return;
+  }
+
+  const filePath = data.tool_input?.file_path;
+  if (!filePath) {
+    console.log(JSON.stringify({ result: 'continue' }));
+    return;
+  }
+
+  // Check if file is significant
+  if (!isSignificantFile(filePath)) {
+    console.log(JSON.stringify({ result: 'continue' }));
+    return;
+  }
+
+  // Invalidate tree
+  const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+  const invalidated = invalidateTree(projectDir);
+
+  if (invalidated) {
+    console.error(`✓ Knowledge tree invalidated (${path.basename(filePath)} changed)`);
+  }
+
+  console.log(JSON.stringify({ result: 'continue' }));
+}
+
+async function readStdin(): Promise<string> {
+  return new Promise((resolve) => {
+    let data = '';
+    process.stdin.setEncoding('utf-8');
+    process.stdin.on('data', chunk => data += chunk);
+    process.stdin.on('end', () => resolve(data));
+  });
+}
+
+main().catch(err => {
+  console.error('tree-invalidate error:', err);
+  console.log(JSON.stringify({ result: 'continue' }));
+});

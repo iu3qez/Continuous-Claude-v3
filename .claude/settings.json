@@ -135,17 +135,18 @@
           {
             "type": "command",
             "command": "node C:/Users/david.hayes/.claude/hooks/dist/session-start-init-check.mjs",
-            "timeout": 5000
-          },
-          {
-            "type": "command",
-            "command": "powershell -ExecutionPolicy Bypass -File C:/Users/david.hayes/.claude/hooks/session-start-tree-daemon.ps1",
             "timeout": 15000
-          },
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
           {
             "type": "command",
-            "command": "powershell -ExecutionPolicy Bypass -File C:/Users/david.hayes/.claude/hooks/session-start-memory-daemon.ps1",
-            "timeout": 10000
+            "command": "node C:/Users/david.hayes/.claude/hooks/dist/session-end-extract.mjs",
+            "timeout": 15000
           }
         ]
       }
@@ -198,6 +199,11 @@
             "type": "command",
             "command": "node C:/Users/david.hayes/.claude/hooks/dist/git-auto-commit.mjs",
             "timeout": 10000
+          },
+          {
+            "type": "command",
+            "command": "node C:/Users/david.hayes/.claude/hooks/dist/tree-invalidate.mjs",
+            "timeout": 5000
           }
         ]
       }

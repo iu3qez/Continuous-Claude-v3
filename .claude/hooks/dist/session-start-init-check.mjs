@@ -3,6 +3,52 @@
 // src/session-start-init-check.ts
 import * as fs from "fs";
 import * as path from "path";
+import { execSync } from "child_process";
+var TREE_MAX_AGE_SECONDS = 300;
+function getOpcDir() {
+  return process.env.CLAUDE_OPC_DIR || path.join(process.env.HOME || process.env.USERPROFILE || "", "continuous-claude", "opc");
+}
+function isTreeStale(projectDir) {
+  const treePath = path.join(projectDir, ".claude", "knowledge-tree.json");
+  if (!fs.existsSync(treePath)) {
+    return true;
+  }
+  try {
+    const stats = fs.statSync(treePath);
+    const ageSeconds = (Date.now() - stats.mtimeMs) / 1e3;
+    return ageSeconds >= TREE_MAX_AGE_SECONDS;
+  } catch {
+    return true;
+  }
+}
+function generateTree(projectDir) {
+  const opcDir = getOpcDir();
+  const lazyTreePath = path.join(opcDir, "scripts", "core", "lazy_tree.py");
+  if (!fs.existsSync(lazyTreePath)) {
+    const knowledgeTreePath = path.join(opcDir, "scripts", "core", "knowledge_tree.py");
+    if (!fs.existsSync(knowledgeTreePath)) {
+      return false;
+    }
+    try {
+      execSync(
+        `cd "${opcDir}" && uv run python scripts/core/knowledge_tree.py --project "${projectDir}"`,
+        { encoding: "utf-8", timeout: 1e4, stdio: ["pipe", "pipe", "pipe"] }
+      );
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  try {
+    execSync(
+      `cd "${opcDir}" && uv run python scripts/core/lazy_tree.py regenerate --project "${projectDir}"`,
+      { encoding: "utf-8", timeout: 1e4, stdio: ["pipe", "pipe", "pipe"] }
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
 function isInitialized(projectDir) {
   const treePath = path.join(projectDir, ".claude", "knowledge-tree.json");
   const roadmapPath = path.join(projectDir, "ROADMAP.md");
@@ -56,6 +102,18 @@ async function main() {
     return;
   }
   const status = isInitialized(projectDir);
+  if (!status.tree || isTreeStale(projectDir)) {
+    if (hasCodeFiles(projectDir)) {
+      console.error("\u{1F4CA} Generating knowledge tree...");
+      const generated = generateTree(projectDir);
+      if (generated) {
+        console.error("\u2713 Knowledge tree generated");
+        status.tree = true;
+      } else {
+        console.error("\u26A0 Failed to generate knowledge tree");
+      }
+    }
+  }
   if (status.tree && status.roadmap) {
     console.log(JSON.stringify({ result: "continue" }));
     return;
@@ -65,9 +123,12 @@ async function main() {
     return;
   }
   const missing = [];
-  if (!status.tree) missing.push("knowledge-tree.json");
   if (!status.roadmap) missing.push("ROADMAP.md");
-  const message = `\u{1F4CB} Project not initialized. Missing: ${missing.join(", ")}. Run /init-project for Continuous Claude setup.`;
+  if (missing.length === 0) {
+    console.log(JSON.stringify({ result: "continue" }));
+    return;
+  }
+  const message = `\u{1F4CB} Project partially initialized. Missing: ${missing.join(", ")}. Run /init-project for full Continuous Claude setup.`;
   console.error(`\u2139 ${message}`);
   const output = {
     result: "continue",

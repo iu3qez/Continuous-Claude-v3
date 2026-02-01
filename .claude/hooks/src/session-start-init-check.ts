@@ -2,7 +2,8 @@
 /**
  * Session Start Init Check Hook
  *
- * Detects uninitialized projects and suggests /init-project.
+ * Detects uninitialized projects and generates knowledge tree if missing.
+ * Uses lazy tree generation - generates inline if missing, skips if fresh.
  * Lightweight check - only runs on startup, not resume/clear/compact.
  *
  * Hook: SessionStart (startup only)
@@ -10,11 +11,67 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { execSync } from 'child_process';
 
 interface SessionStartInput {
   type?: 'startup' | 'resume' | 'clear' | 'compact';
   source?: 'startup' | 'resume' | 'clear' | 'compact';
   session_id: string;
+}
+
+const TREE_MAX_AGE_SECONDS = 300; // 5 minutes
+
+function getOpcDir(): string {
+  return process.env.CLAUDE_OPC_DIR || path.join(process.env.HOME || process.env.USERPROFILE || '', 'continuous-claude', 'opc');
+}
+
+function isTreeStale(projectDir: string): boolean {
+  const treePath = path.join(projectDir, '.claude', 'knowledge-tree.json');
+
+  if (!fs.existsSync(treePath)) {
+    return true;
+  }
+
+  try {
+    const stats = fs.statSync(treePath);
+    const ageSeconds = (Date.now() - stats.mtimeMs) / 1000;
+    return ageSeconds >= TREE_MAX_AGE_SECONDS;
+  } catch {
+    return true;
+  }
+}
+
+function generateTree(projectDir: string): boolean {
+  const opcDir = getOpcDir();
+  const lazyTreePath = path.join(opcDir, 'scripts', 'core', 'lazy_tree.py');
+
+  if (!fs.existsSync(lazyTreePath)) {
+    // Fall back to knowledge_tree.py
+    const knowledgeTreePath = path.join(opcDir, 'scripts', 'core', 'knowledge_tree.py');
+    if (!fs.existsSync(knowledgeTreePath)) {
+      return false;
+    }
+
+    try {
+      execSync(
+        `cd "${opcDir}" && uv run python scripts/core/knowledge_tree.py --project "${projectDir}"`,
+        { encoding: 'utf-8', timeout: 10000, stdio: ['pipe', 'pipe', 'pipe'] }
+      );
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  try {
+    execSync(
+      `cd "${opcDir}" && uv run python scripts/core/lazy_tree.py regenerate --project "${projectDir}"`,
+      { encoding: 'utf-8', timeout: 10000, stdio: ['pipe', 'pipe', 'pipe'] }
+    );
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function isInitialized(projectDir: string): { tree: boolean; roadmap: boolean } {
@@ -74,6 +131,21 @@ async function main() {
 
   const status = isInitialized(projectDir);
 
+  // Generate tree lazily if missing or stale
+  if (!status.tree || isTreeStale(projectDir)) {
+    if (hasCodeFiles(projectDir)) {
+      console.error('📊 Generating knowledge tree...');
+      const generated = generateTree(projectDir);
+      if (generated) {
+        console.error('✓ Knowledge tree generated');
+        status.tree = true;
+      } else {
+        console.error('⚠ Failed to generate knowledge tree');
+      }
+    }
+  }
+
+  // If fully initialized, continue silently
   if (status.tree && status.roadmap) {
     console.log(JSON.stringify({ result: 'continue' }));
     return;
@@ -84,11 +156,16 @@ async function main() {
     return;
   }
 
+  // Only suggest init if ROADMAP is missing (tree is generated automatically now)
   const missing: string[] = [];
-  if (!status.tree) missing.push('knowledge-tree.json');
   if (!status.roadmap) missing.push('ROADMAP.md');
 
-  const message = `📋 Project not initialized. Missing: ${missing.join(', ')}. Run /init-project for Continuous Claude setup.`;
+  if (missing.length === 0) {
+    console.log(JSON.stringify({ result: 'continue' }));
+    return;
+  }
+
+  const message = `📋 Project partially initialized. Missing: ${missing.join(', ')}. Run /init-project for full Continuous Claude setup.`;
 
   console.error(`ℹ ${message}`);
 
