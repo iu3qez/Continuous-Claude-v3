@@ -13,8 +13,7 @@
  */
 
 import { readFileSync, writeFileSync, existsSync, unlinkSync } from 'fs';
-import { tmpdir } from 'os';
-import { join } from 'path';
+import { getStatePathWithMigration } from './shared/session-isolation.js';
 
 interface HookInput {
   tool_name: string;
@@ -23,6 +22,7 @@ interface HookInput {
     description?: string;
     subagent_type?: string;
   };
+  session_id?: string;
 }
 
 interface MaestroState {
@@ -32,21 +32,28 @@ interface MaestroState {
   interviewComplete: boolean;
   planApproved: boolean;
   activatedAt: number;
+  lastActivity?: number;
+  sessionId?: string;
 }
 
-const STATE_FILE = join(tmpdir(), 'claude-maestro-state.json');
-const STATE_TTL = 60 * 60 * 1000; // 1 hour
+const STATE_BASE_NAME = 'maestro-state';
+const STATE_TTL = 4 * 60 * 60 * 1000; // 4 hours (match maestro-state-manager)
 
-function readState(): MaestroState | null {
-  if (!existsSync(STATE_FILE)) {
+function getStateFile(sessionId?: string): string {
+  return getStatePathWithMigration(STATE_BASE_NAME, sessionId);
+}
+
+function readState(sessionId?: string): MaestroState | null {
+  const stateFile = getStateFile(sessionId);
+  if (!existsSync(stateFile)) {
     return null;
   }
   try {
-    const content = readFileSync(STATE_FILE, 'utf-8');
+    const content = readFileSync(stateFile, 'utf-8');
     const state = JSON.parse(content) as MaestroState;
-    // Expire old state
-    if (Date.now() - state.activatedAt > STATE_TTL) {
-      unlinkSync(STATE_FILE);
+    const lastTime = state.lastActivity || state.activatedAt;
+    if (Date.now() - lastTime > STATE_TTL) {
+      unlinkSync(stateFile);
       return null;
     }
     return state;
@@ -55,18 +62,22 @@ function readState(): MaestroState | null {
   }
 }
 
-function writeState(state: MaestroState): void {
+function writeState(state: MaestroState, sessionId?: string): void {
+  const stateFile = getStateFile(sessionId);
   try {
-    writeFileSync(STATE_FILE, JSON.stringify(state), 'utf-8');
+    state.lastActivity = Date.now();
+    state.sessionId = sessionId;
+    writeFileSync(stateFile, JSON.stringify(state, null, 2), 'utf-8');
   } catch {
     // Ignore write errors
   }
 }
 
-function clearState(): void {
+function clearState(sessionId?: string): void {
+  const stateFile = getStateFile(sessionId);
   try {
-    if (existsSync(STATE_FILE)) {
-      unlinkSync(STATE_FILE);
+    if (existsSync(stateFile)) {
+      unlinkSync(stateFile);
     }
   } catch {
     // Ignore
@@ -114,7 +125,8 @@ async function main() {
       return;
     }
 
-    const state = readState();
+    const sessionId = input.session_id;
+    const state = readState(sessionId);
 
     // If Maestro not active, allow all Task calls
     if (!state || !state.active) {

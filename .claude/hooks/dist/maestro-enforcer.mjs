@@ -1,20 +1,63 @@
 #!/usr/bin/env node
 
 // src/maestro-enforcer.ts
-import { readFileSync, writeFileSync, existsSync, unlinkSync } from "fs";
-import { tmpdir } from "os";
+import { readFileSync, writeFileSync, existsSync as existsSync2, unlinkSync as unlinkSync2 } from "fs";
+
+// src/shared/session-isolation.ts
+import { tmpdir, hostname } from "os";
 import { join } from "path";
-var STATE_FILE = join(tmpdir(), "claude-maestro-state.json");
-var STATE_TTL = 60 * 60 * 1e3;
-function readState() {
-  if (!existsSync(STATE_FILE)) {
+import { existsSync, readdirSync, statSync, unlinkSync } from "fs";
+function getSessionId() {
+  if (process.env.CLAUDE_SESSION_ID) {
+    return process.env.CLAUDE_SESSION_ID;
+  }
+  const host = hostname().replace(/[^a-zA-Z0-9]/g, "").substring(0, 8);
+  return `${host}-${process.pid}`;
+}
+function getSessionStatePath(baseName, sessionId) {
+  const sid = sessionId || getSessionId();
+  const safeSid = sid.replace(/[^a-zA-Z0-9-_]/g, "_").substring(0, 32);
+  return join(tmpdir(), `claude-${baseName}-${safeSid}.json`);
+}
+function getLegacyStatePath(baseName) {
+  return join(tmpdir(), `claude-${baseName}.json`);
+}
+function getStatePathWithMigration(baseName, sessionId) {
+  const sessionPath = getSessionStatePath(baseName, sessionId);
+  const legacyPath = getLegacyStatePath(baseName);
+  if (existsSync(sessionPath)) {
+    return sessionPath;
+  }
+  if (existsSync(legacyPath)) {
+    try {
+      const stat = statSync(legacyPath);
+      const oneHourAgo = Date.now() - 60 * 60 * 1e3;
+      if (stat.mtimeMs > oneHourAgo) {
+        return legacyPath;
+      }
+    } catch {
+    }
+  }
+  return sessionPath;
+}
+
+// src/maestro-enforcer.ts
+var STATE_BASE_NAME = "maestro-state";
+var STATE_TTL = 4 * 60 * 60 * 1e3;
+function getStateFile(sessionId) {
+  return getStatePathWithMigration(STATE_BASE_NAME, sessionId);
+}
+function readState(sessionId) {
+  const stateFile = getStateFile(sessionId);
+  if (!existsSync2(stateFile)) {
     return null;
   }
   try {
-    const content = readFileSync(STATE_FILE, "utf-8");
+    const content = readFileSync(stateFile, "utf-8");
     const state = JSON.parse(content);
-    if (Date.now() - state.activatedAt > STATE_TTL) {
-      unlinkSync(STATE_FILE);
+    const lastTime = state.lastActivity || state.activatedAt;
+    if (Date.now() - lastTime > STATE_TTL) {
+      unlinkSync2(stateFile);
       return null;
     }
     return state;
@@ -56,7 +99,8 @@ async function main() {
       makeAllowOutput();
       return;
     }
-    const state = readState();
+    const sessionId = input.session_id;
+    const state = readState(sessionId);
     if (!state || !state.active) {
       makeAllowOutput();
       return;

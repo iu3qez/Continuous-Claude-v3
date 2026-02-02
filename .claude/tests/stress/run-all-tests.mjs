@@ -21,6 +21,7 @@ const TEST_FILES = [
   { name: 'Error Learning (D)', file: 'error-learning-tests.mjs' },
   { name: 'Long-Running (E)', file: 'long-running-tests.mjs' },
   { name: 'Cross-Session (F)', file: 'cross-session-tests.mjs' },
+  { name: 'Maestro Isolation (G)', file: 'maestro-isolation-tests.mjs' },
 ];
 
 async function runTest(testFile) {
