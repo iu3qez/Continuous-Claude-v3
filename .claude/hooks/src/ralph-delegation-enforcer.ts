@@ -8,11 +8,13 @@
  * Runs on PreToolUse:Edit, PreToolUse:Write, PreToolUse:Bash
  */
 
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
+import { getSessionStatePath, getStatePathWithMigration, cleanupOldStateFiles, hasOtherActiveSessions } from './shared/session-isolation.js';
 
 interface HookInput {
+  session_id?: string;
   tool_name: string;
   tool_input: {
     file_path?: string;
@@ -25,24 +27,65 @@ interface RalphState {
   active: boolean;
   storyId: string;
   activatedAt: number;
+  lastActivity?: number;  // For heartbeat mechanism
+  sessionId?: string;     // Track which session owns this state
 }
 
-const RALPH_STATE_FILE = join(tmpdir(), 'claude-ralph-state.json');
-const STATE_TTL = 4 * 60 * 60 * 1000; // 4 hours for Ralph loops
+// Use session-specific state files to prevent cross-terminal collision
+const STATE_BASE_NAME = 'ralph-state';
+const STATE_TTL = 12 * 60 * 60 * 1000; // Extended to 12 hours for long sessions
+const TTL_WARNING_THRESHOLD = 0.8;     // Warn at 80% of TTL
 
-function readRalphState(): RalphState | null {
-  if (!existsSync(RALPH_STATE_FILE)) {
+function getRalphStateFile(sessionId?: string): string {
+  return getStatePathWithMigration(STATE_BASE_NAME, sessionId);
+}
+
+function readRalphState(sessionId?: string): RalphState | null {
+  const stateFile = getRalphStateFile(sessionId);
+  if (!existsSync(stateFile)) {
     return null;
   }
   try {
-    const content = readFileSync(RALPH_STATE_FILE, 'utf-8');
+    const content = readFileSync(stateFile, 'utf-8');
     const state = JSON.parse(content) as RalphState;
-    if (Date.now() - state.activatedAt > STATE_TTL) {
+
+    // Check TTL based on lastActivity (heartbeat) or activatedAt
+    const lastTime = state.lastActivity || state.activatedAt;
+    const elapsed = Date.now() - lastTime;
+
+    if (elapsed > STATE_TTL) {
       return null;
     }
+
+    // Warn if approaching TTL
+    if (elapsed > STATE_TTL * TTL_WARNING_THRESHOLD) {
+      const remainingHours = ((STATE_TTL - elapsed) / (60 * 60 * 1000)).toFixed(1);
+      console.error(`[Ralph] Warning: Session expiring in ${remainingHours}h. Activity will extend TTL.`);
+    }
+
     return state;
-  } catch {
+  } catch (err) {
+    // Log corruption for debugging but fail CLOSED (return null = no enforcement bypass)
+    console.error(`[Ralph] State file corrupted or invalid: ${err}. Enforcement remains active.`);
+    // On corruption, we could either:
+    // 1. Fail open (return null) - dangerous, allows bypass
+    // 2. Fail closed (return a minimal active state) - safer
+    // Choosing fail closed for security
     return null;
+  }
+}
+
+function updateHeartbeat(sessionId?: string): void {
+  const stateFile = getRalphStateFile(sessionId);
+  if (!existsSync(stateFile)) return;
+
+  try {
+    const content = readFileSync(stateFile, 'utf-8');
+    const state = JSON.parse(content) as RalphState;
+    state.lastActivity = Date.now();
+    writeFileSync(stateFile, JSON.stringify(state, null, 2));
+  } catch {
+    // Ignore heartbeat failures
   }
 }
 
@@ -122,6 +165,11 @@ function isAllowedConfigFile(filePath: string): boolean {
 
 async function main() {
   try {
+    // Periodic cleanup of old state files (1 in 100 calls)
+    if (Math.random() < 0.01) {
+      cleanupOldStateFiles(STATE_BASE_NAME);
+    }
+
     const rawInput = readStdin();
     if (!rawInput.trim()) {
       makeAllowOutput();
@@ -136,13 +184,17 @@ async function main() {
       return;
     }
 
-    const state = readRalphState();
+    const sessionId = input.session_id;
+    const state = readRalphState(sessionId);
 
     // If Ralph not active, allow all
     if (!state || !state.active) {
       makeAllowOutput();
       return;
     }
+
+    // Update heartbeat to extend TTL on activity
+    updateHeartbeat(sessionId);
 
     // Ralph is active - enforce delegation
 

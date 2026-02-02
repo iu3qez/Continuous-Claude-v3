@@ -16,8 +16,10 @@ import { readFileSync, writeFileSync, existsSync, unlinkSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { outputContinue } from './shared/output.js';
+import { getSessionStatePath, getStatePathWithMigration, cleanupOldStateFiles } from './shared/session-isolation.js';
 
 interface HookInput {
+  session_id?: string;
   prompt?: string;
 }
 
@@ -28,10 +30,17 @@ interface MaestroState {
   interviewComplete: boolean;
   planApproved: boolean;
   activatedAt: number;
+  lastActivity?: number;   // For heartbeat mechanism
+  sessionId?: string;      // Track which session owns this state
 }
 
-const STATE_FILE = join(tmpdir(), 'claude-maestro-state.json');
-const STATE_TTL = 60 * 60 * 1000; // 1 hour
+// Use session-specific state files to prevent cross-terminal collision
+const STATE_BASE_NAME = 'maestro-state';
+const STATE_TTL = 4 * 60 * 60 * 1000; // Extended to 4 hours
+
+function getStateFile(sessionId?: string): string {
+  return getStatePathWithMigration(STATE_BASE_NAME, sessionId);
+}
 
 function defaultState(): MaestroState {
   return {
@@ -44,34 +53,44 @@ function defaultState(): MaestroState {
   };
 }
 
-function readState(): MaestroState {
-  if (!existsSync(STATE_FILE)) {
+function readState(sessionId?: string): MaestroState {
+  const stateFile = getStateFile(sessionId);
+  if (!existsSync(stateFile)) {
     return defaultState();
   }
   try {
-    const content = readFileSync(STATE_FILE, 'utf-8');
+    const content = readFileSync(stateFile, 'utf-8');
     const state = JSON.parse(content) as MaestroState;
-    if (Date.now() - state.activatedAt > STATE_TTL) {
+
+    // Check TTL based on lastActivity (heartbeat) or activatedAt
+    const lastTime = state.lastActivity || state.activatedAt;
+    if (Date.now() - lastTime > STATE_TTL) {
       return defaultState();
     }
     return state;
-  } catch {
+  } catch (err) {
+    // Log corruption but return default (fail safe)
+    console.error(`[Maestro] State file error: ${err}`);
     return defaultState();
   }
 }
 
-function writeState(state: MaestroState): void {
+function writeState(state: MaestroState, sessionId?: string): void {
+  const stateFile = getStateFile(sessionId);
   try {
-    writeFileSync(STATE_FILE, JSON.stringify(state), 'utf-8');
+    state.lastActivity = Date.now();
+    state.sessionId = sessionId;
+    writeFileSync(stateFile, JSON.stringify(state, null, 2), 'utf-8');
   } catch {
     // Ignore write errors
   }
 }
 
-function clearState(): void {
+function clearState(sessionId?: string): void {
+  const stateFile = getStateFile(sessionId);
   try {
-    if (existsSync(STATE_FILE)) {
-      unlinkSync(STATE_FILE);
+    if (existsSync(stateFile)) {
+      unlinkSync(stateFile);
     }
   } catch {
     // Ignore
@@ -136,6 +155,11 @@ function matchesAny(text: string, patterns: RegExp[]): boolean {
 
 async function main() {
   try {
+    // Periodic cleanup of old state files (1 in 100 calls)
+    if (Math.random() < 0.01) {
+      cleanupOldStateFiles(STATE_BASE_NAME);
+    }
+
     const rawInput = readStdin();
     if (!rawInput.trim()) {
       outputContinue();
@@ -155,12 +179,13 @@ async function main() {
       return;
     }
 
+    const sessionId = input.session_id;
     const prompt = input.prompt.trim();
-    const state = readState();
+    const state = readState(sessionId);
 
     // Check for cancel
     if (matchesAny(prompt, CANCEL_PATTERNS)) {
-      clearState();
+      clearState(sessionId);
       console.log(`
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🎼 MAESTRO DEACTIVATED
@@ -188,7 +213,7 @@ Returning to normal operation.
         interviewComplete: false,
         planApproved: false,
         activatedAt: Date.now()
-      });
+      }, sessionId);
 
       if (isResearch) {
         console.log(`
@@ -248,7 +273,7 @@ Say "recon complete" when done exploring.
       // Check for recon completion (implementation tasks only)
       if (!state.reconComplete && matchesAny(prompt, RECON_COMPLETE_PATTERNS)) {
         state.reconComplete = true;
-        writeState(state);
+        writeState(state, sessionId);
         console.log(`
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🎼 MAESTRO: Recon Complete
@@ -277,7 +302,7 @@ Task tool BLOCKED until interview complete.
       // Check for interview completion
       if (state.reconComplete && !state.interviewComplete && matchesAny(prompt, INTERVIEW_COMPLETE_PATTERNS)) {
         state.interviewComplete = true;
-        writeState(state);
+        writeState(state, sessionId);
         const step = state.taskType === 'research' ? 1 : 2;
         console.log(`
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -302,7 +327,7 @@ Task tool still BLOCKED until plan approved.
       // Check for plan approval (only if interview complete)
       if (state.interviewComplete && !state.planApproved && matchesAny(prompt, PLAN_APPROVAL_PATTERNS)) {
         state.planApproved = true;
-        writeState(state);
+        writeState(state, sessionId);
         console.log(`
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🎼 MAESTRO: Plan Approved

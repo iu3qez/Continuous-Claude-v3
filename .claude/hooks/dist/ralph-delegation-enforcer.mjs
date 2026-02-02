@@ -1,24 +1,108 @@
 #!/usr/bin/env node
 
 // src/ralph-delegation-enforcer.ts
-import { readFileSync, existsSync } from "fs";
-import { tmpdir } from "os";
+import { readFileSync, existsSync as existsSync2, writeFileSync } from "fs";
+
+// src/shared/session-isolation.ts
+import { tmpdir, hostname } from "os";
 import { join } from "path";
-var RALPH_STATE_FILE = join(tmpdir(), "claude-ralph-state.json");
-var STATE_TTL = 4 * 60 * 60 * 1e3;
-function readRalphState() {
-  if (!existsSync(RALPH_STATE_FILE)) {
+import { existsSync, readdirSync, statSync, unlinkSync } from "fs";
+function getSessionId() {
+  if (process.env.CLAUDE_SESSION_ID) {
+    return process.env.CLAUDE_SESSION_ID;
+  }
+  const host = hostname().replace(/[^a-zA-Z0-9]/g, "").substring(0, 8);
+  return `${host}-${process.pid}`;
+}
+function getSessionStatePath(baseName, sessionId) {
+  const sid = sessionId || getSessionId();
+  const safeSid = sid.replace(/[^a-zA-Z0-9-_]/g, "_").substring(0, 32);
+  return join(tmpdir(), `claude-${baseName}-${safeSid}.json`);
+}
+function getLegacyStatePath(baseName) {
+  return join(tmpdir(), `claude-${baseName}.json`);
+}
+function getStatePathWithMigration(baseName, sessionId) {
+  const sessionPath = getSessionStatePath(baseName, sessionId);
+  const legacyPath = getLegacyStatePath(baseName);
+  if (existsSync(sessionPath)) {
+    return sessionPath;
+  }
+  if (existsSync(legacyPath)) {
+    try {
+      const stat = statSync(legacyPath);
+      const oneHourAgo = Date.now() - 60 * 60 * 1e3;
+      if (stat.mtimeMs > oneHourAgo) {
+        return legacyPath;
+      }
+    } catch {
+    }
+  }
+  return sessionPath;
+}
+function cleanupOldStateFiles(baseName, maxAgeMs = 24 * 60 * 60 * 1e3) {
+  const tmpDir = tmpdir();
+  const pattern = new RegExp(`^claude-${baseName}-.*\\.json$`);
+  let cleaned = 0;
+  try {
+    const files = readdirSync(tmpDir);
+    const now = Date.now();
+    for (const file of files) {
+      if (!pattern.test(file)) continue;
+      const fullPath = join(tmpDir, file);
+      try {
+        const stat = statSync(fullPath);
+        if (now - stat.mtimeMs > maxAgeMs) {
+          unlinkSync(fullPath);
+          cleaned++;
+        }
+      } catch {
+      }
+    }
+  } catch {
+  }
+  return cleaned;
+}
+
+// src/ralph-delegation-enforcer.ts
+var STATE_BASE_NAME = "ralph-state";
+var STATE_TTL = 12 * 60 * 60 * 1e3;
+var TTL_WARNING_THRESHOLD = 0.8;
+function getRalphStateFile(sessionId) {
+  return getStatePathWithMigration(STATE_BASE_NAME, sessionId);
+}
+function readRalphState(sessionId) {
+  const stateFile = getRalphStateFile(sessionId);
+  if (!existsSync2(stateFile)) {
     return null;
   }
   try {
-    const content = readFileSync(RALPH_STATE_FILE, "utf-8");
+    const content = readFileSync(stateFile, "utf-8");
     const state = JSON.parse(content);
-    if (Date.now() - state.activatedAt > STATE_TTL) {
+    const lastTime = state.lastActivity || state.activatedAt;
+    const elapsed = Date.now() - lastTime;
+    if (elapsed > STATE_TTL) {
       return null;
     }
+    if (elapsed > STATE_TTL * TTL_WARNING_THRESHOLD) {
+      const remainingHours = ((STATE_TTL - elapsed) / (60 * 60 * 1e3)).toFixed(1);
+      console.error(`[Ralph] Warning: Session expiring in ${remainingHours}h. Activity will extend TTL.`);
+    }
     return state;
-  } catch {
+  } catch (err) {
+    console.error(`[Ralph] State file corrupted or invalid: ${err}. Enforcement remains active.`);
     return null;
+  }
+}
+function updateHeartbeat(sessionId) {
+  const stateFile = getRalphStateFile(sessionId);
+  if (!existsSync2(stateFile)) return;
+  try {
+    const content = readFileSync(stateFile, "utf-8");
+    const state = JSON.parse(content);
+    state.lastActivity = Date.now();
+    writeFileSync(stateFile, JSON.stringify(state, null, 2));
+  } catch {
   }
 }
 function readStdin() {
@@ -103,6 +187,9 @@ function isAllowedConfigFile(filePath) {
 }
 async function main() {
   try {
+    if (Math.random() < 0.01) {
+      cleanupOldStateFiles(STATE_BASE_NAME);
+    }
     const rawInput = readStdin();
     if (!rawInput.trim()) {
       makeAllowOutput();
@@ -115,11 +202,13 @@ async function main() {
       makeAllowOutput();
       return;
     }
-    const state = readRalphState();
+    const sessionId = input.session_id;
+    const state = readRalphState(sessionId);
     if (!state || !state.active) {
       makeAllowOutput();
       return;
     }
+    updateHeartbeat(sessionId);
     if (input.tool_name === "Edit") {
       const filePath = input.tool_input.file_path || "";
       if (isAllowedConfigFile(filePath)) {

@@ -1,18 +1,80 @@
 #!/usr/bin/env node
 
 // src/maestro-state-manager.ts
-import { readFileSync, writeFileSync, existsSync, unlinkSync } from "fs";
-import { tmpdir } from "os";
-import { join } from "path";
+import { readFileSync, writeFileSync, existsSync as existsSync2, unlinkSync as unlinkSync2 } from "fs";
 
 // src/shared/output.ts
 function outputContinue() {
   console.log(JSON.stringify({ result: "continue" }));
 }
 
+// src/shared/session-isolation.ts
+import { tmpdir, hostname } from "os";
+import { join } from "path";
+import { existsSync, readdirSync, statSync, unlinkSync } from "fs";
+function getSessionId() {
+  if (process.env.CLAUDE_SESSION_ID) {
+    return process.env.CLAUDE_SESSION_ID;
+  }
+  const host = hostname().replace(/[^a-zA-Z0-9]/g, "").substring(0, 8);
+  return `${host}-${process.pid}`;
+}
+function getSessionStatePath(baseName, sessionId) {
+  const sid = sessionId || getSessionId();
+  const safeSid = sid.replace(/[^a-zA-Z0-9-_]/g, "_").substring(0, 32);
+  return join(tmpdir(), `claude-${baseName}-${safeSid}.json`);
+}
+function getLegacyStatePath(baseName) {
+  return join(tmpdir(), `claude-${baseName}.json`);
+}
+function getStatePathWithMigration(baseName, sessionId) {
+  const sessionPath = getSessionStatePath(baseName, sessionId);
+  const legacyPath = getLegacyStatePath(baseName);
+  if (existsSync(sessionPath)) {
+    return sessionPath;
+  }
+  if (existsSync(legacyPath)) {
+    try {
+      const stat = statSync(legacyPath);
+      const oneHourAgo = Date.now() - 60 * 60 * 1e3;
+      if (stat.mtimeMs > oneHourAgo) {
+        return legacyPath;
+      }
+    } catch {
+    }
+  }
+  return sessionPath;
+}
+function cleanupOldStateFiles(baseName, maxAgeMs = 24 * 60 * 60 * 1e3) {
+  const tmpDir = tmpdir();
+  const pattern = new RegExp(`^claude-${baseName}-.*\\.json$`);
+  let cleaned = 0;
+  try {
+    const files = readdirSync(tmpDir);
+    const now = Date.now();
+    for (const file of files) {
+      if (!pattern.test(file)) continue;
+      const fullPath = join(tmpDir, file);
+      try {
+        const stat = statSync(fullPath);
+        if (now - stat.mtimeMs > maxAgeMs) {
+          unlinkSync(fullPath);
+          cleaned++;
+        }
+      } catch {
+      }
+    }
+  } catch {
+  }
+  return cleaned;
+}
+
 // src/maestro-state-manager.ts
-var STATE_FILE = join(tmpdir(), "claude-maestro-state.json");
-var STATE_TTL = 60 * 60 * 1e3;
+var STATE_BASE_NAME = "maestro-state";
+var STATE_TTL = 4 * 60 * 60 * 1e3;
+function getStateFile(sessionId) {
+  return getStatePathWithMigration(STATE_BASE_NAME, sessionId);
+}
 function defaultState() {
   return {
     active: false,
@@ -23,31 +85,38 @@ function defaultState() {
     activatedAt: 0
   };
 }
-function readState() {
-  if (!existsSync(STATE_FILE)) {
+function readState(sessionId) {
+  const stateFile = getStateFile(sessionId);
+  if (!existsSync2(stateFile)) {
     return defaultState();
   }
   try {
-    const content = readFileSync(STATE_FILE, "utf-8");
+    const content = readFileSync(stateFile, "utf-8");
     const state = JSON.parse(content);
-    if (Date.now() - state.activatedAt > STATE_TTL) {
+    const lastTime = state.lastActivity || state.activatedAt;
+    if (Date.now() - lastTime > STATE_TTL) {
       return defaultState();
     }
     return state;
-  } catch {
+  } catch (err) {
+    console.error(`[Maestro] State file error: ${err}`);
     return defaultState();
   }
 }
-function writeState(state) {
+function writeState(state, sessionId) {
+  const stateFile = getStateFile(sessionId);
   try {
-    writeFileSync(STATE_FILE, JSON.stringify(state), "utf-8");
+    state.lastActivity = Date.now();
+    state.sessionId = sessionId;
+    writeFileSync(stateFile, JSON.stringify(state, null, 2), "utf-8");
   } catch {
   }
 }
-function clearState() {
+function clearState(sessionId) {
+  const stateFile = getStateFile(sessionId);
   try {
-    if (existsSync(STATE_FILE)) {
-      unlinkSync(STATE_FILE);
+    if (existsSync2(stateFile)) {
+      unlinkSync2(stateFile);
     }
   } catch {
   }
@@ -99,6 +168,9 @@ function matchesAny(text, patterns) {
 }
 async function main() {
   try {
+    if (Math.random() < 0.01) {
+      cleanupOldStateFiles(STATE_BASE_NAME);
+    }
     const rawInput = readStdin();
     if (!rawInput.trim()) {
       outputContinue();
@@ -115,10 +187,11 @@ async function main() {
       outputContinue();
       return;
     }
+    const sessionId = input.session_id;
     const prompt = input.prompt.trim();
-    const state = readState();
+    const state = readState(sessionId);
     if (matchesAny(prompt, CANCEL_PATTERNS)) {
-      clearState();
+      clearState(sessionId);
       console.log(`
 \u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
 \u{1F3BC} MAESTRO DEACTIVATED
@@ -141,7 +214,7 @@ Returning to normal operation.
         interviewComplete: false,
         planApproved: false,
         activatedAt: Date.now()
-      });
+      }, sessionId);
       if (isResearch) {
         console.log(`
 \u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
@@ -197,7 +270,7 @@ Say "recon complete" when done exploring.
     if (state.active) {
       if (!state.reconComplete && matchesAny(prompt, RECON_COMPLETE_PATTERNS)) {
         state.reconComplete = true;
-        writeState(state);
+        writeState(state, sessionId);
         console.log(`
 \u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
 \u{1F3BC} MAESTRO: Recon Complete
@@ -224,7 +297,7 @@ Task tool BLOCKED until interview complete.
       }
       if (state.reconComplete && !state.interviewComplete && matchesAny(prompt, INTERVIEW_COMPLETE_PATTERNS)) {
         state.interviewComplete = true;
-        writeState(state);
+        writeState(state, sessionId);
         const step = state.taskType === "research" ? 1 : 2;
         console.log(`
 \u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
@@ -247,7 +320,7 @@ Task tool still BLOCKED until plan approved.
       }
       if (state.interviewComplete && !state.planApproved && matchesAny(prompt, PLAN_APPROVAL_PATTERNS)) {
         state.planApproved = true;
-        writeState(state);
+        writeState(state, sessionId);
         console.log(`
 \u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
 \u{1F3BC} MAESTRO: Plan Approved
