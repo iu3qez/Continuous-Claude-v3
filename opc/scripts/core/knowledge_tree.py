@@ -451,6 +451,47 @@ def save_tree(tree: dict[str, Any], output_path: Path) -> None:
         json.dump(tree, f, indent=2, ensure_ascii=False)
 
 
+def generate_pageindex_for_project(project_path: Path, verbose: bool = False) -> dict[str, Any]:
+    """
+    Generate PageIndex trees for Tier 1 (critical) documents.
+
+    Called after knowledge tree generation to enable semantic search
+    over ROADMAP.md, README.md, and core architecture docs.
+
+    Args:
+        project_path: Project root directory
+        verbose: Print detailed output
+
+    Returns:
+        Dict with pageindex generation stats
+    """
+    try:
+        import asyncio
+        from scripts.pageindex.batch_index import batch_index_for_init
+
+        if verbose:
+            print("\n📑 Generating PageIndex trees...")
+
+        stats = asyncio.run(batch_index_for_init(
+            project_root=str(project_path),
+            verbose=verbose
+        ))
+
+        return {
+            "pageindex": stats.to_dict(),
+            "enabled": True
+        }
+
+    except ImportError as e:
+        if verbose:
+            print(f"⚠️  PageIndex not available: {e}")
+        return {"enabled": False, "error": str(e)}
+    except Exception as e:
+        if verbose:
+            print(f"⚠️  PageIndex generation failed: {e}")
+        return {"enabled": False, "error": str(e)}
+
+
 def is_infrastructure_dir(project_path: Path) -> bool:
     home = Path(os.environ.get("HOME") or os.environ.get("USERPROFILE") or "").resolve()
     if not home:
@@ -464,6 +505,8 @@ def main():
     parser.add_argument("--project", "-p", required=True, help="Project root directory")
     parser.add_argument("--output", "-o", help="Output file (default: {project}/.claude/knowledge-tree.json)")
     parser.add_argument("--print", "-P", action="store_true", help="Print tree to stdout")
+    parser.add_argument("--no-pageindex", action="store_true", help="Skip PageIndex generation")
+    parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
     args = parser.parse_args()
 
     project_path = Path(args.project).resolve()
@@ -484,6 +527,13 @@ def main():
     output_path = Path(args.output) if args.output else project_path / ".claude" / "knowledge-tree.json"
     save_tree(tree, output_path)
     print(f"Knowledge tree saved to: {output_path}")
+
+    # Generate PageIndex trees for semantic search
+    if not args.no_pageindex:
+        pageindex_result = generate_pageindex_for_project(project_path, verbose=args.verbose)
+        if pageindex_result.get("enabled"):
+            stats = pageindex_result.get("pageindex", {})
+            print(f"PageIndex: {stats.get('indexed', 0)} docs indexed")
 
 
 if __name__ == "__main__":

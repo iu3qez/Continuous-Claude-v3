@@ -572,6 +572,67 @@ async def search_learnings(
         return await search_learnings_postgres(query, k, provider, text_fallback, similarity_threshold, recency_weight)
 
 
+async def search_pageindex(query: str, k: int = 5, project_path: str | None = None) -> list[dict[str, Any]]:
+    """Search PageIndex trees using LLM-based reasoning.
+
+    Args:
+        query: Search query
+        k: Max results per document
+        project_path: Optional project path (defaults to cwd)
+
+    Returns:
+        List of search results with document context
+    """
+    try:
+        from scripts.pageindex.pageindex_service import PageIndexService
+        from scripts.pageindex.tree_search import tree_search, SearchResult
+    except ImportError as e:
+        print(f"PageIndex not available: {e}", file=sys.stderr)
+        return []
+
+    project = project_path or os.getcwd()
+    service = PageIndexService()
+
+    try:
+        trees = service.list_trees(project_path=project)
+        if not trees:
+            return []
+
+        all_results = []
+        for tree_meta in trees:
+            tree_index = service.get_tree(project, tree_meta.doc_path)
+            if not tree_index:
+                continue
+
+            search_results = tree_search(
+                query=query,
+                tree_structure=tree_index.tree_structure,
+                doc_name=tree_meta.doc_path,
+                max_results=k,
+                model="sonnet"
+            )
+
+            for result in search_results:
+                all_results.append({
+                    "source": "pageindex",
+                    "doc_path": tree_meta.doc_path,
+                    "node_id": result.node_id,
+                    "title": result.title,
+                    "content": result.text,
+                    "line_num": result.line_num,
+                    "relevance_reason": result.relevance_reason,
+                    "similarity": result.confidence,
+                    "session_id": f"pageindex:{tree_meta.doc_path}",
+                    "created_at": tree_index.updated_at,
+                })
+
+        all_results.sort(key=lambda x: x["similarity"], reverse=True)
+        return all_results[:k * 2]
+
+    finally:
+        service.close()
+
+
 async def main() -> int:
     """Run semantic recall on session learnings."""
     parser = argparse.ArgumentParser(
@@ -626,6 +687,16 @@ async def main() -> int:
         default=0.1,
         help="Recency weight for vector-only mode (0.0-1.0, default: 0.1)",
     )
+    parser.add_argument(
+        "--pageindex",
+        action="store_true",
+        help="Use PageIndex tree-based search for large documents (ROADMAP, docs)",
+    )
+    parser.add_argument(
+        "--hybrid",
+        action="store_true",
+        help="Search both vector memory AND PageIndex trees",
+    )
 
     args = parser.parse_args()
 
@@ -634,13 +705,47 @@ async def main() -> int:
 
     if not args.json:
         print(f'Recalling learnings for: "{args.query}"')
-        print(f"Backend: {backend}")
-        print(f"Embedding provider: {args.provider}")
+        if args.pageindex:
+            print("Search mode: PageIndex (tree-based)")
+        elif args.hybrid:
+            print(f"Search mode: Hybrid (vector + PageIndex)")
+            print(f"Backend: {backend}")
+        else:
+            print(f"Backend: {backend}")
+            print(f"Embedding provider: {args.provider}")
         print()
 
     try:
+        # PageIndex-only search
+        if args.pageindex:
+            results = await search_pageindex(args.query, args.k)
+        # Hybrid search: combine vector memory + PageIndex
+        elif args.hybrid:
+            vector_results = []
+            pageindex_results = await search_pageindex(args.query, args.k)
 
-        if backend == "sqlite":
+            if backend == "sqlite":
+                vector_results = await search_learnings_sqlite(args.query, args.k)
+            elif args.text_only:
+                vector_results = await search_learnings_text_only_postgres(args.query, args.k)
+            else:
+                vector_results = await search_learnings_hybrid_rrf(
+                    query=args.query,
+                    k=args.k,
+                    provider=args.provider,
+                    similarity_threshold=args.threshold * 0.01,
+                )
+
+            for r in vector_results:
+                r["source"] = "vector"
+            for r in pageindex_results:
+                r["source"] = "pageindex"
+
+            results = vector_results + pageindex_results
+            results.sort(key=lambda x: x.get("similarity", 0), reverse=True)
+            results = results[:args.k * 2]
+
+        elif backend == "sqlite":
             # SQLite only supports text search (no pgvector)
             if not args.text_only and not args.json:
                 print("  (SQLite backend - using text search)")
@@ -711,8 +816,21 @@ async def main() -> int:
         else:
             created_str = str(created_at)[:16]
 
-        print(f"{i}. [{similarity:.3f}] Session: {session_id} ({created_str})")
-        print(f"   {content_preview}")
+        source = result.get("source", "vector")
+        if source == "pageindex":
+            doc_path = result.get("doc_path", "unknown")
+            title = result.get("title", "")
+            line_num = result.get("line_num")
+            reason = result.get("relevance_reason", "")
+            loc = f":{line_num}" if line_num else ""
+            print(f"{i}. [{similarity:.0%}] 📄 {doc_path}{loc}")
+            print(f"   Section: {title}")
+            if reason:
+                print(f"   Why: {reason}")
+            print(f"   {content_preview}")
+        else:
+            print(f"{i}. [{similarity:.3f}] Session: {session_id} ({created_str})")
+            print(f"   {content_preview}")
         print()
 
     return 0
