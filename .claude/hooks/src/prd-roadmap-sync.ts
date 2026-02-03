@@ -153,24 +153,28 @@ function extractTaskProgress(content: string, filePath: string): TaskProgress {
 }
 
 function findRoadmapPath(startDir: string): string | null {
-  const candidates = [
-    path.join(startDir, 'ROADMAP.md'),
-    path.join(startDir, '.claude', 'ROADMAP.md'),
-    path.join(startDir, '..', 'ROADMAP.md'),
-    path.join(startDir, '..', '.claude', 'ROADMAP.md'),
-  ];
-
-  // Also check project root via env
+  // Check CLAUDE_PROJECT_DIR first (highest priority)
   const projectDir = process.env.CLAUDE_PROJECT_DIR;
   if (projectDir) {
-    candidates.unshift(path.join(projectDir, 'ROADMAP.md'));
-    candidates.unshift(path.join(projectDir, '.claude', 'ROADMAP.md'));
+    const roadmap = path.join(projectDir, 'ROADMAP.md');
+    if (fs.existsSync(roadmap)) return roadmap;
+    const claudeRoadmap = path.join(projectDir, '.claude', 'ROADMAP.md');
+    if (fs.existsSync(claudeRoadmap)) return claudeRoadmap;
   }
 
-  for (const candidate of candidates) {
-    if (fs.existsSync(candidate)) {
-      return candidate;
-    }
+  // Recursive upward search from startDir
+  let current = path.resolve(startDir);
+  const root = path.parse(current).root;
+
+  while (current !== root) {
+    // Check both ROADMAP.md and .claude/ROADMAP.md at each level
+    const candidate = path.join(current, 'ROADMAP.md');
+    if (fs.existsSync(candidate)) return candidate;
+
+    const claudeCandidate = path.join(current, '.claude', 'ROADMAP.md');
+    if (fs.existsSync(claudeCandidate)) return claudeCandidate;
+
+    current = path.dirname(current);
   }
 
   return null;
@@ -629,6 +633,7 @@ async function main() {
   console.log(JSON.stringify(result));
 }
 
-main().catch(() => {
+main().catch((err) => {
+  console.error('[prd-roadmap-sync] Error:', err.message);
   console.log(JSON.stringify({ result: 'continue' }));
 });

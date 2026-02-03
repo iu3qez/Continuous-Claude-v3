@@ -205,6 +205,6 @@ async function main() {
   console.log(JSON.stringify(output));
 }
 main().catch((err) => {
-  console.error("git-commit-roadmap error:", err);
+  console.error("[git-commit-roadmap] Error:", err.message);
   console.log(JSON.stringify({ result: "continue" }));
 });

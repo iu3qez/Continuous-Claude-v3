@@ -331,6 +331,7 @@ async function main() {
   }
   console.log(JSON.stringify(result));
 }
-main().catch(() => {
+main().catch((err) => {
+  console.error("[roadmap-completion] Error:", err.message);
   console.log(JSON.stringify({ result: "continue" }));
 });

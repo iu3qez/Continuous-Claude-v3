@@ -635,6 +635,6 @@ async function readStdin(): Promise<string> {
 }
 
 main().catch(err => {
-  console.error('post-plan-roadmap error:', err);
+  console.error('[post-plan-roadmap] Error:', err.message);
   console.log(JSON.stringify({ result: 'continue' }));
 });

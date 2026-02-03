@@ -2,9 +2,13 @@
 
 ## Current Focus
 
-_No current goal. Next planned item will be promoted on next planning session._
+**Actions Kanban Board [PRD-001]**
+- Started: 2026-02-03
+
+
 
 ## Completed
+- [x] ROADMAP as Source of Truth Implementation (2026-02-03)
 - [x] Git commit ROADMAP sync hook (2026-02-03)
 - [x] ROADMAP auto-update mechanism fix (2026-02-03)
 - [x] Memory & Braintrust systems health check (2026-02-03)
@@ -30,6 +34,9 @@ _No current goal. Next planned item will be promoted on next planning session._
 
 ## Planned
 
+- [ ] Decisions Filter [PRD-002] (medium priority)
+- [ ] Dark Mode [PRD-003] (medium priority)
+- [ ] Agent Integration [PRD-004] (high priority)
 
 ## Recent Planning Sessions
 
