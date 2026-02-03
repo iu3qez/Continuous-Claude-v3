@@ -53,6 +53,50 @@ function isInfrastructureDir(projectDir: string): boolean {
 }
 
 /**
+ * Detect git operations and expand query for better memory matching.
+ * E.g., "push" → "git push remote fork origin" to catch repo-specific preferences.
+ */
+function expandGitQuery(prompt: string): string | null {
+  const lower = prompt.toLowerCase().trim();
+
+  // Git operation patterns and their expanded queries
+  const gitExpansions: Record<string, string> = {
+    'push': 'git push remote fork origin upstream',
+    'git push': 'git push remote fork origin upstream',
+    'commit': 'git commit message workflow',
+    'git commit': 'git commit message workflow',
+    'pr': 'pull request pr create review',
+    'create pr': 'pull request pr create github',
+    'pull request': 'pull request pr create github',
+    'merge': 'git merge branch main',
+    'rebase': 'git rebase branch workflow',
+    'checkout': 'git checkout branch switch',
+    'branch': 'git branch create switch',
+    'stash': 'git stash save pop',
+    'reset': 'git reset hard soft',
+    'force push': 'git push force dangerous',
+  };
+
+  // Check for exact or partial matches
+  for (const [pattern, expansion] of Object.entries(gitExpansions)) {
+    if (lower === pattern || lower.startsWith(pattern + ' ') || lower.endsWith(' ' + pattern)) {
+      return expansion;
+    }
+  }
+
+  // Check if prompt contains git-related words
+  const gitKeywords = ['git', 'push', 'commit', 'pr', 'merge', 'rebase', 'branch'];
+  const hasGitContext = gitKeywords.some(kw => lower.includes(kw));
+
+  if (hasGitContext) {
+    // Add git context to the search
+    return prompt + ' git remote workflow';
+  }
+
+  return null;
+}
+
+/**
  * Extract the INTENT from user prompt - what they're actually asking about.
  * Removes meta-language ("can you", "help me", "recall") to get core topic.
  */
@@ -266,8 +310,11 @@ async function main() {
     return;
   }
 
+  // Check for git operations first - expand query for better matching
+  const gitExpanded = expandGitQuery(input.prompt);
+
   // Extract intent (semantic query, not just keywords)
-  const intent = extractIntent(input.prompt);
+  const intent = gitExpanded || extractIntent(input.prompt);
 
   // Skip if no meaningful intent
   if (intent.length < 3) {

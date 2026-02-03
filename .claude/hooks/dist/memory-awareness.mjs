@@ -43,6 +43,36 @@ function isInfrastructureDir(projectDir) {
   const normalizedProject = (projectDir || "").replace(/\\/g, "/");
   return normalizedProject === claudeDir || normalizedProject.endsWith("/.claude");
 }
+function expandGitQuery(prompt) {
+  const lower = prompt.toLowerCase().trim();
+  const gitExpansions = {
+    "push": "git push remote fork origin upstream",
+    "git push": "git push remote fork origin upstream",
+    "commit": "git commit message workflow",
+    "git commit": "git commit message workflow",
+    "pr": "pull request pr create review",
+    "create pr": "pull request pr create github",
+    "pull request": "pull request pr create github",
+    "merge": "git merge branch main",
+    "rebase": "git rebase branch workflow",
+    "checkout": "git checkout branch switch",
+    "branch": "git branch create switch",
+    "stash": "git stash save pop",
+    "reset": "git reset hard soft",
+    "force push": "git push force dangerous"
+  };
+  for (const [pattern, expansion] of Object.entries(gitExpansions)) {
+    if (lower === pattern || lower.startsWith(pattern + " ") || lower.endsWith(" " + pattern)) {
+      return expansion;
+    }
+  }
+  const gitKeywords = ["git", "push", "commit", "pr", "merge", "rebase", "branch"];
+  const hasGitContext = gitKeywords.some((kw) => lower.includes(kw));
+  if (hasGitContext) {
+    return prompt + " git remote workflow";
+  }
+  return null;
+}
 function extractIntent(prompt) {
   const metaPhrases = [
     /^(can you|could you|would you|please|help me|i want to|i need to|let's|lets)\s+/gi,
@@ -310,7 +340,8 @@ async function main() {
     outputContinue();
     return;
   }
-  const intent = extractIntent(input.prompt);
+  const gitExpanded = expandGitQuery(input.prompt);
+  const intent = gitExpanded || extractIntent(input.prompt);
   if (intent.length < 3) {
     outputContinue();
     return;
