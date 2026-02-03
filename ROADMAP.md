@@ -2,9 +2,11 @@
 
 ## Current Focus
 
-- [ ] ROADMAP auto-update mechanism fix (2026-02-03)
+_No current goal. Next planned item will be promoted on next planning session._
 
 ## Completed
+- [x] Git commit ROADMAP sync hook (2026-02-03)
+- [x] ROADMAP auto-update mechanism fix (2026-02-03)
 - [x] Memory & Braintrust systems health check (2026-02-03)
   - Fixed DATABASE_URL port (5434→5432)
   - Fixed localhost→127.0.0.1 for Windows DNS

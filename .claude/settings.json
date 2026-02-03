@@ -224,6 +224,16 @@
         ]
       },
       {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node C:/Users/david.hayes/.claude/hooks/dist/git-commit-roadmap.mjs",
+            "timeout": 5000
+          }
+        ]
+      },
+      {
         "matcher": "Edit|Write|Bash|TaskUpdate",
         "hooks": [
           {
