@@ -35,11 +35,18 @@ from typing import Any
 
 from dotenv import load_dotenv
 
-# Load .env files
+# Load .env files - opc/.env is authoritative for DATABASE_URL
+# Use override=True so .env takes precedence over shell env vars
+script_dir = Path(__file__).resolve().parent
+opc_dir = script_dir.parent.parent  # opc/scripts/core -> opc/
+opc_env = opc_dir / ".env"
+if opc_env.exists():
+    load_dotenv(opc_env, override=True)  # opc/.env is authoritative
+
 global_env = Path.home() / ".claude" / ".env"
 if global_env.exists():
-    load_dotenv(global_env)
-load_dotenv()
+    load_dotenv(global_env)  # Global env supplements but doesn't override
+load_dotenv()  # CWD .env as fallback
 
 # Add scripts to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
