@@ -166,12 +166,40 @@ Before ANY task:
 
 **Commands:**
 ```bash
-# Recall before starting
-recall_learnings.py --query "relevant keywords"
+# Recall before starting (hybrid - best accuracy)
+cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/recall_learnings.py --query "relevant keywords" --hybrid
 
 # Store after learning something
-store_learning.py --type WORKING_SOLUTION --content "what worked"
+cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/store_learning.py --type WORKING_SOLUTION --content "what worked"
 ```
+
+---
+
+## Search Method Selection
+
+```
+SEARCH/RECALL
+    │
+    ├── Large structured document (ROADMAP, ARCHITECTURE)?
+    │   └── YES → --pageindex
+    │
+    ├── Need highest accuracy?
+    │   └── YES → --hybrid (recommended)
+    │
+    ├── Pattern/approach recall?
+    │   └── YES → default (vector)
+    │
+    └── Fast keyword/tag search?
+        └── YES → --text-only
+```
+
+**Quick Reference:**
+| Query Type | Flag | When |
+|------------|------|------|
+| "What does ROADMAP say about X?" | `--pageindex` | Structured doc queries |
+| "How did we solve X?" | `--hybrid` | Best accuracy |
+| Code patterns | (default) | Semantic similarity |
+| Keyword search | `--text-only` | Fast, exact matches |
 
 ---
 
