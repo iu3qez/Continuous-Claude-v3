@@ -1,7 +1,7 @@
 ---
 name: validate-agent
 description: Validate plan tech choices against current best practices and past precedent
-model: haiku
+model: sonnet
 ---
 
 # Validate Agent

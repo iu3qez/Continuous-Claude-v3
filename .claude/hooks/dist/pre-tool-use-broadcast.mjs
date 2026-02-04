@@ -70,7 +70,8 @@ print(json.dumps(broadcasts))
 `;
     const result = spawnSync("python3", ["-c", query, dbPath, swarmId, agentId], {
       encoding: "utf-8",
-      maxBuffer: 1024 * 1024
+      maxBuffer: 1024 * 1024,
+      timeout: 5e3
     });
     if (result.status !== 0) {
       console.log(JSON.stringify({ result: "continue" }));

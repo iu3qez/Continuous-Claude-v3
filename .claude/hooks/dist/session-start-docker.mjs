@@ -8,7 +8,8 @@ function sleep(ms) {
 }
 var CONTAINER_NAME = "continuous-claude-postgres";
 var DOCKER_DIR = join(homedir(), ".claude", "docker");
-var MAX_WAIT_SECONDS = 30;
+var MAX_WAIT_SECONDS = 10;
+var MAX_RETRIES = 2;
 function isDockerAvailable() {
   try {
     execSync("docker info", { stdio: "pipe" });
@@ -67,20 +68,43 @@ async function waitForHealthy() {
     try {
       const result = execSync(
         `docker inspect --format="{{.State.Health.Status}}" ${CONTAINER_NAME}`,
-        { encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"] }
+        { encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"], timeout: 3e3 }
       );
       if (result.trim() === "healthy") {
         return true;
       }
     } catch {
       if (isContainerRunning()) {
-        await sleep(2e3);
+        await sleep(1e3);
         return true;
       }
     }
-    await sleep(1e3);
+    await sleep(500);
   }
   return false;
+}
+async function startContainerWithRetry() {
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    const startResult = startContainer();
+    if (!startResult.success) {
+      if (attempt < MAX_RETRIES) {
+        await sleep(1e3);
+        continue;
+      }
+      return startResult;
+    }
+    const healthy = await waitForHealthy();
+    if (healthy) {
+      return { success: true, message: startResult.message };
+    }
+    if (isContainerRunning()) {
+      return { success: true, message: "Container running (health check pending)" };
+    }
+    if (attempt < MAX_RETRIES) {
+      await sleep(1e3);
+    }
+  }
+  return { success: false, message: `Failed after ${MAX_RETRIES} attempts` };
 }
 async function main() {
   let input;
@@ -113,7 +137,7 @@ async function main() {
     console.log(JSON.stringify({ result: "continue" }));
     return;
   }
-  const startResult = startContainer();
+  const startResult = await startContainerWithRetry();
   if (!startResult.success) {
     const output2 = {
       result: "continue",
@@ -122,18 +146,9 @@ async function main() {
     console.log(JSON.stringify(output2));
     return;
   }
-  const healthy = await waitForHealthy();
-  if (!healthy) {
-    const output2 = {
-      result: "continue",
-      message: "PostgreSQL container started but not healthy yet. Memory operations may fail initially."
-    };
-    console.log(JSON.stringify(output2));
-    return;
-  }
   const output = {
     result: "continue",
-    message: "PostgreSQL memory container started and healthy"
+    message: startResult.message || "PostgreSQL memory container started"
   };
   console.log(JSON.stringify(output));
 }

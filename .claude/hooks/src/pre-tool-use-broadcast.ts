@@ -93,7 +93,8 @@ print(json.dumps(broadcasts))
         // Use spawnSync with argument array to prevent command injection
         const result = spawnSync('python3', ['-c', query, dbPath, swarmId, agentId], {
             encoding: 'utf-8',
-            maxBuffer: 1024 * 1024
+            maxBuffer: 1024 * 1024,
+            timeout: 5000
         });
 
         if (result.status !== 0) {

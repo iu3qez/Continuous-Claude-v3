@@ -48,7 +48,8 @@ export function queryDb(pythonQuery: string, args: string[]): string {
   // Use spawnSync with argument array to prevent command injection
   const result = spawnSync('python3', ['-c', pythonQuery, ...args], {
     encoding: 'utf-8',
-    maxBuffer: 1024 * 1024
+    maxBuffer: 1024 * 1024,
+    timeout: 5000
   });
 
   if (result.status !== 0) {
@@ -73,7 +74,8 @@ export function runPythonQuery(script: string, args: string[]): QueryResult {
   try {
     const result = spawnSync('python3', ['-c', script, ...args], {
       encoding: 'utf-8',
-      maxBuffer: 1024 * 1024
+      maxBuffer: 1024 * 1024,
+      timeout: 5000
     });
 
     return {

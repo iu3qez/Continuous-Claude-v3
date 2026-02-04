@@ -26,7 +26,8 @@ function sleep(ms: number): Promise<void> {
 
 const CONTAINER_NAME = 'continuous-claude-postgres';
 const DOCKER_DIR = join(homedir(), '.claude', 'docker');
-const MAX_WAIT_SECONDS = 30;
+const MAX_WAIT_SECONDS = 10;  // Reduced from 30 to prevent timeout race with hook timeout
+const MAX_RETRIES = 2;
 
 /**
  * Check if Docker is available
@@ -99,6 +100,7 @@ function startContainer(): { success: boolean; message: string } {
 
 /**
  * Wait for container to be healthy (async, non-blocking)
+ * Returns true if container becomes healthy, false on timeout
  */
 async function waitForHealthy(): Promise<boolean> {
   const startTime = Date.now();
@@ -108,20 +110,53 @@ async function waitForHealthy(): Promise<boolean> {
     try {
       const result = execSync(
         `docker inspect --format="{{.State.Health.Status}}" ${CONTAINER_NAME}`,
-        { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }
+        { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'], timeout: 3000 }
       );
       if (result.trim() === 'healthy') {
         return true;
       }
     } catch {
+      // If container is running but health check fails, assume it's ready
       if (isContainerRunning()) {
-        await sleep(2000);
+        await sleep(1000);
         return true;
       }
     }
-    await sleep(1000);
+    await sleep(500);  // Reduced from 1000 for faster iteration
   }
   return false;
+}
+
+/**
+ * Start container with retry logic
+ */
+async function startContainerWithRetry(): Promise<{ success: boolean; message: string }> {
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    const startResult = startContainer();
+    if (!startResult.success) {
+      if (attempt < MAX_RETRIES) {
+        await sleep(1000);  // Wait before retry
+        continue;
+      }
+      return startResult;
+    }
+
+    const healthy = await waitForHealthy();
+    if (healthy) {
+      return { success: true, message: startResult.message };
+    }
+
+    // If not healthy but running, still consider it a success
+    if (isContainerRunning()) {
+      return { success: true, message: 'Container running (health check pending)' };
+    }
+
+    if (attempt < MAX_RETRIES) {
+      await sleep(1000);  // Wait before retry
+    }
+  }
+
+  return { success: false, message: `Failed after ${MAX_RETRIES} attempts` };
 }
 
 /**
@@ -165,8 +200,8 @@ export async function main(): Promise<void> {
     return;
   }
 
-  // Try to start the container
-  const startResult = startContainer();
+  // Try to start the container with retry logic
+  const startResult = await startContainerWithRetry();
   if (!startResult.success) {
     const output: HookOutput = {
       result: 'continue',
@@ -176,21 +211,10 @@ export async function main(): Promise<void> {
     return;
   }
 
-  // Wait for container to be healthy
-  const healthy = await waitForHealthy();
-  if (!healthy) {
-    const output: HookOutput = {
-      result: 'continue',
-      message: 'PostgreSQL container started but not healthy yet. Memory operations may fail initially.'
-    };
-    console.log(JSON.stringify(output));
-    return;
-  }
-
-  // Success - container is running and healthy
+  // Success - container is running (startContainerWithRetry includes health check)
   const output: HookOutput = {
     result: 'continue',
-    message: 'PostgreSQL memory container started and healthy'
+    message: startResult.message || 'PostgreSQL memory container started'
   };
   console.log(JSON.stringify(output));
 }
