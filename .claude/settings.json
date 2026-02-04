@@ -32,6 +32,11 @@
           },
           {
             "type": "command",
+            "command": "node C:/Users/david.hayes/.claude/hooks/dist/navigator-validate.mjs",
+            "timeout": 5000
+          },
+          {
+            "type": "command",
             "command": "node C:/Users/david.hayes/.claude/hooks/dist/task-router.mjs",
             "timeout": 5000
           },
@@ -78,6 +83,16 @@
         ]
       },
       {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node C:/Users/david.hayes/.claude/hooks/dist/navigator-safety.mjs",
+            "timeout": 3000
+          }
+        ]
+      },
+      {
         "matcher": "Edit|Write",
         "hooks": [
           {
@@ -115,6 +130,11 @@
             "type": "command",
             "command": "node C:/Users/david.hayes/.claude/hooks/dist/memory-awareness.mjs",
             "timeout": 10000
+          },
+          {
+            "type": "command",
+            "command": "node C:/Users/david.hayes/.claude/hooks/dist/pageindex-navigator.mjs",
+            "timeout": 5000
           },
           {
             "type": "command",
