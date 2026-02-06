@@ -89,7 +89,7 @@ function LearningCard({ learning }: { learning: Learning }) {
         </p>
       )}
 
-      {learning.tags.length > 0 && (
+      {learning.tags && learning.tags.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {learning.tags.map((tag) => (
             <Badge

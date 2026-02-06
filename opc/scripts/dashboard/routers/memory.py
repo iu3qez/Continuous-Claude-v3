@@ -18,22 +18,14 @@ router = APIRouter(prefix="/api/pillars/memory", tags=["memory"])
 
 @router.get("/learnings")
 async def list_learnings(
-    skip: int = Query(0, ge=0, description="Number of records to skip"),
-    limit: int = Query(20, ge=1, le=100, description="Number of records to return"),
+    page: int = Query(1, ge=1, description="Page number (1-indexed)"),
+    page_size: int = Query(20, ge=1, le=100, description="Number of records per page"),
     search: Optional[str] = Query(None, description="Search text in content"),
     type_filter: Optional[str] = Query(None, description="Filter by learning type"),
 ) -> dict[str, Any]:
-    """List learnings with pagination and optional filtering.
+    """List learnings with page-based pagination and optional filtering."""
+    offset = (page - 1) * page_size
 
-    Args:
-        skip: Number of records to skip (for pagination).
-        limit: Maximum number of records to return (1-100).
-        search: Optional search query to filter by content.
-        type_filter: Optional filter by learning type (from metadata).
-
-    Returns:
-        Dict with items, total count, skip, and limit.
-    """
     pool = await get_pool()
     async with pool.acquire() as conn:
         where_clauses = []
@@ -57,8 +49,8 @@ async def list_learnings(
         count_query = f"SELECT COUNT(*) FROM archival_memory {where_sql}"
         total = await conn.fetchval(count_query, *params)
 
-        params.append(limit)
-        params.append(skip)
+        params.append(page_size)
+        params.append(offset)
         items_query = f"""
             SELECT id, content, session_id, agent_id, project_id, scope, metadata, created_at
             FROM archival_memory
@@ -80,16 +72,18 @@ async def list_learnings(
             "scope": row["scope"],
             "type": metadata.get("type"),
             "context": metadata.get("context"),
-            "tags": metadata.get("tags"),
+            "tags": metadata.get("tags") or [],
+            "confidence": metadata.get("confidence", "medium"),
+            "metadata": metadata,
             "created_at": row["created_at"].isoformat() if row["created_at"] else None,
         }
         items.append(item)
 
     return {
-        "items": items,
+        "learnings": items,
         "total": total or 0,
-        "skip": skip,
-        "limit": limit,
+        "page": page,
+        "page_size": page_size,
     }
 
 
@@ -135,6 +129,59 @@ async def get_learning(learning_id: str) -> dict[str, Any]:
         "scope": row["scope"],
         "type": metadata.get("type"),
         "context": metadata.get("context"),
-        "tags": metadata.get("tags"),
+        "tags": metadata.get("tags") or [],
+        "confidence": metadata.get("confidence", "medium"),
+        "metadata": metadata,
         "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+    }
+
+
+@router.get("/details")
+async def memory_details() -> dict[str, Any]:
+    """Get aggregated memory statistics for the detail panel."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        total_count = await conn.fetchval("SELECT COUNT(*) FROM archival_memory") or 0
+
+        type_rows = await conn.fetch(
+            "SELECT metadata::jsonb->>'type' AS learning_type, COUNT(*) AS cnt "
+            "FROM archival_memory WHERE metadata::jsonb->>'type' IS NOT NULL "
+            "GROUP BY learning_type ORDER BY cnt DESC"
+        )
+        by_type = {row["learning_type"]: row["cnt"] for row in type_rows}
+
+        scope_rows = await conn.fetch(
+            "SELECT scope, COUNT(*) AS cnt FROM archival_memory "
+            "WHERE scope IS NOT NULL GROUP BY scope ORDER BY cnt DESC"
+        )
+        by_scope = {row["scope"]: row["cnt"] for row in scope_rows}
+
+        recent_rows = await conn.fetch(
+            "SELECT id, content, session_id, agent_id, project_id, scope, metadata, created_at "
+            "FROM archival_memory ORDER BY created_at DESC LIMIT 5"
+        )
+
+    recent = []
+    for row in recent_rows:
+        metadata = json.loads(row["metadata"]) if row["metadata"] else {}
+        recent.append({
+            "id": str(row["id"]),
+            "content": row["content"],
+            "session_id": row["session_id"],
+            "agent_id": row["agent_id"],
+            "project_id": row["project_id"],
+            "scope": row["scope"],
+            "type": metadata.get("type"),
+            "context": metadata.get("context"),
+            "tags": metadata.get("tags") or [],
+            "confidence": metadata.get("confidence", "medium"),
+            "metadata": metadata,
+            "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+        })
+
+    return {
+        "total_count": total_count,
+        "by_type": by_type,
+        "by_scope": by_scope,
+        "recent": recent,
     }

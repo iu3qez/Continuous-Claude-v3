@@ -20,7 +20,7 @@ export interface Learning {
   type: string
   content: string
   context: string | null
-  tags: string[]
+  tags: string[] | null
   confidence: string
   created_at: string
   metadata: Record<string, unknown>

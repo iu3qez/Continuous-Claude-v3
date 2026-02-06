@@ -55,20 +55,11 @@ def _scan_handoff_files() -> list[dict[str, Any]]:
 
 
 async def _get_db_handoffs(
-    skip: int = 0,
+    offset: int = 0,
     limit: int = 20,
     status_filter: Optional[str] = None,
 ) -> tuple[list[dict[str, Any]], int]:
-    """Query handoffs from database.
-
-    Args:
-        skip: Number of records to skip.
-        limit: Maximum records to return.
-        status_filter: Filter by outcome status.
-
-    Returns:
-        Tuple of (handoffs list, total count).
-    """
+    """Query handoffs from database."""
     handoffs = []
     total = 0
 
@@ -87,14 +78,14 @@ async def _get_db_handoffs(
 
             base_query += " ORDER BY created_at DESC"
             base_query += f" OFFSET ${len(params) + 1} LIMIT ${len(params) + 2}"
-            params.extend([skip, limit])
+            params.extend([offset, limit])
 
             if status_filter and status_filter in VALID_OUTCOMES:
                 total = await conn.fetchval(count_query, status_filter)
                 rows = await conn.fetch(base_query, *params)
             else:
                 total = await conn.fetchval(count_query)
-                rows = await conn.fetch(base_query, skip, limit)
+                rows = await conn.fetch(base_query, offset, limit)
 
             for row in rows:
                 handoffs.append({
@@ -113,25 +104,17 @@ async def _get_db_handoffs(
 
 @router.get("")
 async def list_handoffs(
-    skip: int = Query(0, ge=0, description="Number of records to skip"),
-    limit: int = Query(20, ge=1, le=100, description="Maximum records to return"),
+    page: int = Query(1, ge=1, description="Page number (1-indexed)"),
+    page_size: int = Query(50, ge=1, le=100, description="Number of records per page"),
     status_filter: Optional[str] = Query(None, description="Filter by outcome status"),
 ) -> dict[str, Any]:
-    """List handoffs with pagination and optional filtering.
+    """List handoffs with page-based pagination and optional filtering.
 
-    Combines results from:
-    - PostgreSQL handoffs table
-    - HANDOFF-*.md files in .claude/ directory
-
-    Args:
-        skip: Pagination offset.
-        limit: Maximum results per page.
-        status_filter: Filter by outcome (SUCCEEDED, PARTIAL_PLUS, etc.)
-
-    Returns:
-        Dict with handoffs list and total count.
+    Combines results from PostgreSQL handoffs table and HANDOFF-*.md files.
     """
-    db_handoffs, db_total = await _get_db_handoffs(skip, limit, status_filter)
+    offset = (page - 1) * page_size
+
+    db_handoffs, db_total = await _get_db_handoffs(offset, page_size, status_filter)
     file_handoffs = _scan_handoff_files()
 
     if status_filter:
@@ -140,11 +123,13 @@ async def list_handoffs(
     all_handoffs = db_handoffs + file_handoffs
     all_handoffs.sort(key=lambda x: x.get("created_at") or "", reverse=True)
 
-    paginated = all_handoffs[skip : skip + limit]
+    paginated = all_handoffs[offset : offset + page_size]
 
     return {
         "handoffs": paginated,
         "total": db_total + len(file_handoffs),
+        "page": page,
+        "page_size": page_size,
     }
 
 
