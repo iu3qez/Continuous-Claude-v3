@@ -205,5 +205,51 @@ def run():
     )
 
 
+def status_service() -> int:
+    import shutil
+    import subprocess
+
+    nssm = shutil.which("nssm")
+    if not nssm:
+        print("ERROR: nssm not found on PATH.")
+        return 1
+
+    result = subprocess.run(
+        [nssm, "status", "SessionDashboard"],
+        capture_output=True,
+        text=True,
+    )
+    status = result.stdout.strip() or result.stderr.strip()
+    print(f"SessionDashboard: {status}")
+    return 0 if "SERVICE_RUNNING" in status else 1
+
+
+def cli():
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Session Dashboard")
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
+
+    subparsers.add_parser("run", help="Start the dashboard server")
+    subparsers.add_parser("install", help="Install as Windows service")
+    subparsers.add_parser("uninstall", help="Remove Windows service")
+    subparsers.add_parser("status", help="Check service status")
+
+    args = parser.parse_args()
+
+    if args.command == "install":
+        from dashboard.service.install import main as install_main
+
+        sys.exit(install_main())
+    elif args.command == "uninstall":
+        from dashboard.service.uninstall import main as uninstall_main
+
+        sys.exit(uninstall_main())
+    elif args.command == "status":
+        sys.exit(status_service())
+    else:
+        run()
+
+
 if __name__ == "__main__":
-    run()
+    cli()
