@@ -1,0 +1,299 @@
+import { useEffect, useState, useCallback } from 'react'
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
+import { fetchHandoffs, fetchHandoff } from '@/lib/api'
+import type { HandoffSummary, HandoffDetail } from '@/types'
+import { cn } from '@/lib/utils'
+
+interface HandoffsDetailProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}
+
+type OutcomeFilter = 'all' | 'success' | 'partial' | 'blocked'
+
+const OUTCOME_CONFIG: Record<string, { label: string; className: string }> = {
+  success: {
+    label: 'success',
+    className: 'bg-green-500/15 text-green-600 border-green-500/30',
+  },
+  partial: {
+    label: 'partial',
+    className: 'bg-yellow-500/15 text-yellow-600 border-yellow-500/30',
+  },
+  blocked: {
+    label: 'blocked',
+    className: 'bg-red-500/15 text-red-600 border-red-500/30',
+  },
+}
+
+function formatTimeAgo(dateStr: string | null): string {
+  if (!dateStr) return 'Unknown'
+
+  const date = new Date(dateStr)
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMins / 60)
+  const diffDays = Math.floor(diffHours / 24)
+
+  if (diffMins < 1) return 'Just now'
+  if (diffMins < 60) return `${diffMins} minutes ago`
+  if (diffHours < 24) return `${diffHours} hours ago`
+  if (diffDays < 7) return `${diffDays} days ago`
+  return date.toLocaleDateString()
+}
+
+export function HandoffsDetail({ open, onOpenChange }: HandoffsDetailProps) {
+  const [handoffs, setHandoffs] = useState<HandoffSummary[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [filter, setFilter] = useState<OutcomeFilter>('all')
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [expandedContent, setExpandedContent] = useState<HandoffDetail | null>(null)
+  const [isLoadingDetail, setIsLoadingDetail] = useState(false)
+
+  const loadHandoffs = useCallback(async () => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const response = await fetchHandoffs({ page_size: 50 })
+      setHandoffs(response.handoffs)
+    } catch {
+      setError('Failed to load handoffs')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (open) {
+      loadHandoffs()
+    }
+  }, [open, loadHandoffs])
+
+  const handleExpand = async (id: string) => {
+    if (expandedId === id) {
+      setExpandedId(null)
+      setExpandedContent(null)
+      return
+    }
+
+    setExpandedId(id)
+    setIsLoadingDetail(true)
+    try {
+      const detail = await fetchHandoff(id)
+      setExpandedContent(detail)
+    } catch {
+      setExpandedContent(null)
+    } finally {
+      setIsLoadingDetail(false)
+    }
+  }
+
+  const filteredHandoffs = handoffs.filter((h) => {
+    if (filter === 'all') return true
+    return h.status === filter
+  })
+
+  const filterButtons: { value: OutcomeFilter; label: string }[] = [
+    { value: 'all', label: 'All' },
+    { value: 'success', label: 'Success' },
+    { value: 'partial', label: 'Partial' },
+    { value: 'blocked', label: 'Blocked' },
+  ]
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="w-full sm:max-w-lg">
+        <SheetHeader>
+          <SheetTitle>Handoffs</SheetTitle>
+          <SheetDescription>Session transfer documents timeline</SheetDescription>
+        </SheetHeader>
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          {filterButtons.map((btn) => (
+            <Button
+              key={btn.value}
+              variant={filter === btn.value ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFilter(btn.value)}
+              aria-label={btn.label}
+            >
+              {btn.label}
+            </Button>
+          ))}
+        </div>
+
+        <ScrollArea className="mt-4 h-[calc(100vh-200px)]">
+          {isLoading ? (
+            <div className="space-y-4 pr-4">
+              <p className="text-sm text-muted-foreground">Loading handoffs...</p>
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="space-y-2">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-1/2" />
+                </div>
+              ))}
+            </div>
+          ) : error ? (
+            <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">
+              {error}
+            </div>
+          ) : filteredHandoffs.length === 0 ? (
+            <div className="py-8 text-center text-sm text-muted-foreground">
+              No handoffs found
+            </div>
+          ) : (
+            <div className="relative pr-4">
+              <div className="absolute left-3 top-0 bottom-0 w-px bg-border" />
+
+              <div className="space-y-4">
+                {filteredHandoffs.map((handoff) => {
+                  const outcomeConfig = handoff.status
+                    ? OUTCOME_CONFIG[handoff.status]
+                    : null
+                  const isExpanded = expandedId === handoff.id
+
+                  return (
+                    <div key={handoff.id} className="relative pl-8">
+                      <div
+                        className={cn(
+                          'absolute left-1.5 top-2 h-3 w-3 rounded-full border-2 bg-background',
+                          handoff.status === 'success' && 'border-green-500',
+                          handoff.status === 'partial' && 'border-yellow-500',
+                          handoff.status === 'blocked' && 'border-red-500',
+                          !handoff.status && 'border-muted-foreground'
+                        )}
+                      />
+
+                      <div className="rounded-lg border bg-card p-3 shadow-sm">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <p className="font-medium leading-tight truncate">
+                              {handoff.title || handoff.id}
+                            </p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              {formatTimeAgo(handoff.created_at)}
+                            </p>
+                          </div>
+
+                          <div className="flex shrink-0 items-center gap-2">
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] px-1.5"
+                            >
+                              {handoff.source === 'db' ? 'DB' : 'File'}
+                            </Badge>
+                            {outcomeConfig && (
+                              <Badge
+                                variant="outline"
+                                className={cn('text-[10px]', outcomeConfig.className)}
+                              >
+                                {outcomeConfig.label}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="mt-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => handleExpand(handoff.id)}
+                            aria-label="expand"
+                          >
+                            {isExpanded ? (
+                              <>
+                                <svg
+                                  className="mr-1 h-3 w-3"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M5 15l7-7 7 7"
+                                  />
+                                </svg>
+                                Collapse
+                              </>
+                            ) : (
+                              <>
+                                <svg
+                                  className="mr-1 h-3 w-3"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M19 9l-7 7-7-7"
+                                  />
+                                </svg>
+                                Expand
+                              </>
+                            )}
+                          </Button>
+                        </div>
+
+                        {isExpanded && (
+                          <div className="mt-3 border-t pt-3">
+                            {isLoadingDetail ? (
+                              <div className="space-y-2">
+                                <Skeleton className="h-3 w-full" />
+                                <Skeleton className="h-3 w-3/4" />
+                                <Skeleton className="h-3 w-1/2" />
+                              </div>
+                            ) : expandedContent ? (
+                              <div className="text-sm">
+                                <pre className="whitespace-pre-wrap font-sans text-xs leading-relaxed text-muted-foreground">
+                                  {expandedContent.content}
+                                </pre>
+                                {expandedContent.metadata && Object.keys(expandedContent.metadata).length > 0 && (
+                                  <div className="mt-2 flex flex-wrap gap-1">
+                                    {Object.entries(expandedContent.metadata).map(([key, value]) => (
+                                      <Badge
+                                        key={key}
+                                        variant="secondary"
+                                        className="text-[10px]"
+                                      >
+                                        {key}: {String(value)}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <p className="text-xs text-muted-foreground">
+                                Failed to load content
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+        </ScrollArea>
+      </SheetContent>
+    </Sheet>
+  )
+}
