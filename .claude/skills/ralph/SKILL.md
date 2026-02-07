@@ -320,6 +320,13 @@ npm run lint
 ### 4.2 Create Summary
 Document what was built, changes made, tests added.
 
+### 4.2.1 Usage Stats [NEW]
+Capture session usage for workflow visibility:
+```bash
+python ~/.claude/scripts/tldr_stats.py
+```
+Append output to workflow summary. This is informational only (subscription plan).
+
 ### 4.3 Merge to Main
 ```bash
 git checkout main

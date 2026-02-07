@@ -47,6 +47,11 @@
           },
           {
             "type": "command",
+            "command": "node C:/Users/david.hayes/.claude/hooks/dist/ralph-template-inject.mjs",
+            "timeout": 5000
+          },
+          {
+            "type": "command",
             "command": "node C:/Users/david.hayes/.claude/hooks/dist/maestro-enforcer.mjs",
             "timeout": 10000
           },
@@ -153,6 +158,11 @@
           },
           {
             "type": "command",
+            "command": "node C:/Users/david.hayes/.claude/hooks/dist/ralph-watchdog.mjs",
+            "timeout": 5000
+          },
+          {
+            "type": "command",
             "command": "python C:/Users/david.hayes/.claude/hooks/braintrust_hooks.py user_prompt_submit",
             "timeout": 10000
           }
@@ -181,6 +191,11 @@
             "type": "command",
             "command": "node C:/Users/david.hayes/.claude/hooks/dist/session-start-init-check.mjs",
             "timeout": 15000
+          },
+          {
+            "type": "command",
+            "command": "node C:/Users/david.hayes/.claude/hooks/dist/session-start-recovery.mjs",
+            "timeout": 5000
           },
           {
             "type": "command",
@@ -283,6 +298,11 @@
           {
             "type": "command",
             "command": "node C:/Users/david.hayes/.claude/hooks/dist/git-commit-roadmap.mjs",
+            "timeout": 5000
+          },
+          {
+            "type": "command",
+            "command": "node C:/Users/david.hayes/.claude/hooks/dist/ralph-monitor.mjs",
             "timeout": 5000
           }
         ]

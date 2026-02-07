@@ -14,6 +14,11 @@
 
 import { readFileSync, writeFileSync, existsSync, unlinkSync } from 'fs';
 import { getStatePathWithMigration } from './shared/session-isolation.js';
+import { createLogger } from './shared/logger.js';
+import { writeStateWithLock, readStateWithLock } from './shared/atomic-write.js';
+import { validateMaestroState } from './shared/state-schema.js';
+
+const log = createLogger('maestro-enforcer');
 
 interface HookInput {
   tool_name: string;
@@ -49,15 +54,18 @@ function readState(sessionId?: string): MaestroState | null {
     return null;
   }
   try {
-    const content = readFileSync(stateFile, 'utf-8');
-    const state = JSON.parse(content) as MaestroState;
+    const content = readStateWithLock(stateFile);
+    if (!content) return null;
+    const state = validateMaestroState(JSON.parse(content), sessionId);
+    if (!state) return null;
     const lastTime = state.lastActivity || state.activatedAt;
     if (Date.now() - lastTime > STATE_TTL) {
       unlinkSync(stateFile);
       return null;
     }
     return state;
-  } catch {
+  } catch (err) {
+    log.error('Failed to read maestro state', { error: String(err), sessionId });
     return null;
   }
 }
@@ -67,7 +75,7 @@ function writeState(state: MaestroState, sessionId?: string): void {
   try {
     state.lastActivity = Date.now();
     state.sessionId = sessionId;
-    writeFileSync(stateFile, JSON.stringify(state, null, 2), 'utf-8');
+    writeStateWithLock(stateFile, JSON.stringify(state, null, 2));
   } catch {
     // Ignore write errors
   }
@@ -135,6 +143,7 @@ async function main() {
     }
 
     // Maestro is active - check workflow phase and agent type
+    log.info(`Checking Task tool: phase recon=${state.reconComplete} interview=${state.interviewComplete} plan=${state.planApproved}`, { sessionId });
     const agentType = input.tool_input.subagent_type?.toLowerCase() || 'general-purpose';
     const isScoutAgent = agentType === 'scout' || agentType === 'explore';
 

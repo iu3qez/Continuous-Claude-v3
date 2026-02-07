@@ -1,9 +1,7 @@
 #!/usr/bin/env node
 
-// src/maestro-cleanup.ts
-import { readFileSync, existsSync as existsSync3, unlinkSync as unlinkSync2, mkdirSync as mkdirSync2, writeFileSync } from "fs";
-import { join as join3 } from "path";
-import { homedir as homedir2 } from "os";
+// src/ralph-watchdog.ts
+import { readFileSync, existsSync as existsSync3 } from "fs";
 
 // src/shared/session-isolation.ts
 import { tmpdir, hostname } from "os";
@@ -41,29 +39,6 @@ function getStatePathWithMigration(baseName, sessionId) {
     }
   }
   return sessionPath;
-}
-function cleanupOldStateFiles(baseName, maxAgeMs = 24 * 60 * 60 * 1e3) {
-  const tmpDir = tmpdir();
-  const pattern = new RegExp(`^claude-${baseName}-.*\\.json$`);
-  let cleaned = 0;
-  try {
-    const files = readdirSync(tmpDir);
-    const now = Date.now();
-    for (const file of files) {
-      if (!pattern.test(file)) continue;
-      const fullPath = join(tmpDir, file);
-      try {
-        const stat = statSync(fullPath);
-        if (now - stat.mtimeMs > maxAgeMs) {
-          unlinkSync(fullPath);
-          cleaned++;
-        }
-      } catch {
-      }
-    }
-  } catch {
-  }
-  return cleaned;
 }
 
 // src/shared/logger.ts
@@ -137,10 +112,13 @@ function createLogger(hookName) {
   };
 }
 
-// src/maestro-cleanup.ts
-var log = createLogger("maestro-cleanup");
-var STATE_FILES = ["maestro-state", "ralph-state"];
-var RECOVERY_DIR = join3(homedir2(), ".claude", "recovery");
+// src/ralph-watchdog.ts
+var log = createLogger("ralph-watchdog");
+var STALE_THRESHOLD_MS = 30 * 60 * 1e3;
+var STATE_FILES = [
+  { baseName: "ralph-state", label: "Ralph" },
+  { baseName: "maestro-state", label: "Maestro" }
+];
 function readStdin() {
   try {
     return readFileSync(0, "utf-8");
@@ -148,62 +126,31 @@ function readStdin() {
     return "{}";
   }
 }
-function ensureRecoveryDir() {
-  if (!existsSync3(RECOVERY_DIR)) {
-    mkdirSync2(RECOVERY_DIR, { recursive: true });
-  }
-}
-function isIncompleteWorkflow(content, baseName) {
-  try {
-    const state = JSON.parse(content);
-    if (!state.active) return false;
-    if (baseName === "ralph-state") {
-      return true;
-    }
-    if (baseName === "maestro-state") {
-      return true;
-    }
-    return false;
-  } catch {
-    return false;
-  }
-}
-function archiveState(baseName, content, sessionId) {
-  try {
-    ensureRecoveryDir();
-    const timestamp = (/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-");
-    const filename = `${baseName}-${timestamp}.json`;
-    const archivePath = join3(RECOVERY_DIR, filename);
-    const archive = {
-      baseName,
-      sessionId,
-      archivedAt: Date.now(),
-      archivedAtISO: (/* @__PURE__ */ new Date()).toISOString(),
-      state: JSON.parse(content)
-    };
-    writeFileSync(archivePath, JSON.stringify(archive, null, 2));
-    log.info(`Archived incomplete ${baseName} for recovery`, { archivePath, sessionId });
-  } catch (err) {
-    log.error(`Failed to archive ${baseName}`, { error: String(err), sessionId });
-  }
-}
-function cleanupStateFile(baseName, sessionId) {
+function checkStaleWorkflow(baseName, label, sessionId) {
   try {
     const stateFile = getStatePathWithMigration(baseName, sessionId);
-    if (existsSync3(stateFile)) {
-      try {
-        const content = readFileSync(stateFile, "utf-8");
-        if (isIncompleteWorkflow(content, baseName)) {
-          archiveState(baseName, content, sessionId);
-        }
-      } catch {
-      }
-      unlinkSync2(stateFile);
-      return true;
-    }
+    if (!existsSync3(stateFile)) return null;
+    const content = readFileSync(stateFile, "utf-8");
+    const state = JSON.parse(content);
+    if (!state.active) return null;
+    const lastTime = state.lastActivity || state.activatedAt;
+    if (!lastTime) return null;
+    const elapsed = Date.now() - lastTime;
+    if (elapsed < STALE_THRESHOLD_MS) return null;
+    const minutes = Math.round(elapsed / 6e4);
+    const storyId = state.storyId || "";
+    const taskType = state.taskType || "";
+    log.warn(`Stale ${label} workflow detected`, {
+      minutes,
+      storyId,
+      taskType,
+      sessionId
+    });
+    const details = [storyId, taskType].filter(Boolean).join(", ");
+    return `**${label}**${details ? ` (${details})` : ""} \u2014 idle for ${minutes} minutes`;
   } catch {
+    return null;
   }
-  return false;
 }
 async function main() {
   let input = {};
@@ -212,24 +159,30 @@ async function main() {
   } catch {
   }
   const sessionId = input.session_id;
-  const cleaned = [];
-  for (const baseName of STATE_FILES) {
-    if (cleanupStateFile(baseName, sessionId)) {
-      cleaned.push(baseName);
-    }
+  const staleWorkflows = [];
+  for (const { baseName, label } of STATE_FILES) {
+    const warning = checkStaleWorkflow(baseName, label, sessionId);
+    if (warning) staleWorkflows.push(warning);
   }
-  for (const baseName of STATE_FILES) {
-    cleanupOldStateFiles(baseName, 24 * 60 * 60 * 1e3);
-  }
-  if (cleaned.length > 0) {
-    log.info(`Session cleanup: ${cleaned.join(", ")}`, { sessionId });
-    console.log(JSON.stringify({
-      result: "continue",
-      message: `Cleaned up state: ${cleaned.join(", ")}`
-    }));
-  } else {
+  if (staleWorkflows.length === 0) {
     console.log(JSON.stringify({ result: "continue" }));
+    return;
   }
+  const message = [
+    "",
+    "\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501",
+    "\u26A0\uFE0F STALE WORKFLOW DETECTED",
+    "\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501",
+    "",
+    ...staleWorkflows.map((w) => `  ${w}`),
+    "",
+    "**Actions:**",
+    "  - Check for blocked/hung agents",
+    '  - Say "cancel ralph" or "cancel maestro" to stop',
+    "  - Or continue working (workflow may need manual intervention)",
+    "\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501"
+  ].join("\n");
+  console.log(JSON.stringify({ result: "continue", message }));
 }
 main().catch(() => {
   console.log(JSON.stringify({ result: "continue" }));

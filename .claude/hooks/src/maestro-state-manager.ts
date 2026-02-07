@@ -17,6 +17,11 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import { outputContinue } from './shared/output.js';
 import { getSessionStatePath, getStatePathWithMigration, cleanupOldStateFiles } from './shared/session-isolation.js';
+import { createLogger } from './shared/logger.js';
+import { writeStateWithLock, readStateWithLock } from './shared/atomic-write.js';
+import { validateMaestroState } from './shared/state-schema.js';
+
+const log = createLogger('maestro-state-manager');
 
 interface HookInput {
   session_id?: string;
@@ -59,8 +64,10 @@ function readState(sessionId?: string): MaestroState {
     return defaultState();
   }
   try {
-    const content = readFileSync(stateFile, 'utf-8');
-    const state = JSON.parse(content) as MaestroState;
+    const content = readStateWithLock(stateFile);
+    if (!content) return defaultState();
+    const state = validateMaestroState(JSON.parse(content), sessionId);
+    if (!state) return defaultState();
 
     // Check TTL based on lastActivity (heartbeat) or activatedAt
     const lastTime = state.lastActivity || state.activatedAt;
@@ -70,7 +77,7 @@ function readState(sessionId?: string): MaestroState {
     return state;
   } catch (err) {
     // Log corruption but return default (fail safe)
-    console.error(`[Maestro] State file error: ${err}`);
+    log.error('State file corrupted', { error: String(err), sessionId });
     return defaultState();
   }
 }
@@ -80,7 +87,7 @@ function writeState(state: MaestroState, sessionId?: string): void {
   try {
     state.lastActivity = Date.now();
     state.sessionId = sessionId;
-    writeFileSync(stateFile, JSON.stringify(state, null, 2), 'utf-8');
+    writeStateWithLock(stateFile, JSON.stringify(state, null, 2));
   } catch {
     // Ignore write errors
   }
@@ -242,6 +249,7 @@ async function main() {
 
     // Check for cancel
     if (matchesPattern(prompt, CANCEL_PATTERNS)) {
+      log.info('Maestro deactivated by user', { sessionId });
       clearState(sessionId);
       console.log(`
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -257,11 +265,9 @@ Returning to normal operation.
 
     // Check for activation
     if (!state.active && matchesAny(prompt, ACTIVATION_PATTERNS)) {
-      // Detect task type from the conversation context
-      // For now, default to implementation (which includes recon phase)
-      // Research tasks skip recon
       const isResearch = matchesAny(prompt, RESEARCH_PATTERNS) && !matchesAny(prompt, IMPLEMENTATION_PATTERNS);
       const taskType = isResearch ? 'research' : 'implementation';
+      log.info(`Maestro activated: type=${taskType}`, { sessionId });
 
       writeState({
         active: true,
@@ -330,6 +336,7 @@ Say "recon complete" when done exploring.
       // Check for recon completion (implementation tasks only)
       if (!state.reconComplete && matchesAny(prompt, RECON_COMPLETE_PATTERNS)) {
         state.reconComplete = true;
+        log.info('State transition: recon complete', { sessionId });
         writeState(state, sessionId);
         console.log(`
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -359,6 +366,7 @@ Task tool BLOCKED until interview complete.
       // Check for interview completion
       if (state.reconComplete && !state.interviewComplete && matchesPattern(prompt, INTERVIEW_COMPLETE_PATTERNS)) {
         state.interviewComplete = true;
+        log.info('State transition: interview complete', { sessionId });
         writeState(state, sessionId);
         const step = state.taskType === 'research' ? 1 : 2;
         console.log(`
@@ -384,6 +392,7 @@ Task tool still BLOCKED until plan approved.
       // Check for plan approval (only if interview complete)
       if (state.interviewComplete && !state.planApproved && matchesPattern(prompt, PLAN_APPROVAL_PATTERNS)) {
         state.planApproved = true;
+        log.info('State transition: plan approved', { sessionId });
         writeState(state, sessionId);
         console.log(`
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
