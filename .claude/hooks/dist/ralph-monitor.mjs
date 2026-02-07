@@ -128,7 +128,8 @@ function generateStatusOutput(signals) {
     output += "\nRECOMMENDED ACTION:\n";
     output += "  1. Review changes: git diff main...HEAD\n";
     output += "  2. Run tests: npm test / pytest\n";
-    output += "  3. Merge if passing: git checkout main && git merge <branch>\n";
+    output += "  3. Usage stats: python ~/.claude/scripts/tldr_stats.py\n";
+    output += "  4. Merge if passing: git checkout main && git merge <branch>\n";
   } else if (hasBlocked || hasError) {
     output += "\nRECOMMENDED ACTION:\n";
     output += "  1. Review the blocking issue\n";

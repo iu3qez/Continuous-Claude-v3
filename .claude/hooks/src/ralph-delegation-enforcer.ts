@@ -12,6 +12,11 @@ import { readFileSync, existsSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { getSessionStatePath, getStatePathWithMigration, cleanupOldStateFiles, hasOtherActiveSessions } from './shared/session-isolation.js';
+import { createLogger } from './shared/logger.js';
+import { writeStateWithLock, readStateWithLock } from './shared/atomic-write.js';
+import { validateRalphState } from './shared/state-schema.js';
+
+const log = createLogger('ralph-delegation-enforcer');
 
 interface HookInput {
   session_id?: string;
@@ -46,8 +51,10 @@ function readRalphState(sessionId?: string): RalphState | null {
     return null;
   }
   try {
-    const content = readFileSync(stateFile, 'utf-8');
-    const state = JSON.parse(content) as RalphState;
+    const content = readStateWithLock(stateFile);
+    if (!content) return null;
+    const state = validateRalphState(JSON.parse(content), sessionId);
+    if (!state) return null;
 
     // Check TTL based on lastActivity (heartbeat) or activatedAt
     const lastTime = state.lastActivity || state.activatedAt;
@@ -60,13 +67,13 @@ function readRalphState(sessionId?: string): RalphState | null {
     // Warn if approaching TTL
     if (elapsed > STATE_TTL * TTL_WARNING_THRESHOLD) {
       const remainingHours = ((STATE_TTL - elapsed) / (60 * 60 * 1000)).toFixed(1);
-      console.error(`[Ralph] Warning: Session expiring in ${remainingHours}h. Activity will extend TTL.`);
+      log.warn(`Session expiring in ${remainingHours}h. Activity will extend TTL.`, { sessionId });
     }
 
     return state;
   } catch (err) {
     // Log corruption for debugging but fail CLOSED (return null = no enforcement bypass)
-    console.error(`[Ralph] State file corrupted or invalid: ${err}. Enforcement remains active.`);
+    log.error(`State file corrupted or invalid. Enforcement remains active.`, { error: String(err), sessionId });
     // On corruption, we could either:
     // 1. Fail open (return null) - dangerous, allows bypass
     // 2. Fail closed (return a minimal active state) - safer
@@ -80,10 +87,12 @@ function updateHeartbeat(sessionId?: string): void {
   if (!existsSync(stateFile)) return;
 
   try {
-    const content = readFileSync(stateFile, 'utf-8');
-    const state = JSON.parse(content) as RalphState;
+    const content = readStateWithLock(stateFile);
+    if (!content) return;
+    const state = validateRalphState(JSON.parse(content));
+    if (!state) return;
     state.lastActivity = Date.now();
-    writeFileSync(stateFile, JSON.stringify(state, null, 2));
+    writeStateWithLock(stateFile, JSON.stringify(state, null, 2));
   } catch {
     // Ignore heartbeat failures
   }
@@ -195,6 +204,7 @@ async function main() {
 
     // Update heartbeat to extend TTL on activity
     updateHeartbeat(sessionId);
+    log.info(`Enforcing delegation: tool=${input.tool_name}`, { storyId: state.storyId, sessionId });
 
     // Ralph is active - enforce delegation
 
