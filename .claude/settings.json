@@ -163,6 +163,16 @@
           },
           {
             "type": "command",
+            "command": "node C:/Users/david.hayes/.claude/hooks/dist/ralph-progress-inject.mjs",
+            "timeout": 3000
+          },
+          {
+            "type": "command",
+            "command": "node C:/Users/david.hayes/.claude/hooks/dist/ralph-retry-reminder.mjs",
+            "timeout": 5000
+          },
+          {
+            "type": "command",
             "command": "python C:/Users/david.hayes/.claude/hooks/braintrust_hooks.py user_prompt_submit",
             "timeout": 10000
           }
@@ -259,6 +269,11 @@
             "type": "command",
             "command": "node C:/Users/david.hayes/.claude/hooks/dist/agent-verification.mjs",
             "timeout": 5000
+          },
+          {
+            "type": "command",
+            "command": "node C:/Users/david.hayes/.claude/hooks/dist/ralph-task-monitor.mjs",
+            "timeout": 10000
           }
         ]
       },

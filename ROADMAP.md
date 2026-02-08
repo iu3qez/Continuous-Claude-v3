@@ -5,6 +5,7 @@
 _No current goal. Next planned item will be promoted on next planning session._
 
 ## Completed
+- [x] PRD-001: Session Status Dashboard [PRD-001-session-status-dashboard.md] (2026-02-05)
 - [x] Agent Integration [PRD-004] (2026-02-04)
 - [x] Dark Mode [PRD-003] (2026-02-04)
 - [x] Decisions Filter [PRD-002] (2026-02-04)
@@ -34,6 +35,7 @@ _No current goal. Next planned item will be promoted on next planning session._
 - [x] Memory unit tests in opc/tests/ (2026-02)
 
 ## Planned
+- [ ] PRD: CLI Task Tracker [prd-cli-task-tracker.md] (normal)
 
 
 ## Recent Planning Sessions

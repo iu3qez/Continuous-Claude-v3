@@ -10,8 +10,10 @@
  */
 
 import { readFileSync, existsSync } from 'fs';
+import { join } from 'path';
 import { getStatePathWithMigration } from './shared/session-isolation.js';
 import { createLogger } from './shared/logger.js';
+import { readRalphUnifiedState } from './shared/state-schema.js';
 
 const log = createLogger('ralph-watchdog');
 
@@ -78,8 +80,26 @@ async function main() {
 
   const sessionId = input.session_id;
   const staleWorkflows: string[] = [];
+  let unifiedRalphChecked = false;
+
+  // Check unified state first
+  const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+  const unified = readRalphUnifiedState(projectDir);
+  if (unified?.session?.active) {
+    const lastHeartbeat = new Date(unified.session.last_heartbeat).getTime();
+    const elapsed = Date.now() - lastHeartbeat;
+    if (elapsed >= STALE_THRESHOLD_MS) {
+      const minutes = Math.round(elapsed / 60000);
+      log.warn('Stale unified Ralph workflow detected', { minutes, storyId: unified.story_id, sessionId });
+      const details = unified.story_id || '';
+      staleWorkflows.push(`**Ralph**${details ? ` (${details})` : ''} — idle for ${minutes} minutes`);
+    }
+    unifiedRalphChecked = true;
+  }
 
   for (const { baseName, label } of STATE_FILES) {
+    // Skip legacy ralph-state if unified already checked
+    if (baseName === 'ralph-state' && unifiedRalphChecked) continue;
     const warning = checkStaleWorkflow(baseName, label, sessionId);
     if (warning) staleWorkflows.push(warning);
   }

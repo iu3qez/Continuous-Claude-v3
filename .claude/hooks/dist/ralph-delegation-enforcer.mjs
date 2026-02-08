@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 
 // src/ralph-delegation-enforcer.ts
-import { readFileSync as readFileSync2, existsSync as existsSync4 } from "fs";
+import { readFileSync as readFileSync3, existsSync as existsSync5 } from "fs";
+import { join as join5 } from "path";
+import { spawnSync } from "child_process";
 
 // src/shared/session-isolation.ts
 import { tmpdir, hostname } from "os";
@@ -240,6 +242,8 @@ function readStateWithLock(filePath) {
 }
 
 // src/shared/state-schema.ts
+import { existsSync as existsSync4, readFileSync as readFileSync2 } from "fs";
+import { join as join4 } from "path";
 var log2 = createLogger("state-schema");
 function validateRalphState(obj, sessionId) {
   if (!obj || typeof obj !== "object") {
@@ -269,43 +273,53 @@ function validateRalphState(obj, sessionId) {
   }
   return obj;
 }
+function readRalphUnifiedState(projectDir) {
+  const dir = projectDir || process.env.CLAUDE_PROJECT_DIR || process.cwd();
+  const statePath = join4(dir, ".ralph", "state.json");
+  if (!existsSync4(statePath)) return null;
+  try {
+    const content = readFileSync2(statePath, "utf-8");
+    const state = JSON.parse(content);
+    if (!state.version || !state.version.startsWith("2.")) {
+      log2.warn("Ralph unified state has unexpected version", { version: state.version });
+      return null;
+    }
+    return state;
+  } catch (err) {
+    log2.warn("Failed to read Ralph unified state", { error: String(err) });
+    return null;
+  }
+}
+function isRalphActive(projectDir, sessionId) {
+  const unified = readRalphUnifiedState(projectDir);
+  if (unified?.session?.active) {
+    return { active: true, storyId: unified.story_id, source: "unified" };
+  }
+  try {
+    const legacyPath = getStatePathWithMigration("ralph-state", sessionId);
+    if (existsSync4(legacyPath)) {
+      const content = readFileSync2(legacyPath, "utf-8");
+      const state = JSON.parse(content);
+      const valid = validateRalphState(state, sessionId);
+      if (valid?.active) {
+        return { active: true, storyId: valid.storyId, source: "legacy" };
+      }
+    }
+  } catch {
+  }
+  return { active: false, storyId: "", source: "none" };
+}
 
 // src/ralph-delegation-enforcer.ts
 var log3 = createLogger("ralph-delegation-enforcer");
 var STATE_BASE_NAME = "ralph-state";
 var STATE_TTL = 12 * 60 * 60 * 1e3;
-var TTL_WARNING_THRESHOLD = 0.8;
 function getRalphStateFile(sessionId) {
   return getStatePathWithMigration(STATE_BASE_NAME, sessionId);
 }
-function readRalphState(sessionId) {
-  const stateFile = getRalphStateFile(sessionId);
-  if (!existsSync4(stateFile)) {
-    return null;
-  }
-  try {
-    const content = readStateWithLock(stateFile);
-    if (!content) return null;
-    const state = validateRalphState(JSON.parse(content), sessionId);
-    if (!state) return null;
-    const lastTime = state.lastActivity || state.activatedAt;
-    const elapsed = Date.now() - lastTime;
-    if (elapsed > STATE_TTL) {
-      return null;
-    }
-    if (elapsed > STATE_TTL * TTL_WARNING_THRESHOLD) {
-      const remainingHours = ((STATE_TTL - elapsed) / (60 * 60 * 1e3)).toFixed(1);
-      log3.warn(`Session expiring in ${remainingHours}h. Activity will extend TTL.`, { sessionId });
-    }
-    return state;
-  } catch (err) {
-    log3.error(`State file corrupted or invalid. Enforcement remains active.`, { error: String(err), sessionId });
-    return null;
-  }
-}
 function updateHeartbeat(sessionId) {
   const stateFile = getRalphStateFile(sessionId);
-  if (!existsSync4(stateFile)) return;
+  if (!existsSync5(stateFile)) return;
   try {
     const content = readStateWithLock(stateFile);
     if (!content) return;
@@ -317,7 +331,7 @@ function updateHeartbeat(sessionId) {
   }
 }
 function readStdin() {
-  return readFileSync2(0, "utf-8");
+  return readFileSync3(0, "utf-8");
 }
 function makeBlockOutput(reason) {
   const output = {
@@ -414,13 +428,29 @@ async function main() {
       return;
     }
     const sessionId = input.session_id;
-    const state = readRalphState(sessionId);
-    if (!state || !state.active) {
+    const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+    const ralphStatus = isRalphActive(projectDir, sessionId);
+    if (!ralphStatus.active) {
       makeAllowOutput();
       return;
     }
-    updateHeartbeat(sessionId);
-    log3.info(`Enforcing delegation: tool=${input.tool_name}`, { storyId: state.storyId, sessionId });
+    const storyId = ralphStatus.storyId;
+    if (ralphStatus.source === "unified") {
+      try {
+        const homeDir = process.env.HOME || process.env.USERPROFILE || "";
+        const v2Script = join5(homeDir, ".claude", "scripts", "ralph", "ralph-state-v2.py");
+        if (existsSync5(v2Script)) {
+          spawnSync("python", [v2Script, "-p", projectDir, "session-heartbeat"], {
+            encoding: "utf-8",
+            timeout: 3e3
+          });
+        }
+      } catch {
+      }
+    } else {
+      updateHeartbeat(sessionId);
+    }
+    log3.info(`Enforcing delegation: tool=${input.tool_name}`, { storyId, sessionId, source: ralphStatus.source });
     if (input.tool_name === "Edit") {
       const filePath = input.tool_input.file_path || "";
       if (isAllowedConfigFile(filePath)) {
@@ -438,7 +468,7 @@ Ralph mode is active. Direct code edits are BLOCKED.
 **INSTEAD:** Delegate to an agent:
 \`\`\`
 Task(subagent_type: kraken, prompt: |
-  Story: ${state.storyId}
+  Story: ${storyId}
   Task: <what you want to change>
   File: ${filePath}
   ...
@@ -474,7 +504,7 @@ Ralph mode is active. Direct code writes are BLOCKED.
 **INSTEAD:** Delegate to an agent:
 \`\`\`
 Task(subagent_type: kraken, prompt: |
-  Story: ${state.storyId}
+  Story: ${storyId}
   Task: Create new file ${filePath}
   Requirements: ...
 )
@@ -500,7 +530,7 @@ Ralph mode is active. Direct test/lint commands are BLOCKED.
 **INSTEAD:** Delegate to arbiter:
 \`\`\`
 Task(subagent_type: arbiter, prompt: |
-  Story: ${state.storyId}
+  Story: ${storyId}
   Task: Run tests and verify implementation
   Files: <affected files>
 )

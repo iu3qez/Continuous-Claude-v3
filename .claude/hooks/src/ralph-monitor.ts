@@ -73,27 +73,75 @@ function updateRalphState(signals: RalphSignal[], projectDir: string): boolean {
         return false;
     }
 
-    // Check if we have a ralph-state.json in the project
+    const homeDir = process.env.HOME || process.env.USERPROFILE || '';
+    let updated = false;
+
+    // Try unified state (v2) first
+    const v2Script = join(homeDir, '.claude', 'scripts', 'ralph', 'ralph-state-v2.py');
+    const v2StateFile = join(projectDir, '.ralph', 'state.json');
+
+    if (existsSync(v2Script) && existsSync(v2StateFile)) {
+        for (const signal of signals) {
+            // Find in-progress tasks and update them based on signal
+            if (signal.type === 'TASK_COMPLETE' || signal.type === 'COMPLETE') {
+                // Complete in-progress tasks
+                const result = spawnSync('python', [
+                    v2Script, '-p', projectDir, 'task-list'
+                ], { encoding: 'utf-8', timeout: 5000 });
+
+                if (result.status === 0) {
+                    try {
+                        const tasks = JSON.parse(result.stdout);
+                        for (const [taskId, task] of Object.entries(tasks as Record<string, any>)) {
+                            if (task.status === 'in_progress') {
+                                spawnSync('python', [
+                                    v2Script, '-p', projectDir, 'task-complete', '--id', taskId
+                                ], { encoding: 'utf-8', timeout: 5000 });
+                                updated = true;
+                            }
+                        }
+                    } catch { /* parse error */ }
+                }
+            } else if (signal.type === 'BLOCKED' || signal.type === 'ERROR') {
+                const result = spawnSync('python', [
+                    v2Script, '-p', projectDir, 'task-list'
+                ], { encoding: 'utf-8', timeout: 5000 });
+
+                if (result.status === 0) {
+                    try {
+                        const tasks = JSON.parse(result.stdout);
+                        for (const [taskId, task] of Object.entries(tasks as Record<string, any>)) {
+                            if (task.status === 'in_progress') {
+                                spawnSync('python', [
+                                    v2Script, '-p', projectDir, 'task-fail', '--id', taskId,
+                                    '--error', signal.reason || signal.type
+                                ], { encoding: 'utf-8', timeout: 5000 });
+                                updated = true;
+                            }
+                        }
+                    } catch { /* parse error */ }
+                }
+            }
+        }
+        return updated;
+    }
+
+    // Legacy fallback: ralph-state.py
     const stateFile = join(projectDir, '.ralph-state.json');
     if (!existsSync(stateFile)) {
         return false;
     }
 
-    const homeDir = process.env.HOME || process.env.USERPROFILE || '';
     const stateScript = join(homeDir, '.claude', 'scripts', 'ralph', 'ralph-state.py');
-
     if (!existsSync(stateScript)) {
         return false;
     }
-
-    let updated = false;
 
     for (const signal of signals) {
         if (!signal.storyId) {
             continue;
         }
 
-        // Call ralph-state.py signal command
         const result = spawnSync('python', [
             stateScript,
             '--project', projectDir,

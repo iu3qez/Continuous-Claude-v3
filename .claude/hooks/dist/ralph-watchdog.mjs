@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 // src/ralph-watchdog.ts
-import { readFileSync, existsSync as existsSync3 } from "fs";
+import { readFileSync as readFileSync2, existsSync as existsSync4 } from "fs";
 
 // src/shared/session-isolation.ts
 import { tmpdir, hostname } from "os";
@@ -87,7 +87,7 @@ function writeLog(entry) {
   }
 }
 function createLogger(hookName) {
-  function log2(level, msg, data) {
+  function log3(level, msg, data) {
     if (!shouldLog(level)) return;
     const entry = {
       ts: (/* @__PURE__ */ new Date()).toISOString(),
@@ -105,23 +105,64 @@ function createLogger(hookName) {
     }
   }
   return {
-    debug: (msg, data) => log2("debug", msg, data),
-    info: (msg, data) => log2("info", msg, data),
-    warn: (msg, data) => log2("warn", msg, data),
-    error: (msg, data) => log2("error", msg, data)
+    debug: (msg, data) => log3("debug", msg, data),
+    info: (msg, data) => log3("info", msg, data),
+    warn: (msg, data) => log3("warn", msg, data),
+    error: (msg, data) => log3("error", msg, data)
   };
 }
 
+// src/shared/state-schema.ts
+import { existsSync as existsSync3, readFileSync } from "fs";
+import { join as join3 } from "path";
+var log = createLogger("state-schema");
+function readRalphUnifiedState(projectDir) {
+  const dir = projectDir || process.env.CLAUDE_PROJECT_DIR || process.cwd();
+  const statePath = join3(dir, ".ralph", "state.json");
+  if (!existsSync3(statePath)) return null;
+  try {
+    const content = readFileSync(statePath, "utf-8");
+    const state = JSON.parse(content);
+    if (!state.version || !state.version.startsWith("2.")) {
+      log.warn("Ralph unified state has unexpected version", { version: state.version });
+      return null;
+    }
+    return state;
+  } catch (err) {
+    log.warn("Failed to read Ralph unified state", { error: String(err) });
+    return null;
+  }
+}
+
 // src/ralph-watchdog.ts
-var log = createLogger("ralph-watchdog");
+var log2 = createLogger("ralph-watchdog");
 var STALE_THRESHOLD_MS = 30 * 60 * 1e3;
+var AGENT_TIMEOUTS = {
+  spark: 5 * 60 * 1e3,
+  // 5 minutes
+  kraken: 15 * 60 * 1e3,
+  // 15 minutes
+  arbiter: 10 * 60 * 1e3,
+  // 10 minutes
+  "debug-agent": 10 * 60 * 1e3,
+  // 10 minutes
+  atlas: 10 * 60 * 1e3,
+  // 10 minutes
+  sleuth: 10 * 60 * 1e3,
+  // 10 minutes
+  architect: 10 * 60 * 1e3,
+  // 10 minutes
+  phoenix: 10 * 60 * 1e3
+  // 10 minutes
+};
+var DEFAULT_TASK_TIMEOUT_MS = 15 * 60 * 1e3;
 var STATE_FILES = [
   { baseName: "ralph-state", label: "Ralph" },
   { baseName: "maestro-state", label: "Maestro" }
 ];
 function readStdin() {
   try {
-    return readFileSync(0, "utf-8");
+    return readFileSync2(0, "utf-8");
   } catch {
     return "{}";
   }
@@ -129,8 +170,8 @@ function readStdin() {
 function checkStaleWorkflow(baseName, label, sessionId) {
   try {
     const stateFile = getStatePathWithMigration(baseName, sessionId);
-    if (!existsSync3(stateFile)) return null;
-    const content = readFileSync(stateFile, "utf-8");
+    if (!existsSync4(stateFile)) return null;
+    const content = readFileSync2(stateFile, "utf-8");
     const state = JSON.parse(content);
     if (!state.active) return null;
     const lastTime = state.lastActivity || state.activatedAt;
@@ -140,7 +181,7 @@ function checkStaleWorkflow(baseName, label, sessionId) {
     const minutes = Math.round(elapsed / 6e4);
     const storyId = state.storyId || "";
     const taskType = state.taskType || "";
-    log.warn(`Stale ${label} workflow detected`, {
+    log2.warn(`Stale ${label} workflow detected`, {
       minutes,
       storyId,
       taskType,
@@ -160,7 +201,38 @@ async function main() {
   }
   const sessionId = input.session_id;
   const staleWorkflows = [];
+  let unifiedRalphChecked = false;
+  const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+  const unified = readRalphUnifiedState(projectDir);
+  if (unified?.session?.active) {
+    const lastHeartbeat = new Date(unified.session.last_heartbeat).getTime();
+    const elapsed = Date.now() - lastHeartbeat;
+    if (elapsed >= STALE_THRESHOLD_MS) {
+      const minutes = Math.round(elapsed / 6e4);
+      log2.warn("Stale unified Ralph workflow detected", { minutes, storyId: unified.story_id, sessionId });
+      const details = unified.story_id || "";
+      staleWorkflows.push(`**Ralph**${details ? ` (${details})` : ""} \u2014 idle for ${minutes} minutes`);
+    }
+    const tasks = Array.isArray(unified.tasks) ? unified.tasks : Object.values(unified.tasks || {});
+    for (const task of tasks) {
+      if (task.status === "in_progress" && task.started_at) {
+        const taskStart = new Date(task.started_at).getTime();
+        const taskElapsed = Date.now() - taskStart;
+        const agentTimeout = AGENT_TIMEOUTS[task.agent] || DEFAULT_TASK_TIMEOUT_MS;
+        if (taskElapsed >= agentTimeout) {
+          const minutes = Math.round(taskElapsed / 6e4);
+          const limitMin = Math.round(agentTimeout / 6e4);
+          log2.warn(`Task ${task.id} exceeded timeout`, { agent: task.agent, minutes, limit: limitMin });
+          staleWorkflows.push(
+            `**Task ${task.id}** (${task.name || ""}) \u2014 ${task.agent} running ${minutes}min (limit: ${limitMin}min)`
+          );
+        }
+      }
+    }
+    unifiedRalphChecked = true;
+  }
   for (const { baseName, label } of STATE_FILES) {
+    if (baseName === "ralph-state" && unifiedRalphChecked) continue;
     const warning = checkStaleWorkflow(baseName, label, sessionId);
     if (warning) staleWorkflows.push(warning);
   }

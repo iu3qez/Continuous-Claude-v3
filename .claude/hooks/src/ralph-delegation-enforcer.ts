@@ -11,10 +11,11 @@
 import { readFileSync, existsSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
+import { spawnSync } from 'child_process';
 import { getSessionStatePath, getStatePathWithMigration, cleanupOldStateFiles, hasOtherActiveSessions } from './shared/session-isolation.js';
 import { createLogger } from './shared/logger.js';
 import { writeStateWithLock, readStateWithLock } from './shared/atomic-write.js';
-import { validateRalphState } from './shared/state-schema.js';
+import { validateRalphState, isRalphActive, readRalphUnifiedState } from './shared/state-schema.js';
 
 const log = createLogger('ralph-delegation-enforcer');
 
@@ -194,17 +195,35 @@ async function main() {
     }
 
     const sessionId = input.session_id;
-    const state = readRalphState(sessionId);
+    const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
 
-    // If Ralph not active, allow all
-    if (!state || !state.active) {
+    // Check unified state first, then legacy
+    const ralphStatus = isRalphActive(projectDir, sessionId);
+
+    if (!ralphStatus.active) {
       makeAllowOutput();
       return;
     }
 
-    // Update heartbeat to extend TTL on activity
-    updateHeartbeat(sessionId);
-    log.info(`Enforcing delegation: tool=${input.tool_name}`, { storyId: state.storyId, sessionId });
+    const storyId = ralphStatus.storyId;
+
+    // Update heartbeat — unified state uses ralph-state-v2.py, legacy uses temp file
+    if (ralphStatus.source === 'unified') {
+      try {
+        const homeDir = process.env.HOME || process.env.USERPROFILE || '';
+        const v2Script = join(homeDir, '.claude', 'scripts', 'ralph', 'ralph-state-v2.py');
+        if (existsSync(v2Script)) {
+          spawnSync('python', [v2Script, '-p', projectDir, 'session-heartbeat'], {
+            encoding: 'utf-8',
+            timeout: 3000,
+          });
+        }
+      } catch { /* ignore heartbeat failures */ }
+    } else {
+      updateHeartbeat(sessionId);
+    }
+
+    log.info(`Enforcing delegation: tool=${input.tool_name}`, { storyId, sessionId, source: ralphStatus.source });
 
     // Ralph is active - enforce delegation
 
@@ -230,7 +249,7 @@ Ralph mode is active. Direct code edits are BLOCKED.
 **INSTEAD:** Delegate to an agent:
 \`\`\`
 Task(subagent_type: kraken, prompt: |
-  Story: ${state.storyId}
+  Story: ${storyId}
   Task: <what you want to change>
   File: ${filePath}
   ...
@@ -273,7 +292,7 @@ Ralph mode is active. Direct code writes are BLOCKED.
 **INSTEAD:** Delegate to an agent:
 \`\`\`
 Task(subagent_type: kraken, prompt: |
-  Story: ${state.storyId}
+  Story: ${storyId}
   Task: Create new file ${filePath}
   Requirements: ...
 )
@@ -303,7 +322,7 @@ Ralph mode is active. Direct test/lint commands are BLOCKED.
 **INSTEAD:** Delegate to arbiter:
 \`\`\`
 Task(subagent_type: arbiter, prompt: |
-  Story: ${state.storyId}
+  Story: ${storyId}
   Task: Run tests and verify implementation
   Files: <affected files>
 )

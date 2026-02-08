@@ -14,6 +14,7 @@ import { readFileSync, readdirSync, existsSync, unlinkSync, statSync } from 'fs'
 import { join } from 'path';
 import { homedir } from 'os';
 import { createLogger } from './shared/logger.js';
+import { readRalphUnifiedState } from './shared/state-schema.js';
 
 const log = createLogger('session-start-recovery');
 
@@ -109,7 +110,30 @@ async function main() {
 
   const recoveryFiles = getRecoveryFiles();
 
-  if (recoveryFiles.length === 0) {
+  // Also check unified Ralph state for incomplete work
+  const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+  const unified = readRalphUnifiedState(projectDir);
+  let unifiedRecoveryInfo = '';
+
+  if (unified?.session?.active) {
+    const tasks = unified.tasks || {};
+    const totalTasks = Object.keys(tasks).length;
+    const completedTasks = Object.values(tasks).filter((t: any) => t.status === 'completed').length;
+    const checkpoints = unified.checkpoints || [];
+    const lastCheckpoint = checkpoints.length > 0 ? checkpoints[checkpoints.length - 1] : null;
+
+    if (totalTasks > 0) {
+      unifiedRecoveryInfo = [
+        `  **Ralph** workflow (unified state)`,
+        `  Story: ${unified.story_id}`,
+        `  Progress: ${completedTasks}/${totalTasks} tasks`,
+        lastCheckpoint ? `  Last checkpoint: ${(lastCheckpoint as any).timestamp || 'unknown'}` : '',
+        '',
+      ].filter(Boolean).join('\n');
+    }
+  }
+
+  if (recoveryFiles.length === 0 && !unifiedRecoveryInfo) {
     console.log(JSON.stringify({ result: 'continue' }));
     return;
   }
@@ -118,7 +142,30 @@ async function main() {
     files: recoveryFiles.map(f => f.data.baseName),
   });
 
-  const message = formatRecoveryPrompt(recoveryFiles);
+  let message = formatRecoveryPrompt(recoveryFiles);
+  if (unifiedRecoveryInfo) {
+    // If no legacy recovery but we have unified info, create the prompt
+    if (recoveryFiles.length === 0) {
+      message = [
+        '',
+        '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+        '🔄 WORKFLOW RECOVERY AVAILABLE',
+        '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+        '',
+        'Found incomplete workflow from a previous session:',
+        '',
+        unifiedRecoveryInfo,
+        '**Options:**',
+        '  - Say "resume workflow" to restore and continue',
+        '  - Say "discard recovery" to clear and start fresh',
+        '  - Or just start a new task (recovery files expire after 24h)',
+        '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+      ].join('\n');
+    } else {
+      // Append unified info to existing recovery prompt
+      message = message.replace('**Options:**', unifiedRecoveryInfo + '\n**Options:**');
+    }
+  }
   console.log(JSON.stringify({ result: 'continue', message }));
 }
 
