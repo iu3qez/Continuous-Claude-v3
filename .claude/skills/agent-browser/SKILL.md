@@ -59,163 +59,326 @@ agent-browser install  # Downloads Chromium (Linux/Mac)
 3. **Interact** using refs (@e1, @e2, etc.)
 4. **Re-snapshot** after navigation or DOM changes
 
-```bash
+```powershell
 # Step 1: Open URL
-agent-browser open https://example.com
+ab open https://example.com
 
 # Step 2: Get interactive elements with refs
-agent-browser snapshot -i --json
+ab snapshot -i --json
 
 # Step 3: Interact using refs
-agent-browser click @e1
-agent-browser fill @e2 "search query"
+ab click '@e1'
+ab fill '@e2' "search query"
 
 # Step 4: Re-snapshot after changes
-agent-browser snapshot -i
+ab snapshot -i
 ```
 
-## Key Commands
+## Command Reference
 
 ### Navigation
 
-```bash
-agent-browser open <url>       # Navigate to URL
-agent-browser back             # Go back
-agent-browser forward          # Go forward
-agent-browser reload           # Reload page
-agent-browser close            # Close browser
+```powershell
+ab open <url>          # Navigate to URL (aliases: goto, navigate)
+ab back                # Go back
+ab forward             # Go forward
+ab reload              # Reload page
+ab close               # Close browser
+ab url                 # Get current URL
+ab title               # Get page title
 ```
 
 ### Snapshots (Essential for AI)
 
-```bash
-agent-browser snapshot              # Full accessibility tree
-agent-browser snapshot -i           # Interactive elements only (recommended)
-agent-browser snapshot -i --json    # JSON output for parsing
-agent-browser snapshot -c           # Compact (remove empty elements)
-agent-browser snapshot -d 3         # Limit depth
-```
-
-### Interactions
-
-```bash
-agent-browser click @e1                    # Click element
-agent-browser dblclick @e1                 # Double-click
-agent-browser fill @e1 "text"              # Clear and fill input
-agent-browser type @e1 "text"              # Type without clearing
-agent-browser press Enter                  # Press key
-agent-browser hover @e1                    # Hover element
-agent-browser check @e1                    # Check checkbox
-agent-browser uncheck @e1                  # Uncheck checkbox
-agent-browser select @e1 "option"          # Select dropdown option
-agent-browser scroll down 500              # Scroll (up/down/left/right)
-agent-browser scrollintoview @e1           # Scroll element into view
-```
-
-### Get Information
-
-```bash
-agent-browser get text @e1          # Get element text
-agent-browser get html @e1          # Get element HTML
-agent-browser get value @e1         # Get input value
-agent-browser get attr href @e1     # Get attribute
-agent-browser get title             # Get page title
-agent-browser get url               # Get current URL
-agent-browser get count "button"    # Count matching elements
+```powershell
+ab snapshot              # Full accessibility tree
+ab snapshot -i           # Interactive elements only (recommended)
+ab snapshot -i --json    # JSON output for parsing
+ab snapshot -c           # Compact (remove empty elements)
+ab snapshot -d 3         # Limit depth
+ab snapshot '@e1'        # Snapshot within element
+ab snapshot -i -c        # Combine flags
 ```
 
 ### Screenshots & PDFs
 
-```bash
-agent-browser screenshot                      # Viewport screenshot
-agent-browser screenshot --full               # Full page
-agent-browser screenshot output.png           # Save to file
-agent-browser screenshot --full output.png    # Full page to file
-agent-browser pdf output.pdf                  # Save as PDF
+```powershell
+ab screenshot                      # Viewport screenshot
+ab screenshot --full               # Full page screenshot
+ab screenshot output.png           # Save to file
+ab screenshot output.png --full    # Full page to file
+ab pdf output.pdf                  # Save as PDF
+ab pdf output.pdf A4               # PDF with format (Letter, A4, etc.)
+```
+
+### Click & Interaction
+
+```powershell
+ab click '@e1'           # Click element
+ab dblclick '@e1'        # Double-click
+ab hover '@e1'           # Hover element
+ab tap '@e1'             # Tap (touch event)
+ab drag '@e1' '@e2'      # Drag from source to target
+ab focus '@e1'           # Focus element
+```
+
+### Form Input
+
+```powershell
+ab fill '@e1' "text"              # Clear + fill input
+ab type '@e1' "text"              # Type without clearing
+ab press Enter                    # Press key (no selector)
+ab press Enter '@e1'              # Press key on element
+ab keyboard "Control+a"           # Key combination
+ab check '@e1'                    # Check checkbox
+ab uncheck '@e1'                  # Uncheck checkbox
+ab select '@e1' "Option A"        # Select dropdown option
+ab multiselect '@e1' "A" "B" "C"  # Multi-select
+ab clear '@e1'                    # Clear input field
+ab setvalue '@e1' "value"         # Set value directly (bypasses events)
+ab upload '@e1' file.png          # Upload file(s)
+ab selectall '@e1'                # Select all text in element
+ab inserttext "text"              # Insert text at cursor
+```
+
+### Element Queries
+
+```powershell
+ab gettext '@e1'                 # Get text content (textContent)
+ab innertext '@e1'               # Get inner text (rendered text)
+ab innerhtml '@e1'               # Get inner HTML
+ab inputvalue '@e1'              # Get input value
+ab getattribute '@e1' href       # Get element attribute
+ab content                       # Get full page HTML
+ab content '@e1'                 # Get element HTML content
+```
+
+### State Checks (Assertions)
+
+Use these to verify page state in test scenarios:
+
+```powershell
+ab isvisible '@e1'               # true/false - is element visible?
+ab isenabled '@e1'               # true/false - is element enabled?
+ab ischecked '@e1'               # true/false - is checkbox checked?
+ab count "button"                # Count matching elements
+ab boundingbox '@e1'             # Get position {x, y, width, height}
+```
+
+**Testing pattern:**
+```powershell
+# Assert element exists and is visible
+ab isvisible '@e3' --json
+# Assert text content matches
+ab gettext '@e5' --json
+# Assert checkbox state
+ab ischecked '@e4' --json
+```
+
+### Scroll
+
+```powershell
+ab scroll down 500               # Scroll page down 500px
+ab scroll up 300                  # Scroll page up
+ab scroll left 200                # Scroll left
+ab scroll right 200               # Scroll right
+ab scroll '@e1' down 300          # Scroll within element
+ab scrollintoview '@e1'           # Scroll element into view
+ab wheel 0 500                    # Mouse wheel (deltaX, deltaY)
 ```
 
 ### Wait
 
-```bash
-agent-browser wait @e1              # Wait for element (selector)
-agent-browser wait "text"           # Wait for text to appear
+```powershell
+ab wait '@e1'                             # Wait for element to appear
+ab wait '@e1' --timeout 5000              # Wait with timeout (ms)
+ab waitforurl "https://example.com/done"  # Wait for URL change
+ab waitforloadstate networkidle           # Wait for load state
+ab waitforfunction "document.readyState === 'complete'"  # Wait for JS condition
 ```
 
-> **Note:** Timed waits (`wait 2000`) may not work reliably. Use element/text waits or re-snapshot loops instead.
+### JavaScript Evaluation
 
-## Semantic Locators (Alternative to Refs)
-
-```bash
-agent-browser find role button click --name "Submit"
-agent-browser find text "Sign up" click
-agent-browser find label "Email" fill "user@example.com"
-agent-browser find placeholder "Search..." fill "query"
+```powershell
+ab eval "document.title"                    # Get page title via JS
+ab eval "window.innerWidth"                 # Get viewport width
+ab eval "document.querySelectorAll('a').length"  # Count links
+ab eval "localStorage.getItem('token')"     # Read localStorage
 ```
+
+### Semantic Locators (Alternative to Refs)
+
+Find and interact with elements by semantic attributes instead of refs:
+
+```powershell
+# By role
+ab find role button click                          # Click first button
+ab find role textbox fill "hello" --name "Email"   # Fill input by name
+ab find role checkbox check --name "Terms"         # Check by name
+
+# By text
+ab find text "Sign up" click                       # Click by visible text
+ab find text "Submit" click --exact                 # Exact text match
+
+# By label
+ab find label "Email" fill "user@example.com"      # Fill by label text
+ab find label "Remember me" check                  # Check by label
+
+# By placeholder
+ab find placeholder "Search..." fill "query"       # Fill by placeholder
+
+# By alt text, title, test ID
+ab find alt "Company Logo" click
+ab find title "Close dialog" click
+ab find testid "submit-btn" click
+ab find testid "email-input" fill "user@example.com"
+```
+
+### Tabs
+
+```powershell
+ab tab_new                    # Open new empty tab
+ab tab_list                   # List all tabs with URLs
+ab tab_switch 1               # Switch to tab by index (0-based)
+ab tab_close                  # Close current tab
+ab tab_close 2                # Close tab by index
+ab bringtofront               # Bring browser window to front
+```
+
+### Cookies
+
+```powershell
+ab cookies_get                               # Get all cookies
+ab cookies_get https://example.com           # Get cookies for URL
+ab cookies_clear                             # Clear all cookies
+ab cookies_set '{"name":"session","value":"abc123","domain":".example.com"}'
+```
+
+### Storage (localStorage / sessionStorage)
+
+```powershell
+ab storage_get local                    # Get all localStorage
+ab storage_get local myKey              # Get specific key
+ab storage_get session                  # Get all sessionStorage
+ab storage_set local myKey "myValue"    # Set localStorage
+ab storage_set session myKey "myValue"  # Set sessionStorage
+ab storage_clear local                  # Clear localStorage
+ab storage_clear session                # Clear sessionStorage
+```
+
+### Console & Errors
+
+```powershell
+ab console                    # Get console messages
+ab console --clear            # Get and clear console
+ab errors                     # Get page errors
+ab errors --clear             # Get and clear errors
+```
+
+### Network
+
+```powershell
+ab requests                           # List captured requests
+ab requests "api" --clear             # Filter by URL pattern, then clear
+ab route "**/*.png" --abort           # Block all PNG requests
+ab route "https://api.com/*" --status 200 --body '{"mock":true}'
+ab unroute "**/*.png"                 # Remove route
+ab responsebody "https://api.com/data"  # Get response body
+ab download '@e1' ./file.pdf          # Download via click
+```
+
+### Viewport & Device Emulation
+
+```powershell
+ab viewport 1920 1080                 # Set viewport size
+ab device "iPhone 12"                 # Emulate device
+ab useragent "CustomAgent/1.0"        # Set user agent
+ab geolocation 37.7749 -122.4194     # Set geolocation (lat, lon)
+ab timezone "America/New_York"        # Set timezone
+ab locale "en-US"                     # Set locale
+ab emulatemedia --color-scheme dark   # Dark mode
+ab offline true                       # Toggle offline mode
+```
+
+### Recording & Tracing
+
+```powershell
+ab video_start ./recording.webm       # Start video recording
+ab video_stop                         # Stop recording
+ab trace_start --screenshots          # Start trace with screenshots
+ab trace_stop ./trace.zip             # Stop + save trace
+ab har_start                          # Start HAR capture
+ab har_stop ./network.har             # Stop + save HAR
+```
+
+### State Persistence
+
+```powershell
+ab state_save ./auth-state.json       # Save cookies + storage
+ab state_load ./auth-state.json       # Restore browser state
+```
+
+### Dialog Handling
+
+```powershell
+ab dialog accept                      # Accept alert/confirm
+ab dialog dismiss                     # Dismiss dialog
+ab dialog accept "prompt text"        # Accept with prompt input
+```
+
+### Clipboard
+
+```powershell
+ab clipboard read                     # Read clipboard
+ab clipboard copy "text to copy"      # Write to clipboard
+```
+
+### Frames
+
+```powershell
+ab frame '@e1'                        # Switch to iframe
+ab mainframe                          # Switch back to main frame
+```
+
+### Other
+
+```powershell
+ab highlight '@e1'                    # Highlight element visually
+ab dispatch '@e1' click               # Dispatch custom event
+ab nth "button" 2 click               # Click nth matching element (0-based)
+ab pause                              # Pause execution (for debugging)
+```
+
+## Selector Reference
+
+| Format | Example | When to Use |
+|--------|---------|-------------|
+| `@ref` | `'@e1'` | After snapshot - most reliable |
+| CSS | `"button.submit"` | When you know the DOM structure |
+| `text=` | `"text=Sign up"` | Match by visible text |
+| `role=` | `"role=button"` | Match by ARIA role |
+
+> **Best practice:** Always use `@ref` selectors from snapshots. They're stable across page states and work with all commands.
 
 ## Sessions (Parallel Browsers)
 
-```bash
-# Run multiple independent browser sessions
-agent-browser --session browser1 open https://site1.com
-agent-browser --session browser2 open https://site2.com
+```powershell
+# Set session via environment variable
+$env:AGENT_BROWSER_SESSION = "browser1"
+ab open https://site1.com
 
-# List active sessions
-agent-browser session list
-```
-
-## Examples
-
-### Login Flow
-
-```bash
-agent-browser open https://app.example.com/login
-agent-browser snapshot -i
-# Output shows: textbox "Email" [ref=e1], textbox "Password" [ref=e2], button "Sign in" [ref=e3]
-agent-browser fill @e1 "user@example.com"
-agent-browser fill @e2 "password123"
-agent-browser click @e3
-agent-browser wait 2000
-agent-browser snapshot -i  # Verify logged in
-```
-
-### Search and Extract
-
-```bash
-agent-browser open https://news.ycombinator.com
-agent-browser snapshot -i --json
-# Parse JSON to find story links
-agent-browser get text @e12  # Get headline text
-agent-browser click @e12     # Click to open story
-```
-
-### Form Filling
-
-```bash
-agent-browser open https://forms.example.com
-agent-browser snapshot -i
-agent-browser fill @e1 "John Doe"
-agent-browser fill @e2 "john@example.com"
-agent-browser select @e3 "United States"
-agent-browser check @e4  # Agree to terms
-agent-browser click @e5  # Submit button
-agent-browser screenshot confirmation.png
-```
-
-### Debug Mode
-
-```bash
-# Run with visible browser window
-agent-browser --headed open https://example.com
-agent-browser --headed snapshot -i
-agent-browser --headed click @e1
+$env:AGENT_BROWSER_SESSION = "browser2"
+ab open https://site2.com
 ```
 
 ## JSON Output
 
-Add `--json` for structured output:
+Add `--json` for structured output on any command:
 
-```bash
-agent-browser snapshot -i --json
+```powershell
+ab snapshot -i --json
+ab gettext '@e1' --json
+ab isvisible '@e1' --json
 ```
 
 Returns:
@@ -232,6 +395,126 @@ Returns:
 }
 ```
 
+## Examples
+
+### Login Flow
+
+```powershell
+ab open https://app.example.com/login
+ab snapshot -i
+# Output: textbox "Email" [ref=e1], textbox "Password" [ref=e2], button "Sign in" [ref=e3]
+ab fill '@e1' "user@example.com"
+ab fill '@e2' "password123"
+ab click '@e3'
+ab waitforurl "**/dashboard"       # Wait for redirect
+ab snapshot -i                      # Verify logged in
+```
+
+### Form with Dropdowns and Checkboxes
+
+```powershell
+ab open https://forms.example.com
+ab snapshot -i
+ab fill '@e1' "John Doe"
+ab fill '@e2' "john@example.com"
+ab select '@e3' "United States"           # Dropdown
+ab check '@e4'                             # Checkbox
+ab multiselect '@e5' "Red" "Blue" "Green"  # Multi-select
+ab click '@e6'                             # Submit
+ab screenshot confirmation.png
+```
+
+### Assertions for Testing
+
+```powershell
+ab open https://app.example.com
+ab snapshot -i
+
+# Verify element visibility
+ab isvisible '@e3' --json           # {"success":true,"data":true}
+
+# Verify text content
+ab gettext '@e5' --json             # {"success":true,"data":"Welcome, John"}
+
+# Verify checkbox state
+ab ischecked '@e4' --json           # {"success":true,"data":true}
+
+# Count elements
+ab count "button" --json            # {"success":true,"data":5}
+
+# Verify URL
+ab url --json                       # {"success":true,"data":"https://..."}
+```
+
+### JavaScript Evaluation
+
+```powershell
+# Get computed values
+ab eval "document.title"
+ab eval "getComputedStyle(document.body).backgroundColor"
+
+# Interact with app state
+ab eval "window.__APP_STATE__.user.name"
+ab eval "document.querySelectorAll('.error').length"
+
+# Modify page for testing
+ab eval "document.body.style.zoom = '150%'"
+```
+
+### Multi-Tab Workflow
+
+```powershell
+ab open https://site1.com
+ab tab_new                          # Open new tab (index 1)
+ab open https://site2.com           # Navigate in new tab
+ab tab_list --json                  # See all tabs
+ab tab_switch 0                     # Back to first tab
+ab snapshot -i                      # Snapshot first tab
+ab tab_switch 1                     # Back to second tab
+ab tab_close 1                      # Close second tab
+```
+
+### Cookie and Storage Management
+
+```powershell
+# Save auth state for reuse
+ab open https://app.example.com/login
+# ... login ...
+ab state_save ./auth.json
+
+# Later: restore state (skip login)
+ab state_load ./auth.json
+ab open https://app.example.com/dashboard   # Already logged in
+
+# Direct cookie manipulation
+ab cookies_get --json
+ab storage_get local authToken --json
+```
+
+### Network Mocking
+
+```powershell
+# Mock API response
+ab route "https://api.example.com/users" --status 200 --body '[{"name":"Mock User"}]'
+ab open https://app.example.com      # App uses mocked API
+
+# Block analytics
+ab route "**/*analytics*" --abort
+ab route "**/*tracking*" --abort
+
+# Capture network requests
+ab requests "api" --json             # Filter to API calls
+```
+
+### Debug Mode
+
+```powershell
+# Run with visible browser window
+ab open https://example.com --headed
+ab snapshot -i --headed
+ab click '@e1' --headed
+```
+
 ## vs claude-in-chrome (MCP)
 
 | Feature | ab (CLI) | claude-in-chrome (MCP) |
@@ -242,19 +525,24 @@ Returns:
 | Output | Text/JSON | Tool responses |
 | Parallel | Sessions | Tabs |
 | GIF recording | No | Yes |
-| Visual debugging | No (headless) | Yes |
+| Visual debugging | No (headless default) | Yes |
 | Console/Network | Yes | Yes |
+| JS evaluation | Yes | Yes |
+| State persistence | Yes (state_save/load) | No |
+| Network mocking | Yes (route) | No |
+| Video recording | Yes | No |
+| Headed mode | --headed flag | Always visible |
 
 ### Decision Framework
 
 ```
 Is this CI/CD or headless server?
-├─ YES → ab (no browser window needed)
-└─ NO → Do you need to see the browser?
-        ├─ YES → claude-in-chrome
-        └─ NO → Do you need GIF recording?
-                ├─ YES → claude-in-chrome
-                └─ NO → Either works (prefer ab for scripting)
++-- YES -> ab (no browser window needed)
++-- NO -> Do you need to see the browser?
+          +-- YES -> claude-in-chrome
+          +-- NO -> Do you need GIF recording?
+                    +-- YES -> claude-in-chrome
+                    +-- NO -> Either works (prefer ab for scripting)
 ```
 
 **Use ab when:**
@@ -262,9 +550,12 @@ Is this CI/CD or headless server?
 - Shell scripting and chaining
 - Parallel sessions needed
 - Simple scrape/fill/submit tasks
+- Network mocking / route interception
+- State save/restore across sessions
+- Test assertions (isvisible, gettext, etc.)
 
 **Use claude-in-chrome when:**
 - Need to see what's happening
 - Recording demos (GIF)
-- Complex multi-tab workflows
+- Complex visual debugging
 - Debugging automation issues
