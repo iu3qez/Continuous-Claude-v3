@@ -515,6 +515,32 @@ ab snapshot -i --headed
 ab click '@e1' --headed
 ```
 
+## Preflight Checks (Before Any Auth-Dependent Testing) [H:9]
+
+Run these BEFORE launching any authenticated browser tests. All 3 are environment issues that block testing but are detectable upfront.
+
+1. **Dev server health:** `curl -s -o /dev/null -w "%{http_code}" <baseURL>/` — expect 200
+2. **DB connection alive:** Hit a DB-dependent API endpoint (e.g., `/api/users`), not just the server root — a 200 on `/` does NOT prove the DB works
+3. **Auth env vars:** Verify `NEXTAUTH_URL` / `AUTH_URL` matches the actual running port — port mismatch causes silent auth redirect failures
+4. **Seed data present:** Query DB counts before testing data-dependent features
+5. **Restart stale servers:** If dev server uptime > 4h, restart before testing — connection pools die silently
+
+### Server Freshness Check
+
+Long-running dev servers (16h+) suffer silent connection pool death. Pages render (200) but all API calls return 500.
+
+1. Test a data-dependent endpoint (not just `/`): `curl <baseURL>/api/<endpoint>`
+2. If 500: restart dev server before proceeding
+3. After restart: wait 5s, re-verify the endpoint
+
+## Agent Assignment Guidance
+
+When assigning agents to browser testing tasks:
+
+- **atlas agent** = visual browser validation using `ab` CLI or Claude-in-Chrome MCP tools. Must include at least one `navigate` + `read_page` (or `ab open` + `ab snapshot`) cycle.
+- If an agent falls back to API-level testing (HTTP requests, direct DB queries), label the output as **"API Integration Tests"**, not "Browser Tests"
+- For true E2E browser coverage, require the agent prompt to include: "You MUST use browser automation tools (ab or claude-in-chrome) — do not substitute with API calls"
+
 ## vs claude-in-chrome (MCP)
 
 | Feature | ab (CLI) | claude-in-chrome (MCP) |
