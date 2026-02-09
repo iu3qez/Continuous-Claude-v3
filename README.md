@@ -1,6 +1,6 @@
 # Continuous Claude
 
-> Give Claude a notebook, memory, and specialized assistants — so every conversation builds on the last
+> Give Claude a notebook, memory, specialized assistants, and autonomous development capability — so every conversation builds on the last
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude-Code-orange.svg)](https://claude.ai/code)
@@ -13,11 +13,12 @@
 
 Think of Claude Code as having a brilliant assistant who helps you with tasks. The problem? Every time you close the conversation, they forget everything you did together. When you start a new chat, you have to explain your project from scratch.
 
-**Continuous Claude solves this** by giving Claude three superpowers:
+**Continuous Claude solves this** by giving Claude four superpowers:
 
 1. **📓 A Persistent Notebook** — Saves key decisions, learnings, and context so nothing gets lost when you start a new conversation
 2. **🎓 Long-term Memory** — Automatically remembers what worked (and what didn't) across all your sessions, retrievable when relevant
 3. **👥 Specialist Assistants** — Delegates complex tasks to focused AI agents (like having a research assistant, debugger, and code reviewer on call)
+4. **🤖 Autonomous Development** — Describe a feature, approve a plan, and come back to working code built entirely by AI agents
 
 It's like the difference between emailing someone vs. working with a colleague who remembers your previous conversations and can delegate work to their team.
 
@@ -32,7 +33,7 @@ Continuous Claude was built so that **non-technical people can create working so
 ### How This Works
 
 1. **You describe what you want:** "Build me a dashboard that shows sales by region"
-2. **Maestro orchestrates the work:** Breaks your request into tasks and assigns them to specialist agents
+2. **Maestro orchestrates the work:** Breaks your request into tasks and assigns them to specialist agents. Or Ralph handles it fully autonomously — describe your feature, approve the plan, walk away.
 3. **Agents do the technical work:** Research agent finds best practices, architect agent designs the solution, builder agent writes the code, tester agent verifies it works
 4. **You review and refine:** See the results, give feedback in plain English, iterate until it's right
 
@@ -46,6 +47,7 @@ Continuous Claude was built so that **non-technical people can create working so
 | "A tool that analyzes our spreadsheet and finds anomalies" | Data analysis script with visualizations |
 | "A simple app to track our team's project status" | Project management dashboard |
 | "Automate our weekly report from these data sources" | Scheduled automation with formatted output |
+| "Build me a complete contact form with validation" | PRD generated, tasks delegated to agents, tested, committed — autonomously |
 
 The system handles the technical complexity. You focus on what you want it to do.
 
@@ -85,7 +87,42 @@ You: "Approved, go ahead"
 Maestro: [Executes each phase, reports progress, delivers working system]
 ```
 
-### 📚 150+ Skills (vs. Original ~50)
+### 🤖 Ralph: Autonomous Development Mode
+
+**The Problem:** Even with Maestro, you're still in the loop for every decision. Sometimes you just want to describe a feature, approve the plan, and come back to working code.
+
+**Our Solution:** Ralph is Maestro's autonomous mode — pure delegation. Ralph never writes a single line of code. Instead, it:
+
+1. **Gathers Context** — Checks memory for similar past work, loads project structure
+2. **Generates a PRD** — Creates a product requirements document from your description
+3. **Breaks Into Tasks** — Splits the PRD into atomic, delegatable subtasks
+4. **Delegates to Agents** — Spawns kraken (builder), arbiter (tester), scout (researcher) — in parallel when possible
+5. **Verifies Everything** — Runs tests, type checks, and linting after each agent completes
+
+**Key Capabilities:**
+- **Retry escalation** — If an agent fails, Ralph retries with more context, then escalates to a different agent
+- **Crash recovery** — If a session dies mid-build, Ralph resumes from the last checkpoint
+- **Parallel execution** — Independent tasks run simultaneously across multiple agents
+- **Bounded iterations** — 10/30/50 iteration limits prevent runaway builds
+
+**Plain English Example:**
+```
+You: "Build a contact form with email validation"
+
+Ralph: "Let me understand what you need..."
+  → Asks: Fields? Validation rules? Where should submissions go?
+
+Ralph: "Here's my plan: 6 tasks across 3 phases"
+  → Phase 1: Form component + validation logic (kraken, parallel)
+  → Phase 2: API endpoint + email integration (kraken)
+  → Phase 3: Tests + review (arbiter + critic)
+
+You: "Go ahead"
+
+[Walk away. Come back to: working form, passing tests, clean commit]
+```
+
+### 📚 115 Skills (vs. Original ~50)
 
 Skills are pre-built workflows you trigger by describing what you want:
 
@@ -95,6 +132,7 @@ Skills are pre-built workflows you trigger by describing what you want:
 | `/fix` | Investigates and repairs broken things | "This button doesn't work" |
 | `/research` | Deep-dives into topics with sources | "Research competitor pricing" |
 | `/review` | Gets multiple perspectives on work | "Review this document" |
+| `/ralph` | Autonomous feature development | "Build this feature while I'm away" |
 | `/premortem` | Identifies what could go wrong | "What risks does this plan have?" |
 
 ### 🧠 Persistent Memory System
@@ -130,6 +168,29 @@ We integrated PageIndex — a reasoning-based retrieval system that achieved 98.
 
 **The Benefit:** Same understanding, 95% fewer tokens. Longer conversations, more complex projects, lower costs.
 
+### 🌐 Browser Automation (Two Systems)
+
+**The Problem:** Testing web apps, filling forms, and scraping data requires manual browser interaction or complex scripting.
+
+**Our Solution:** Two complementary browser automation systems:
+
+| System | Interface | Best For |
+|--------|-----------|----------|
+| **agent-browser** (`ab` CLI) | PowerShell/Bash commands | Headless testing, CI/CD, scripting, network mocking |
+| **claude-in-chrome** (MCP) | Visual browser control | Live debugging, GIF recording, visual verification |
+
+Both use ref-based element selection — Claude sees a page's interactive elements and interacts with them by reference, like a human pointing at buttons.
+
+**Plain English Example:**
+```
+You: "Test the login flow on our staging site"
+
+Claude: Opens browser → takes snapshot → fills email and password →
+        clicks Sign In → verifies dashboard loads → reports results
+
+No Selenium scripts. No Playwright config. Just describe what to test.
+```
+
 ---
 
 ## Why Use It?
@@ -144,6 +205,7 @@ We integrated PageIndex — a reasoning-based retrieval system that achieved 98.
 **Work Faster**
 - Delegate research, analysis, and implementation to specialized agents
 - Get structured workflows instead of back-and-forth prompting
+- Set-and-forget autonomous builds with Ralph
 - Natural language triggers — just describe what you want
 
 **Stay Organized**
@@ -163,6 +225,7 @@ We integrated PageIndex — a reasoning-based retrieval system that achieved 98.
 - Risk analysis before implementation ("What could go wrong?" checklist)
 - Automated code review with multiple specialized reviewers
 - Cross-file refactoring with impact analysis
+- Browser automation for E2E testing and web interaction
 
 **Advanced Capabilities**
 - Mathematical proof verification (for those who need formal guarantees)
@@ -173,53 +236,13 @@ We integrated PageIndex — a reasoning-based retrieval system that achieved 98.
 
 ## Who Is This For?
 
-### Marketing & Content
-
-**Research & Writing**
-- "Research our top 3 competitors and their messaging" → oracle agent gathers intel
-- "Find trends in customer feedback about feature X" → analyzes patterns
-- "Create a campaign brief for product launch" → structures workflow from research to deliverables
-
-**Campaign Management**
-- Track multi-week campaigns with persistent context
-- Remember brand guidelines and voice across sessions
-- Recall what messaging performed well previously
-
-### Sales
-
-**Meeting Preparation**
-- "Research [company] and prepare talking points" → gathers industry context, competitive landscape
-- "Summarize our last 3 conversations with this prospect" → memory system recalls relevant details
-- "Create a proposal for [use case]" → builds on past successful proposals
-
-**Competitive Intelligence**
-- Track competitor moves across sessions
-- Remember pricing discussions and objections
-- Build relationship context that persists
-
-### Operations, Finance, Legal
-
-**Documentation & Analysis**
-- "Analyze Q4 spending patterns" → structures data analysis workflow
-- "Update our compliance documentation for new regulations" → researches changes, proposes updates
-- "Create a process document for onboarding" → systematic workflow creation
-
-**Report Generation**
-- Persistent templates and formatting preferences
-- Recall data sources and calculation methods
-- Multi-session report building with continuity
-
-### Engineering
-
-**Development Workflows**
-- `/build greenfield "user dashboard"` → end-to-end feature implementation
-- `/fix bug "login timeout"` → diagnosis → plan → fix → test → commit
-- `/refactor "extract auth module"` → safe refactoring with impact analysis
-
-**Code Understanding**
-- "Explain how authentication works in this codebase" → semantic analysis without reading every file
-- "Find all places that call this API" → instant structural search
-- "What would break if I change this function?" → impact analysis
+| Role | What You Can Do | Key Features |
+|------|----------------|--------------|
+| **Marketing & Content** | Research competitors, analyze feedback trends, create campaign briefs | Oracle agent for research, persistent brand voice, cross-session campaign tracking |
+| **Sales** | Prepare meeting briefs, track prospect context, build proposals | Memory recalls past conversations, competitive intelligence persists across sessions |
+| **Operations & Finance** | Analyze spending patterns, generate reports, create process docs | Persistent templates, recall data sources, multi-session report building |
+| **Product / Project** | Describe features in plain English, get working software back | Ralph autonomous PRD workflow, Maestro orchestration, task tracking |
+| **Engineering** | Build features, fix bugs, refactor safely, understand codebases | `/build`, `/fix`, `/refactor`, structural code analysis, impact analysis |
 
 ---
 
@@ -253,9 +276,9 @@ The wizard walks you through 12 steps:
 2. ✅ Checks that prerequisites are installed
 3. ✅ Sets up the database and API keys (optional)
 4. ✅ Starts Docker containers for PostgreSQL
-5. ✅ Installs 40 specialized agents
-6. ✅ Installs 150+ skill workflows
-7. ✅ Installs 61 lifecycle hooks
+5. ✅ Installs 31 specialized agents
+6. ✅ Installs 115 skill workflows
+7. ✅ Installs 80+ lifecycle hooks
 8. ✅ Installs code analysis tools (95% efficiency boost)
 9. ✅ Installs math capabilities (optional)
 10. ✅ Configures diagnostics and linting
@@ -352,7 +375,7 @@ Result: Same understanding, 95% fewer tokens
 
 ## What You Get
 
-### 150+ Skills (Pre-Built Workflows)
+### 115 Skills (Pre-Built Workflows)
 
 Skills are like apps you trigger by asking naturally. No need to memorize commands.
 
@@ -363,6 +386,7 @@ Skills are like apps you trigger by asking naturally. No need to memorize comman
 | "What could go wrong with this plan?" | `/premortem` → TIGERS (clear threats) + ELEPHANTS (unspoken concerns) |
 | "Research authentication patterns" | `oracle` agent → searches web, docs, examples |
 | "Find all calls to this function" | `tldr impact` → structural analysis, not text search |
+| "Build this while I'm away" | `/ralph` → autonomous PRD → tasks → agents → verify → commit |
 | "Done for today" | `create_handoff` → saves state for next session |
 
 **Key workflows:**
@@ -373,49 +397,52 @@ Skills are like apps you trigger by asking naturally. No need to memorize comman
 - **Fixing:** /fix (bugs), /security (vulnerabilities), /review (code review)
 - **Continuity:** create_handoff, resume_handoff, continuity_ledger
 
-### 40 Specialized Agents
+### 31 Specialized Agents
 
 Agents are AI assistants focused on specific tasks. Claude delegates to them automatically.
 
-**Planners (4)**
+**Implementation (4)**
+- **kraken** — Test-driven implementation with strict TDD workflow
+- **spark** — Lightweight fixes and quick tweaks
 - **architect** — Feature planning with API integration
 - **phoenix** — Refactoring and framework migrations
-- **plan-agent** — Lightweight planning with research
+
+**Testing (3)**
+- **arbiter** — Unit and integration test validation
+- **atlas** — End-to-end and acceptance testing
 - **validate-agent** — Validate plans against best practices
 
-**Explorers (4)**
+**Code Review (8)**
+- **critic**, **judge**, **liaison** — Different review perspectives
+- **review-agent**, **plan-reviewer** — Structured reviews
+- **react-perf-reviewer**, **ui-compliance-reviewer**, **surveyor** — Specialized reviews
+
+**Debugging (3)**
+- **debug-agent** — Issue investigation via logs/code
+- **sleuth** — Root cause investigation
+- **profiler** — Performance profiling and race conditions
+
+**Research (5)**
 - **scout** — Codebase exploration (90% accurate vs. 60% for generic search)
 - **oracle** — External research (web, docs, GitHub)
 - **pathfinder** — External repository analysis
-- **research-codebase** — Document codebase as-is
+- **session-analyst**, **braintrust-analyst** — Session analysis
 
-**Implementers (3)**
-- **kraken** — Test-driven implementation with strict TDD workflow
-- **spark** — Lightweight fixes and quick tweaks
-- **agentica-agent** — Build Python agents using Agentica SDK
-
-**Debuggers (3)**
-- **sleuth** — Root cause investigation
-- **debug-agent** — Issue investigation via logs/code
-- **profiler** — Performance profiling and race conditions
-
-**Reviewers (6)**
-- **critic**, **judge**, **surveyor** — Different review perspectives
-- **liaison**, **plan-reviewer**, **review-agent** — Structured reviews
-
-**Validators (2)**
-- **arbiter** — Test validation
-- **atlas** — Integration testing
-
-**Specialized (10)**
-- **aegis** — Security review
-- **herald** — Release management
-- **scribe** — Documentation generation
-- **chronicler**, **session-analyst**, **braintrust-analyst** — Session analysis
-- **memory-extractor** — Learning extraction
+**Orchestration (3)**
+- **maestro** — Multi-step task orchestration
+- **plan-agent** — Lightweight planning with research
 - **onboard** — Codebase onboarding
 
-### 61 Hooks (Automatic Helpers)
+**Documentation (3)**
+- **scribe** — Documentation generation
+- **herald** — Release management
+- **memory-extractor** — Learning extraction
+
+**Security + Specialized (2)**
+- **aegis** — Security vulnerability analysis
+- **agentica-agent** — Build Python agents using Agentica SDK
+
+### 80+ Hooks (Automatic Helpers)
 
 Hooks run in the background at specific moments — you don't call them directly.
 
@@ -434,6 +461,11 @@ Hooks run in the background at specific moments — you don't call them directly
 - Updates code indexes
 - Tracks which files changed (for testing later)
 
+**During autonomous builds (Ralph):**
+- Enforces Ralph delegation rules — blocks direct code edits
+- Monitors agent progress, retries, and iteration limits
+- Injects progress context and retry reminders
+
 **Before running out of tokens:**
 - Automatically creates a handoff document
 - Saves state so you can resume later
@@ -444,7 +476,7 @@ Hooks run in the background at specific moments — you don't call them directly
 - Spawns background analysis to extract learnings
 - Stores memories for future recall
 
-### 15 Rules (System Policies)
+### 20 Rules (System Policies)
 
 Rules keep Claude consistent and safe:
 
@@ -454,6 +486,16 @@ Rules keep Claude consistent and safe:
 - **Security-first** — Never commit secrets, always validate input
 - **Git safety** — Confirm before destructive operations
 - **Delegation** — Use agents for complex tasks to preserve main context
+
+### Browser Automation
+
+**What it is:** Two systems for controlling web browsers — `agent-browser` (headless CLI) and `claude-in-chrome` (visual MCP)
+
+**How you use it:** "Test the login flow" or "Fill out this form" or "Take a screenshot of the dashboard"
+
+**What it enables:** E2E testing, form filling, web scraping, visual verification — all via natural language
+
+**Do I need to code?** No. Describe what you want to test or interact with.
 
 ---
 
@@ -551,11 +593,45 @@ Spawns oracle agent:
 Result: Structured findings with sources
 ```
 
+### "Build This Feature While I'm Away"
+
+```
+> /ralph "Add a contact form with email validation and spam filtering"
+
+Ralph:
+  1. Interviews you (3 questions) → generates PRD
+  2. Breaks PRD into 6 tasks → presents for approval
+  3. You: "Go ahead" → walk away
+
+Ralph (autonomously):
+  → Spawns kraken: form component + validation (parallel)
+  → Spawns kraken: API endpoint + email integration
+  → Spawns arbiter: unit tests + integration tests
+  → Spawns critic: code review
+  → Verifies: all tests pass, types check, lint clean
+
+You return: Working feature, passing tests, clean commit ready for review
+```
+
+### "Test This Web App End-to-End"
+
+```
+> "Run E2E tests on our staging login flow"
+
+Workflow:
+  1. Preflight → verifies dev server running, DB connected, auth configured
+  2. Browser pass → opens staging site, fills login form, verifies dashboard loads
+  3. Assertions → checks element visibility, text content, URL redirects
+  4. Report → screenshots of each step, pass/fail summary
+
+Result: Visual verification without writing Selenium or Playwright scripts
+```
+
 ---
 
 ## Components Explained Simply
 
-### Skills (112)
+### Skills (115)
 
 **What they are:** Pre-built workflows you trigger by describing what you want
 
@@ -573,7 +649,7 @@ Result: Structured findings with sources
 
 **Do I need to code?** No. Skills work via natural language.
 
-### Agents (32)
+### Agents (31)
 
 **What they are:** Specialized AI assistants Claude delegates work to
 
@@ -594,7 +670,7 @@ Result: Structured findings with sources
 
 **Do I need to code?** No. Agents work on your behalf.
 
-### Hooks (66)
+### Hooks (83)
 
 **What they are:** Background helpers that run automatically at specific moments
 
@@ -610,7 +686,7 @@ Result: Structured findings with sources
 
 **Do I need to code?** No. Hooks work invisibly.
 
-### Rules (12)
+### Rules (20)
 
 **What they are:** Guidelines that keep Claude consistent
 
@@ -784,7 +860,7 @@ Then you can use all features (`/build`, `/fix`, etc.) with full context about y
 │                                                                     │
 │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐             │
 │  │   Skills    │    │   Agents    │    │    Hooks    │             │
-│  │   (150+)    │───▶│    (40)     │◀───│    (61)     │             │
+│  │   (115)     │───▶│    (31)     │◀───│    (80+)    │             │
 │  └─────────────┘    └─────────────┘    └─────────────┘             │
 │         │                  │                  │                     │
 │         ▼                  ▼                  ▼                     │
@@ -1001,6 +1077,76 @@ Chain:
 | **UserPromptSubmit** | skill-activation-prompt, memory-awareness | Suggest skills, recall learnings |
 | **SubagentStop** | subagent-stop-continuity | Save agent state |
 | **SessionEnd** | session-end-cleanup, session-outcome | Extract learnings, cleanup |
+| **Ralph hooks** | ralph-delegation-enforcer, ralph-task-monitor, ralph-retry-reminder, ralph-progress-inject | Enforce delegation, track progress, bounded iterations |
+
+### Ralph Architecture
+
+Ralph is the autonomous development orchestrator — Maestro's "set and forget" mode.
+
+**State Management:**
+```
+.ralph/
+├── state.json              # Unified state (version 2.x) — tasks, status, retries
+├── IMPLEMENTATION_PLAN.md  # Human-readable task checklist
+├── agent-output.json       # Last agent's structured results
+└── orchestration.json      # Iteration counts, timing, escalation state
+```
+
+**8 Ralph Hooks:**
+
+| Hook | Event | Purpose |
+|------|-------|---------|
+| ralph-delegation-enforcer | PreToolUse | Blocks Edit/Write/Bash during Ralph mode |
+| ralph-monitor | PostToolUse | Tracks agent spawns and completions |
+| ralph-task-monitor | PostToolUse | Updates task status in state.json |
+| ralph-watchdog | PreToolUse | Enforces iteration limits (10/30/50) |
+| ralph-retry-reminder | UserPromptSubmit | Injects retry context for failed tasks |
+| ralph-progress-inject | UserPromptSubmit | Shows current progress in context |
+| ralph-template-inject | UserPromptSubmit | Injects PRD templates |
+| session-start-recovery | SessionStart | Resumes interrupted Ralph sessions |
+
+**Retry Escalation Pattern:**
+```
+Attempt 1: Same agent with original instruction
+Attempt 2: Same agent with error context
+Attempt 3: Escalate to spark (quick fix specialist)
+Attempt 4: Escalate to debug-agent (root cause analysis)
+Attempt 5: BLOCKED → requires user intervention
+```
+
+**Supporting Scripts:**
+
+| Script | Purpose |
+|--------|---------|
+| `ralph-state-v2.py` | Unified state management (CRUD for tasks) |
+| `ralph-checkpoint.py` | Commit/restore progress checkpoints |
+| `ralph-scheduler.py` | Task ordering: ready-tasks, parallel-batch, critical-path |
+| `ralph-skill-query.py` | Routes tasks to optimal agents |
+
+### Browser Automation Architecture
+
+Two complementary browser automation systems:
+
+| Feature | agent-browser (`ab` CLI) | claude-in-chrome (MCP) |
+|---------|--------------------------|------------------------|
+| Interface | PowerShell/Bash commands | MCP tool calls |
+| Rendering | Headless (default) | Always visible |
+| Selection | `@ref` from snapshots | `ref` from read_page |
+| Best for | CI/CD, scripting, parallel sessions | Visual debugging, GIF recording |
+| Network mocking | Yes (route interception) | No |
+| State persistence | Yes (state_save/load) | No |
+
+**E2E Testing Methodology (4 phases):**
+1. **Preflight** — Verify dev server, DB, auth env vars, seed data
+2. **Browser Pass** — Navigate, interact, capture state via refs
+3. **Assertions** — isvisible, gettext, ischecked, count, URL verification
+4. **Report** — Screenshots, pass/fail summary, error details
+
+**Key Patterns:**
+- Always re-snapshot after navigation or DOM changes
+- Wait 1-2s after React/SPA route changes before reading
+- Use refs from snapshots (`@e1`), never stale references
+- Preflight checks catch 80% of test failures before they happen
 
 ### Environment Variables
 
@@ -1018,15 +1164,18 @@ Chain:
 ```
 continuous-claude/
 ├── .claude/
-│   ├── agents/           # 40 specialized AI agents
-│   ├── hooks/            # 61 lifecycle hooks
+│   ├── agents/           # 31 specialized AI agents
+│   ├── hooks/            # 80+ lifecycle hooks
 │   │   ├── src/          # TypeScript source
 │   │   └── dist/         # Compiled JavaScript
-│   ├── skills/           # 150+ modular capabilities
-│   ├── rules/            # 15 system policies
+│   ├── skills/           # 115 modular capabilities
+│   ├── rules/            # 20 system policies
 │   ├── docs/architecture/ # Navigable architecture docs
 │   ├── scripts/          # Python utilities
 │   └── settings.json     # Hook configuration
+├── .ralph/               # Ralph autonomous build state
+│   ├── state.json        # Unified task/status tracking
+│   └── orchestration.json # Iteration counts and timing
 ├── opc/
 │   ├── packages/
 │   │   └── tldr-code/    # 5-layer code analysis
@@ -1120,6 +1269,7 @@ After installation, try these in order:
 4. **Build something:** `/build greenfield "describe feature"`
 5. **Fix something:** `/fix bug "describe problem"`
 6. **Risk analysis:** `/premortem` → See what could go wrong before implementing
+7. **Go autonomous:** `/ralph "describe a feature"` → Set it and forget it
 
 The system learns from each session. The more you use it, the smarter it gets.
 
@@ -1151,4 +1301,4 @@ The system learns from each session. The more you use it, the smarter it gets.
 
 ---
 
-**Continuous Claude**: Not just a coding assistant — a persistent, learning, multi-agent development environment that gets smarter with every session.
+**Continuous Claude**: Not just a coding assistant — a persistent, learning, autonomous multi-agent development environment that gets smarter with every session.
