@@ -137,25 +137,6 @@ function readRalphUnifiedState(projectDir) {
 // src/ralph-watchdog.ts
 var log2 = createLogger("ralph-watchdog");
 var STALE_THRESHOLD_MS = 30 * 60 * 1e3;
-var AGENT_TIMEOUTS = {
-  spark: 5 * 60 * 1e3,
-  // 5 minutes
-  kraken: 15 * 60 * 1e3,
-  // 15 minutes
-  arbiter: 10 * 60 * 1e3,
-  // 10 minutes
-  "debug-agent": 10 * 60 * 1e3,
-  // 10 minutes
-  atlas: 10 * 60 * 1e3,
-  // 10 minutes
-  sleuth: 10 * 60 * 1e3,
-  // 10 minutes
-  architect: 10 * 60 * 1e3,
-  // 10 minutes
-  phoenix: 10 * 60 * 1e3
-  // 10 minutes
-};
-var DEFAULT_TASK_TIMEOUT_MS = 15 * 60 * 1e3;
 var STATE_FILES = [
   { baseName: "ralph-state", label: "Ralph" },
   { baseName: "maestro-state", label: "Maestro" }
@@ -212,22 +193,6 @@ async function main() {
       log2.warn("Stale unified Ralph workflow detected", { minutes, storyId: unified.story_id, sessionId });
       const details = unified.story_id || "";
       staleWorkflows.push(`**Ralph**${details ? ` (${details})` : ""} \u2014 idle for ${minutes} minutes`);
-    }
-    const tasks = Array.isArray(unified.tasks) ? unified.tasks : Object.values(unified.tasks || {});
-    for (const task of tasks) {
-      if (task.status === "in_progress" && task.started_at) {
-        const taskStart = new Date(task.started_at).getTime();
-        const taskElapsed = Date.now() - taskStart;
-        const agentTimeout = AGENT_TIMEOUTS[task.agent] || DEFAULT_TASK_TIMEOUT_MS;
-        if (taskElapsed >= agentTimeout) {
-          const minutes = Math.round(taskElapsed / 6e4);
-          const limitMin = Math.round(agentTimeout / 6e4);
-          log2.warn(`Task ${task.id} exceeded timeout`, { agent: task.agent, minutes, limit: limitMin });
-          staleWorkflows.push(
-            `**Task ${task.id}** (${task.name || ""}) \u2014 ${task.agent} running ${minutes}min (limit: ${limitMin}min)`
-          );
-        }
-      }
     }
     unifiedRalphChecked = true;
   }

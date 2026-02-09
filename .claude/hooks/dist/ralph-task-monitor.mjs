@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 // src/ralph-task-monitor.ts
-import { readFileSync as readFileSync2, existsSync as existsSync3, mkdirSync as mkdirSync2, writeFileSync } from "fs";
+import { readFileSync as readFileSync2, existsSync as existsSync3 } from "fs";
 import { join as join3 } from "path";
 import { spawnSync } from "child_process";
 
@@ -161,27 +161,6 @@ async function main() {
   const agentType = input.tool_input?.subagent_type || "unknown";
   const description = input.tool_input?.description || "";
   const outcome = detectOutcome(resultText);
-  try {
-    const outputDir = join3(projectDir, ".ralph", "agent-output");
-    if (!existsSync3(outputDir)) {
-      mkdirSync2(outputDir, { recursive: true });
-    }
-    const timestamp = (/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-");
-    const outputFile = join3(outputDir, `${agentType}-${timestamp}.json`);
-    const outputData = {
-      agent: agentType,
-      description,
-      timestamp: (/* @__PURE__ */ new Date()).toISOString(),
-      outcome: outcome ? outcome.success ? "success" : "failure" : "unknown",
-      reason: outcome?.reason || null,
-      output_length: resultText.length,
-      output_preview: resultText.substring(0, 2e3)
-    };
-    writeFileSync(outputFile, JSON.stringify(outputData, null, 2));
-    log2.info("Captured agent output", { file: outputFile, agent: agentType });
-  } catch (err) {
-    log2.warn("Failed to capture agent output", { error: String(err) });
-  }
   if (!outcome) {
     log2.info("No clear outcome detected from agent", { agentType, description });
     return;
