@@ -73,8 +73,12 @@ def detect_doc_type(doc_path: str) -> DocType:
 
 
 def compute_project_id(project_path: str) -> str:
-    """Compute project ID from project path (hash)."""
-    return hashlib.sha256(project_path.encode()).hexdigest()[:16]
+    """Compute project ID from project path (hash).
+
+    Normalizes path separators so forward/backslash yield the same ID.
+    """
+    normalized = project_path.replace("/", os.sep).replace("\\", os.sep)
+    return hashlib.sha256(normalized.encode()).hexdigest()[:16]
 
 
 class PageIndexService:

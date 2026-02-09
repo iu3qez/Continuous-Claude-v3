@@ -29,8 +29,24 @@ from scripts.pageindex.pageindex.page_index_md import md_to_tree
 
 
 def get_project_root() -> str:
-    """Get project root from current directory or env."""
-    return os.getenv("PROJECT_ROOT", os.getcwd())
+    """Get project root from environment or git root detection."""
+    env_root = os.getenv("PROJECT_ROOT")
+    if env_root:
+        return env_root
+
+    # Detect git root (works from any subdirectory)
+    import subprocess
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            capture_output=True, text=True, timeout=5
+        )
+        if result.returncode == 0:
+            return result.stdout.strip()
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        pass
+
+    return os.getcwd()
 
 
 def cmd_generate(args):
@@ -131,7 +147,7 @@ def cmd_search(args):
             )
 
             if results:
-                print(f"\n📄 {doc_path}:")
+                print(f"\n[DOC] {doc_path}:")
                 print(format_search_results(results, include_text=args.include_text))
 
     finally:
@@ -156,7 +172,7 @@ def cmd_list(args):
         print(f"Found {len(trees)} indexed document(s):\n")
 
         for tree in trees:
-            print(f"📄 {tree.doc_path}")
+            print(f"  {tree.doc_path}")
             print(f"   Type: {tree.doc_type.value}")
             print(f"   Nodes: {tree.tree_structure.get('node_count', '?')}")
             print(f"   Updated: {tree.updated_at}")
@@ -185,7 +201,7 @@ def cmd_show(args):
         if args.json:
             print(json.dumps(tree_index.tree_structure, indent=2))
         else:
-            print(f"📄 {args.doc_path}")
+            print(f"[DOC] {args.doc_path}")
             print(f"Type: {tree_index.doc_type.value}")
             print(f"Updated: {tree_index.updated_at}")
             print(f"\nTree structure:")
@@ -215,17 +231,17 @@ def cmd_rebuild(args):
             doc_path = Path(project_root) / tree.doc_path
 
             if not doc_path.exists():
-                print(f"⚠️  Skipping {tree.doc_path} (file not found)")
+                print(f"  [WARN] Skipping {tree.doc_path} (file not found)")
                 continue
 
             with open(doc_path, 'r', encoding='utf-8') as f:
                 content = f.read()
 
             if not args.force and not service.needs_reindex(project_root, tree.doc_path, content):
-                print(f"⏭️  Skipping {tree.doc_path} (unchanged)")
+                print(f"  [SKIP] Skipping {tree.doc_path} (unchanged)")
                 continue
 
-            print(f"🔄 Rebuilding {tree.doc_path}...")
+            print(f"  [REBUILD] {tree.doc_path}...")
 
             tree_result = asyncio.run(md_to_tree(
                 str(doc_path),
@@ -239,7 +255,7 @@ def cmd_rebuild(args):
                 tree_structure=tree_result,
                 doc_content=content
             )
-            print(f"✅ {tree.doc_path}")
+            print(f"  [OK] {tree.doc_path}")
 
         print("\nRebuild complete.")
 
