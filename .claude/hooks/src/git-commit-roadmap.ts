@@ -222,9 +222,16 @@ async function main() {
     return;
   }
 
-  const response = typeof data.tool_response === 'string'
-    ? data.tool_response
-    : JSON.stringify(data.tool_response || '');
+  let response: string;
+  if (typeof data.tool_response === 'string') {
+    response = data.tool_response;
+  } else if (data.tool_response && typeof (data.tool_response as any).output === 'string') {
+    response = (data.tool_response as any).output;
+  } else if (data.tool_response && typeof (data.tool_response as any).stdout === 'string') {
+    response = (data.tool_response as any).stdout;
+  } else {
+    response = JSON.stringify(data.tool_response || '');
+  }
 
   if (!isSuccessfulCommit(response)) {
     console.log(JSON.stringify({ result: 'continue' }));

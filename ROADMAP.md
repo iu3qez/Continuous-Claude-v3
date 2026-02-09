@@ -5,6 +5,9 @@
 _No current goal. Next planned item will be promoted on next planning session._
 
 ## Completed
+- [x] Knowledge tree & ROADMAP audit + repair (2026-02-09)
+- [x] Comprehensive README update with Ralph, browser automation, and corrected counts (2026-02-09) ed034eb
+- [x] Ralph 8-phase scale hardening for 100+ task reliability (2026-02-07) cc4fe68
 - [x] PRD-001: Session Status Dashboard [PRD-001-session-status-dashboard.md] (2026-02-05)
 - [x] Agent Integration [PRD-004] (2026-02-04)
 - [x] Dark Mode [PRD-003] (2026-02-04)

@@ -266,7 +266,15 @@ async function handleTaskUpdate(data) {
   };
 }
 async function handleBashOutput(data) {
-  const toolResult = data.tool_result || "";
+  let toolResult;
+  const resp = data.tool_response;
+  if (typeof resp === "string") {
+    toolResult = resp;
+  } else if (resp && typeof resp.output === "string") {
+    toolResult = resp.output;
+  } else {
+    toolResult = "";
+  }
   const signal = detectCompletionSignal(toolResult);
   if (!signal.matched) {
     return { result: "continue" };

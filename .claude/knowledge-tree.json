@@ -1,0 +1,1411 @@
+{
+  "version": "1.0",
+  "updated_at": "2026-02-09T21:09:14.680140+00:00",
+  "project": {
+    "name": "continuous-claude",
+    "description": "> Give Claude a notebook, memory, specialized assistants, and autonomous development capability — so every conversation builds on the last [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE) [![Claude Code](https://img.shields.io/badge/Claude-Code-orange.svg)](https://claude.ai/code)",
+    "type": "unknown",
+    "stack": []
+  },
+  "structure": {
+    "root": "C:\\Users\\david.hayes\\continuous-claude",
+    "directories": {
+      ".claude/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\agents/": {
+        "purpose": "Agent definitions",
+        "key_files": null
+      },
+      ".claude\\agents\\archive/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\backup/": {
+        "purpose": "Project directory",
+        "key_files": null
+      },
+      ".claude\\backup\\braintrust-correlation-attempt/": {
+        "purpose": "Project directory",
+        "key_files": null
+      },
+      ".claude\\cache/": {
+        "purpose": "Project directory",
+        "key_files": null
+      },
+      ".claude\\cache\\agents/": {
+        "purpose": "Agent definitions",
+        "key_files": null
+      },
+      ".claude\\cache\\agents\\aegis/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\cache\\agents\\arbiter/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\cache\\agents\\architect/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\cache\\agents\\atlas/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\cache\\agents\\kraken/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\cache\\agents\\maestro/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\cache\\agents\\oracle/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\cache\\agents\\profiler/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\cache\\agents\\scout/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\cache\\agents\\sleuth/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\cache\\agents\\spark/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\chrome/": {
+        "purpose": "Project directory",
+        "key_files": null
+      },
+      ".claude\\docs/": {
+        "purpose": "Documentation",
+        "key_files": null
+      },
+      ".claude\\docs\\architecture/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\docs\\architecture\\quick-ref/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\docs\\architecture\\subsystems/": {
+        "purpose": "Markdown documentation",
+        "key_files": [
+          "roadmap.md"
+        ]
+      },
+      ".claude\\hooks/": {
+        "purpose": "React/custom hooks",
+        "key_files": [
+          "package.json",
+          "README.md"
+        ]
+      },
+      ".claude\\hooks\\archive/": {
+        "purpose": "Project directory",
+        "key_files": null
+      },
+      ".claude\\hooks\\src/": {
+        "purpose": "Source code",
+        "key_files": null
+      },
+      ".claude\\hooks\\src\\__tests__/": {
+        "purpose": "Test files",
+        "key_files": null
+      },
+      ".claude\\hooks\\src\\patterns/": {
+        "purpose": "TypeScript modules",
+        "key_files": null
+      },
+      ".claude\\hooks\\src\\shared/": {
+        "purpose": "Shared code",
+        "key_files": null
+      },
+      ".claude\\hooks\\src\\src/": {
+        "purpose": "Source code",
+        "key_files": null
+      },
+      ".claude\\plugins/": {
+        "purpose": "Project directory",
+        "key_files": null
+      },
+      ".claude\\plugins\\braintrust-tracing/": {
+        "purpose": "Project directory",
+        "key_files": null
+      },
+      ".claude\\plugins\\braintrust-tracing\\.claude-plugin/": {
+        "purpose": "JSON data/config",
+        "key_files": null
+      },
+      ".claude\\plugins\\braintrust-tracing\\hooks/": {
+        "purpose": "React/custom hooks",
+        "key_files": null
+      },
+      ".claude\\plugins\\braintrust-tracing\\skills/": {
+        "purpose": "Skill definitions",
+        "key_files": null
+      },
+      ".claude\\reviews/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\rules/": {
+        "purpose": "Rule definitions",
+        "key_files": null
+      },
+      ".claude\\runtime/": {
+        "purpose": "Python modules",
+        "key_files": null
+      },
+      ".claude\\scripts/": {
+        "purpose": "Build/utility scripts",
+        "key_files": null
+      },
+      ".claude\\scripts\\core/": {
+        "purpose": "Core functionality",
+        "key_files": [
+          "README.md"
+        ]
+      },
+      ".claude\\scripts\\core\\math/": {
+        "purpose": "Python modules",
+        "key_files": null
+      },
+      ".claude\\scripts\\core\\mcp/": {
+        "purpose": "Python modules",
+        "key_files": null
+      },
+      ".claude\\scripts\\core\\setup/": {
+        "purpose": "Python modules",
+        "key_files": null
+      },
+      ".claude\\scripts\\core\\tldr/": {
+        "purpose": "Python modules",
+        "key_files": null
+      },
+      ".claude\\scripts\\ralph/": {
+        "purpose": "Python modules",
+        "key_files": null
+      },
+      ".claude\\servers/": {
+        "purpose": "Project directory",
+        "key_files": null
+      },
+      ".claude\\servers\\ast-grep/": {
+        "purpose": "Python modules",
+        "key_files": [
+          "README.md"
+        ]
+      },
+      ".claude\\servers\\fetch/": {
+        "purpose": "Python modules",
+        "key_files": [
+          "README.md"
+        ]
+      },
+      ".claude\\servers\\firecrawl/": {
+        "purpose": "Python modules",
+        "key_files": [
+          "README.md"
+        ]
+      },
+      ".claude\\servers\\git/": {
+        "purpose": "Python modules",
+        "key_files": [
+          "README.md"
+        ]
+      },
+      ".claude\\servers\\morph/": {
+        "purpose": "Python modules",
+        "key_files": [
+          "README.md"
+        ]
+      },
+      ".claude\\servers\\nia/": {
+        "purpose": "Python modules",
+        "key_files": [
+          "README.md"
+        ]
+      },
+      ".claude\\servers\\perplexity/": {
+        "purpose": "Python modules",
+        "key_files": [
+          "README.md"
+        ]
+      },
+      ".claude\\servers\\qlty/": {
+        "purpose": "Python modules",
+        "key_files": [
+          "README.md"
+        ]
+      },
+      ".claude\\servers\\repoprompt/": {
+        "purpose": "Python modules",
+        "key_files": [
+          "README.md"
+        ]
+      },
+      ".claude\\skills/": {
+        "purpose": "Skill definitions",
+        "key_files": [
+          "README.md"
+        ]
+      },
+      ".claude\\skills\\_sandbox/": {
+        "purpose": "Project directory",
+        "key_files": null
+      },
+      ".claude\\skills\\agent-browser/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\agent-browser\\tests/": {
+        "purpose": "Test files",
+        "key_files": null
+      },
+      ".claude\\skills\\agent-context-isolation/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\agent-development/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\agent-orchestration/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\agentic-workflow/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\agentica-claude-proxy/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\agentica-infrastructure/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\agentica-prompts/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\agentica-sdk/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\agentica-server/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\agentica-spawn/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\archive/": {
+        "purpose": "Project directory",
+        "key_files": null
+      },
+      ".claude\\skills\\archive\\async-repl-protocol/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\archive\\background-agent-pings/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\archive\\complete-skill/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\archive\\compound-learnings/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\archive\\dangerous-mode/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\archive\\explicit-identity/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\archive\\extract-learnings/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\archive\\graceful-degradation/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\archive\\idempotent-redundancy/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\archive\\index-at-creation/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\archive\\leann-search/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\archive\\llm-tuning-patterns/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\archive\\loogle-search/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\archive\\math/": {
+        "purpose": "Markdown documentation",
+        "key_files": [
+          "README.md"
+        ]
+      },
+      ".claude\\skills\\archive\\math-help/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\archive\\math-router/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\archive\\math-unified/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\archive\\mcp-chaining/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\archive\\mcp-scripts/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\archive\\modular-code/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\archive\\no-polling-agents/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\archive\\no-task-output/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\archive\\observe-before-editing/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\archive\\persona/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\archive\\pint-compute/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\archive\\prove/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\archive\\research-agent/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\archive\\rlm/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\archive\\router-first-architecture/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\archive\\search-hierarchy/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\archive\\search-tools/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\archive\\shapely-compute/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\archive\\slash-commands/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\archive\\spark-browser-test/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\ast-grep-find/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\async-repl-protocol/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\azure-deployment/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\braintrust-analyze/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\braintrust-tracing/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\claude-in-chrome/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\cli-reference/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\code-review/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\commit/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\completion-check/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\continuity_ledger/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\create_handoff/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\databases/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\date-logic-management/": {
+        "purpose": "Markdown documentation",
+        "key_files": [
+          "README.md"
+        ]
+      },
+      ".claude\\skills\\dead-code/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\debug/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\debug-hooks/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\describe_pr/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\discovery-interview/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\environment-triage/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\excalidraw-mcp/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\excalidraw-mcp\\references/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\excalidraw-mcp\\scripts/": {
+        "purpose": "Build/utility scripts",
+        "key_files": null
+      },
+      ".claude\\skills\\explore/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\firecrawl-scrape/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\fix/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\fourth-brand-guidelines/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\fourth-brand-guidelines\\references/": {
+        "purpose": "Project directory",
+        "key_files": null
+      },
+      ".claude\\skills\\fourth-presentation-builder/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\fourth-presentation-builder\\references/": {
+        "purpose": "Project directory",
+        "key_files": null
+      },
+      ".claude\\skills\\frontend-slides/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\frontend-slides\\components/": {
+        "purpose": "UI components",
+        "key_files": [
+          "README.md"
+        ]
+      },
+      ".claude\\skills\\frontend-slides\\example-presentations/": {
+        "purpose": "Project directory",
+        "key_files": null
+      },
+      ".claude\\skills\\frontend-slides\\templates/": {
+        "purpose": "Project directory",
+        "key_files": null
+      },
+      ".claude\\skills\\frontend-slides\\themes/": {
+        "purpose": "Project directory",
+        "key_files": [
+          "README.md"
+        ]
+      },
+      ".claude\\skills\\git-commits/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\github-search/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\help/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\hook-developer/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\hooks/": {
+        "purpose": "React/custom hooks",
+        "key_files": null
+      },
+      ".claude\\skills\\idearalph/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\implement_plan/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\implement_plan_micro/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\implement_task/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\init-project/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\knowledge-tree/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\maestro/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\mcp-guidance/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\meeting-brief-generator/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\meeting-brief-generator\\assets/": {
+        "purpose": "Asset files",
+        "key_files": null
+      },
+      ".claude\\skills\\meeting-brief-generator\\references/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\memory/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\migrate/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\morph-apply/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\morph-search/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\mot/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\nia-docs/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\onboard/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\opc-architecture/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\pageindex-search/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\parallel-agent-contracts/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\parallel-agents/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\perplexity-search/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\personas/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\plan-agent/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\plan-mode/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\premortem/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\qlty-check/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\qlty-during-development/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\ralph/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\ralph-resume/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\react-perf/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\recall/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\recall-reasoning/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\refactor/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\reference-sdk/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\release/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\remember/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\repo-research-analyst/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\repoprompt/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\research/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\research-external/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\resume_handoff/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\review/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\roadmap/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\router-first-architecture/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\search-hierarchy/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\search-router/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\search-tools/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\security/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\shadcn-create/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\shadcn-create\\references/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\skill-developer/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\skill-development/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\skill-upgrader/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\sub-agents/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\system_overview/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\systematic-debugging/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\task-master-workflow/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\task-master-workflow\\references/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\tdd/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\tdd-migrate/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\tdd-migration-pipeline/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\test/": {
+        "purpose": "Test files",
+        "key_files": null
+      },
+      ".claude\\skills\\tldr-code/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\tldr-deep/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\tldr-overview/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\tldr-router/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\tldr-stats/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\tour/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\ui-audit/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\ui-ux-pro-max/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\ui-ux-pro-max\\data/": {
+        "purpose": "Project directory",
+        "key_files": null
+      },
+      ".claude\\skills\\ui-ux-pro-max\\scripts/": {
+        "purpose": "Build/utility scripts",
+        "key_files": null
+      },
+      ".claude\\skills\\validate-agent/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\wiring/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\skills\\workflow-router/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\templates/": {
+        "purpose": "Project directory",
+        "key_files": null
+      },
+      ".claude\\templates\\ralph/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      ".claude\\tests/": {
+        "purpose": "Test files",
+        "key_files": null
+      },
+      ".claude\\tests\\stress/": {
+        "purpose": "Project directory",
+        "key_files": null
+      },
+      ".claude\\transcripts/": {
+        "purpose": "Project directory",
+        "key_files": null
+      },
+      ".ralph/": {
+        "purpose": "JSON data/config",
+        "key_files": null
+      },
+      ".tldr/": {
+        "purpose": "Project directory",
+        "key_files": null
+      },
+      "docker/": {
+        "purpose": "YAML config",
+        "key_files": [
+          "docker-compose.yml"
+        ]
+      },
+      "docs/": {
+        "purpose": "Documentation",
+        "key_files": [
+          "README.md"
+        ]
+      },
+      "docs\\agents/": {
+        "purpose": "Agent definitions",
+        "key_files": [
+          "README.md"
+        ]
+      },
+      "docs\\hooks/": {
+        "purpose": "React/custom hooks",
+        "key_files": [
+          "README.md"
+        ]
+      },
+      "docs\\skills/": {
+        "purpose": "Skill definitions",
+        "key_files": [
+          "README.md"
+        ]
+      },
+      "docs\\tools/": {
+        "purpose": "Markdown documentation",
+        "key_files": [
+          "README.md"
+        ]
+      },
+      "docs\\workflows/": {
+        "purpose": "Markdown documentation",
+        "key_files": [
+          "README.md"
+        ]
+      },
+      "opc/": {
+        "purpose": "Project directory",
+        "key_files": [
+          "pyproject.toml"
+        ]
+      },
+      "opc\\.claude/": {
+        "purpose": "JSON data/config",
+        "key_files": null
+      },
+      "opc\\ai-dev-tasks/": {
+        "purpose": "Markdown documentation",
+        "key_files": [
+          "README.md"
+        ]
+      },
+      "opc\\ai-dev-tasks\\spark-enhancements/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      "opc\\archive/": {
+        "purpose": "Python modules",
+        "key_files": null
+      },
+      "opc\\docker/": {
+        "purpose": "Project directory",
+        "key_files": null
+      },
+      "opc\\scripts/": {
+        "purpose": "Build/utility scripts",
+        "key_files": [
+          "README.md"
+        ]
+      },
+      "opc\\scripts\\archive/": {
+        "purpose": "Python modules",
+        "key_files": null
+      },
+      "opc\\scripts\\cc_math/": {
+        "purpose": "Python modules",
+        "key_files": null
+      },
+      "opc\\scripts\\core/": {
+        "purpose": "Core functionality",
+        "key_files": null
+      },
+      "opc\\scripts\\core\\db/": {
+        "purpose": "Python modules",
+        "key_files": null
+      },
+      "opc\\scripts\\dashboard/": {
+        "purpose": "Python modules",
+        "key_files": null
+      },
+      "opc\\scripts\\dashboard\\frontend/": {
+        "purpose": "JSON data/config",
+        "key_files": [
+          "package.json",
+          "README.md"
+        ]
+      },
+      "opc\\scripts\\dashboard\\logs/": {
+        "purpose": "Project directory",
+        "key_files": null
+      },
+      "opc\\scripts\\dashboard\\routers/": {
+        "purpose": "Python modules",
+        "key_files": null
+      },
+      "opc\\scripts\\dashboard\\service/": {
+        "purpose": "Python modules",
+        "key_files": null
+      },
+      "opc\\scripts\\dashboard\\services/": {
+        "purpose": "Service layer",
+        "key_files": null
+      },
+      "opc\\scripts\\dashboard\\static/": {
+        "purpose": "Static files",
+        "key_files": null
+      },
+      "opc\\scripts\\dashboard\\tasks/": {
+        "purpose": "Python modules",
+        "key_files": null
+      },
+      "opc\\scripts\\dashboard\\tests/": {
+        "purpose": "Test files",
+        "key_files": null
+      },
+      "opc\\scripts\\dashboard\\websocket/": {
+        "purpose": "Python modules",
+        "key_files": null
+      },
+      "opc\\scripts\\mcp/": {
+        "purpose": "Python modules",
+        "key_files": null
+      },
+      "opc\\scripts\\pageindex/": {
+        "purpose": "Python modules",
+        "key_files": [
+          "README.md"
+        ]
+      },
+      "opc\\scripts\\pageindex\\cli/": {
+        "purpose": "Python modules",
+        "key_files": null
+      },
+      "opc\\scripts\\pageindex\\cookbook/": {
+        "purpose": "Project directory",
+        "key_files": [
+          "README.md"
+        ]
+      },
+      "opc\\scripts\\pageindex\\pageindex/": {
+        "purpose": "Python modules",
+        "key_files": null
+      },
+      "opc\\scripts\\pageindex\\tests/": {
+        "purpose": "Test files",
+        "key_files": null
+      },
+      "opc\\scripts\\pageindex\\tutorials/": {
+        "purpose": "Project directory",
+        "key_files": null
+      },
+      "opc\\scripts\\ralph/": {
+        "purpose": "Python modules",
+        "key_files": null
+      },
+      "opc\\scripts\\setup/": {
+        "purpose": "Python modules",
+        "key_files": null
+      },
+      "opc\\scripts\\tldr/": {
+        "purpose": "Python modules",
+        "key_files": null
+      },
+      "opc\\src/": {
+        "purpose": "Source code",
+        "key_files": null
+      },
+      "opc\\src\\runtime/": {
+        "purpose": "Python modules",
+        "key_files": null
+      },
+      "opc\\tests/": {
+        "purpose": "Test files",
+        "key_files": null
+      },
+      "opc\\tests\\dashboard/": {
+        "purpose": "Python modules",
+        "key_files": null
+      },
+      "opc\\tests\\pageindex/": {
+        "purpose": "Python modules",
+        "key_files": null
+      },
+      "opc\\tests\\pageindex\\e2e/": {
+        "purpose": "Python modules",
+        "key_files": null
+      },
+      "opc\\tests\\pageindex\\fixtures/": {
+        "purpose": "Test fixtures",
+        "key_files": null
+      },
+      "opc\\tests\\pageindex\\integration/": {
+        "purpose": "Python modules",
+        "key_files": null
+      },
+      "opc\\tests\\pageindex\\unit/": {
+        "purpose": "Python modules",
+        "key_files": null
+      },
+      "opc\\tests\\unit/": {
+        "purpose": "Python modules",
+        "key_files": null
+      },
+      "opc\\tests\\unit\\dashboard/": {
+        "purpose": "Python modules",
+        "key_files": null
+      },
+      "presentations/": {
+        "purpose": "Project directory",
+        "key_files": null
+      },
+      "proofs/": {
+        "purpose": "Project directory",
+        "key_files": null
+      },
+      "proofs\\Proofs/": {
+        "purpose": "Project directory",
+        "key_files": null
+      },
+      "scripts/": {
+        "purpose": "Build/utility scripts",
+        "key_files": null
+      },
+      "thoughts/": {
+        "purpose": "Project directory",
+        "key_files": null
+      },
+      "thoughts\\shared/": {
+        "purpose": "Shared code",
+        "key_files": null
+      },
+      "thoughts\\shared\\handoffs/": {
+        "purpose": "Project directory",
+        "key_files": null
+      },
+      "thoughts\\shared\\handoffs\\kraken-actions-page/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      "thoughts\\shared\\handoffs\\kraken-phase4-e2e/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      "thoughts\\shared\\handoffs\\kraken-presence-tracking/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      "thoughts\\shared\\handoffs\\kraken-validate-middleware/": {
+        "purpose": "Markdown documentation",
+        "key_files": null
+      },
+      "thoughts\\shared\\handoffs\\ralph-improvements/": {
+        "purpose": "YAML config",
+        "key_files": null
+      }
+    }
+  },
+  "components": [
+    {
+      "name": "Database",
+      "type": "layer",
+      "files": [
+        "opc\\scripts\\core\\db/"
+      ],
+      "description": "Database - layer component",
+      "related": []
+    },
+    {
+      "name": "UI Components",
+      "type": "layer",
+      "files": [
+        ".claude\\reviews/",
+        ".claude\\skills\\frontend-slides\\components/"
+      ],
+      "description": "UI Components - layer component",
+      "related": []
+    },
+    {
+      "name": "Services",
+      "type": "layer",
+      "files": [
+        "opc\\scripts\\dashboard\\services/"
+      ],
+      "description": "Services - layer component",
+      "related": []
+    }
+  ],
+  "navigation": {
+    "common_tasks": {
+      "add_database_model": [
+        "opc\\scripts\\core\\db/"
+      ],
+      "add_component": [
+        ".claude\\reviews/",
+        ".claude\\skills\\frontend-slides\\components/"
+      ],
+      "add_test": [
+        ".claude\\hooks\\src\\__tests__/",
+        ".claude\\skills\\agent-browser\\tests/",
+        ".claude\\skills\\archive\\spark-browser-test/"
+      ],
+      "add_hook": [
+        ".claude\\hooks/",
+        ".claude\\plugins\\braintrust-tracing\\hooks/",
+        ".claude\\skills\\debug-hooks/"
+      ],
+      "add_skill": [
+        ".claude\\plugins\\braintrust-tracing\\skills/",
+        ".claude\\skills/",
+        "docs\\skills/"
+      ]
+    },
+    "entry_points": {
+      "cli": "opc\\scripts\\pageindex\\cli/"
+    }
+  },
+  "goals": {
+    "source": "ROADMAP.md",
+    "current": null,
+    "completed": [
+      {
+        "title": "Knowledge tree & ROADMAP audit + repair",
+        "completed": "2026-02-09"
+      },
+      {
+        "title": "Comprehensive README update with Ralph, browser automation, and corrected counts (2026-02-09) ed034eb",
+        "completed": null
+      },
+      {
+        "title": "Ralph 8-phase scale hardening for 100+ task reliability (2026-02-07) cc4fe68",
+        "completed": null
+      },
+      {
+        "title": "PRD-001: Session Status Dashboard [PRD-001-session-status-dashboard.md]",
+        "completed": "2026-02-05"
+      },
+      {
+        "title": "Agent Integration [PRD-004]",
+        "completed": "2026-02-04"
+      },
+      {
+        "title": "Dark Mode [PRD-003]",
+        "completed": "2026-02-04"
+      },
+      {
+        "title": "Decisions Filter [PRD-002]",
+        "completed": "2026-02-04"
+      },
+      {
+        "title": "Actions Kanban Board [PRD-001]",
+        "completed": "2026-02-04"
+      },
+      {
+        "title": "ROADMAP as Source of Truth Implementation",
+        "completed": "2026-02-03"
+      },
+      {
+        "title": "Git commit ROADMAP sync hook",
+        "completed": "2026-02-03"
+      },
+      {
+        "title": "ROADMAP auto-update mechanism fix",
+        "completed": "2026-02-03"
+      },
+      {
+        "title": "Memory & Braintrust systems health check",
+        "completed": "2026-02-03"
+      },
+      {
+        "title": "Agent delegation improvements",
+        "completed": "2026-02-02"
+      },
+      {
+        "title": "Documentation consolidation",
+        "completed": "2026-02-02"
+      },
+      {
+        "title": "Memory system performance optimization",
+        "completed": "2026-02-02"
+      },
+      {
+        "title": "Finalize session isolation patterns",
+        "completed": "2026-02-02"
+      },
+      {
+        "title": "Complete stress testing for enforcer hooks",
+        "completed": "2026-02-02"
+      },
+      {
+        "title": "Hook System Improvements",
+        "completed": "2026-02-02"
+      },
+      {
+        "title": "Core memory system with PostgreSQL + pgvector",
+        "completed": "2026-01"
+      },
+      {
+        "title": "Defense-in-depth extraction architecture",
+        "completed": "2026-01"
+      },
+      {
+        "title": "Session hooks infrastructure",
+        "completed": "2026-01"
+      },
+      {
+        "title": "Skill system with v5 hybrid format",
+        "completed": "2026-01"
+      },
+      {
+        "title": "Agent orchestration (maestro, ralph workflows)",
+        "completed": "2026-01"
+      },
+      {
+        "title": "Knowledge tree integration",
+        "completed": "2026-01"
+      },
+      {
+        "title": "Cross-terminal coordination database",
+        "completed": "2026-01"
+      },
+      {
+        "title": "Memory unit tests in opc/tests/",
+        "completed": "2026-02"
+      }
+    ],
+    "planned": [
+      {
+        "title": "PRD: CLI Task Tracker [prd-cli-task-tracker.md]",
+        "priority": "medium"
+      }
+    ]
+  },
+  "critical_info": {
+    "env_vars": ".env.example"
+  }
+}

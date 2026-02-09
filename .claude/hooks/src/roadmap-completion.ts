@@ -16,7 +16,7 @@ import * as path from 'path';
 interface PostToolUseInput {
   tool_name: string;
   tool_input: Record<string, unknown>;
-  tool_result?: string;
+  tool_response?: unknown;
 }
 
 interface UserPromptSubmitInput {
@@ -358,7 +358,15 @@ async function handleTaskUpdate(data: PostToolUseInput): Promise<HookOutput> {
 }
 
 async function handleBashOutput(data: PostToolUseInput): Promise<HookOutput> {
-  const toolResult = data.tool_result || '';
+  let toolResult: string;
+  const resp = data.tool_response;
+  if (typeof resp === 'string') {
+    toolResult = resp;
+  } else if (resp && typeof (resp as any).output === 'string') {
+    toolResult = (resp as any).output;
+  } else {
+    toolResult = '';
+  }
   const signal = detectCompletionSignal(toolResult);
 
   if (!signal.matched) {
