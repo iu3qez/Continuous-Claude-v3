@@ -34,32 +34,6 @@
                 ]
             }
         },
-        "compound-learnings": {
-            "type": "domain",
-            "enforcement": "suggest",
-            "priority": "medium",
-            "description": "Transform session learnings into permanent capabilities (skills, rules, agents)",
-            "promptTriggers": {
-                "keywords": [
-                    "compound learnings",
-                    "improve setup",
-                    "learn from sessions",
-                    "what patterns",
-                    "turn learnings into",
-                    "make permanent",
-                    "extract patterns",
-                    "create skill from",
-                    "create rule from"
-                ],
-                "intentPatterns": [
-                    "(compound|consolidate|extract).*?learning",
-                    "(improve|enhance|upgrade).*?(setup|config)",
-                    "(what|which).*?pattern.*?(skill|rule|permanent)",
-                    "learn.*?from.*?session",
-                    "(turn|convert|transform).*?learning.*?(skill|rule|agent)"
-                ]
-            }
-        },
         "idearalph": {
             "type": "workflow",
             "enforcement": "suggest",
@@ -877,31 +851,7 @@
                 ]
             }
         },
-        "modular-code": {
-            "type": "domain",
-            "enforcement": "suggest",
-            "priority": "medium",
-            "description": "Guidelines for modular Python code organization and file size",
-            "promptTriggers": {
-                "keywords": [
-                    "refactor",
-                    "split file",
-                    "file too large",
-                    "too many lines",
-                    "module organization",
-                    "package structure",
-                    "organize code",
-                    "split module"
-                ],
-                "intentPatterns": [
-                    "(split|break up|organize).*?(file|module|code)",
-                    "(file|module).*?(too|very).*?(large|big|long)",
-                    "(refactor|reorganize).*?(code|module|package)",
-                    "(how|should).*?(organize|structure).*?(code|module)"
-                ]
-            }
-        },
-                "reference-sdk": {
+        "reference-sdk": {
             "type": "domain",
             "enforcement": "suggest",
             "priority": "medium",
@@ -982,112 +932,6 @@
                     "(understand|explain).*?(function|method|code)",
                     "(trace|follow).*?(calls|execution)",
                     "(cyclomatic|complexity).*?(of|for|is)"
-                ]
-            }
-        },
-        "math-unified": {
-            "type": "domain",
-            "enforcement": "suggest",
-            "priority": "high",
-            "description": "Unified math entry point - computation, solving, and explanation. Routes to SymPy, Z3, Pint, topic skills.",
-            "promptTriggers": {
-                "keywords": [
-                    "/math",
-                    "solve equation",
-                    "integrate",
-                    "derivative",
-                    "differentiate",
-                    "simplify expression",
-                    "eigenvalue",
-                    "determinant",
-                    "matrix calculation",
-                    "symbolic math",
-                    "factor polynomial",
-                    "taylor series",
-                    "laplace transform",
-                    "linear system"
-                ],
-                "intentPatterns": [
-                    "(solve|compute|calculate|simplify).*?(equation|expression|integral)",
-                    "(find|compute).*?(derivative|integral|limit|eigenvalue)",
-                    "(what is|evaluate).*?(integral|derivative|determinant)",
-                    "symbolic.*?(math|computation|algebra)"
-                ]
-            }
-        },
-        "math-help": {
-            "type": "domain",
-            "enforcement": "suggest",
-            "priority": "medium",
-            "description": "Guide to the math cognitive stack - what tools exist and when to use each",
-            "promptTriggers": {
-                "keywords": [
-                    "math tools",
-                    "math capabilities",
-                    "what math can you do",
-                    "math help",
-                    "how to do math",
-                    "available math",
-                    "math stack"
-                ],
-                "intentPatterns": [
-                    "(what|which).*?math.*?(tools?|capabilit|can you)",
-                    "(how|help).*?(do|with).*?math",
-                    "(list|show).*?math.*?(tools?|options)"
-                ]
-            }
-        },
-        "pint-compute": {
-            "type": "domain",
-            "enforcement": "suggest",
-            "priority": "high",
-            "description": "Unit-aware computation with Pint - convert units, dimensional analysis, unit arithmetic",
-            "promptTriggers": {
-                "keywords": [
-                    "convert units",
-                    "unit conversion",
-                    "meters to feet",
-                    "miles to kilometers",
-                    "celsius to fahrenheit",
-                    "dimensional analysis",
-                    "unit arithmetic",
-                    "physical units",
-                    "how many meters",
-                    "how many feet",
-                    "how many miles"
-                ],
-                "intentPatterns": [
-                    "convert.*?(to|into).*?(meters|feet|miles|km|celsius|fahrenheit|pounds|kg)",
-                    "(how many|what is).*?(meters|feet|miles|km|celsius|fahrenheit).*?(in|to)",
-                    "(unit|dimensional).*?(convert|analysis|arithmetic)",
-                    "[0-9]+.*?(meters|feet|miles|km|celsius|fahrenheit).*?(to|in)"
-                ]
-            }
-        },
-        "shapely-compute": {
-            "type": "domain",
-            "enforcement": "suggest",
-            "priority": "high",
-            "description": "Computational geometry with Shapely - create geometries, boolean operations, measurements, predicates",
-            "promptTriggers": {
-                "keywords": [
-                    "polygon area",
-                    "polygon intersection",
-                    "geometry intersection",
-                    "convex hull",
-                    "point in polygon",
-                    "buffer geometry",
-                    "shapely",
-                    "computational geometry",
-                    "geometric union",
-                    "geometric difference"
-                ],
-                "intentPatterns": [
-                    "(area|perimeter).*?(polygon|shape|geometry)",
-                    "(intersect|union|difference).*?(polygon|shape|geometry)",
-                    "(point|line).*?(in|inside|within).*?(polygon|shape)",
-                    "(convex|concave).*?hull",
-                    "(buffer|simplify).*?(geometry|shape|polygon)"
                 ]
             }
         },
@@ -1484,7 +1328,7 @@
                 ]
             }
         },
-                "migrate": {
+        "migrate": {
             "type": "workflow",
             "enforcement": "suggest",
             "priority": "high",
@@ -1632,31 +1476,6 @@
                 ]
             }
         },
-        "prove": {
-            "type": "workflow",
-            "enforcement": "suggest",
-            "priority": "high",
-            "description": "Formal theorem proving with Lean 4 - research, testing, and verification phases.",
-            "promptTriggers": {
-                "keywords": [
-                    "/prove",
-                    "prove this",
-                    "formal proof",
-                    "lean 4",
-                    "lean4",
-                    "theorem prover",
-                    "formal verification",
-                    "prove theorem",
-                    "mathlib"
-                ],
-                "intentPatterns": [
-                    "(prove|verify).*?(theorem|lemma|proposition)",
-                    "(formal|lean).*?(proof|verification)",
-                    "lean.*?4",
-                    "(use|with).*?(lean|mathlib)"
-                ]
-            }
-        },
         "braintrust-tracing": {
             "type": "domain",
             "enforcement": "suggest",
@@ -1750,33 +1569,6 @@
                     "(help|assist).*?(think through|understand|clarify)",
                     "(vague|unclear).*?(idea|concept|requirements)",
                     "what.*?should.*?(build|implement|create)"
-                ]
-            }
-        },
-        "loogle-search": {
-            "type": "domain",
-            "enforcement": "suggest",
-            "priority": "high",
-            "description": "Search Mathlib by type signature pattern - find lemmas when you know the shape but not the name.",
-            "promptTriggers": {
-                "keywords": [
-                    "loogle",
-                    "mathlib search",
-                    "find lemma",
-                    "search mathlib",
-                    "type signature",
-                    "lean lemma",
-                    "lean4 lemma",
-                    "mathlib lemma",
-                    "what lemma",
-                    "which theorem"
-                ],
-                "intentPatterns": [
-                    "(search|find|look up).*?(mathlib|lemma|theorem)",
-                    "(what|which).*?(lemma|theorem).*?(for|about|proves)",
-                    "loogle.*?(search|query)",
-                    "(type|signature).*?(search|pattern)",
-                    "(lean|lean4).*?(lemma|theorem|find)"
                 ]
             }
         },
