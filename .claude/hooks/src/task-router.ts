@@ -104,6 +104,7 @@ interface HookOutput {
     hookEventName: string;
     permissionDecision: 'allow' | 'deny';
     permissionDecisionReason?: string;
+    additionalContext?: string;
   };
 }
 
@@ -149,25 +150,24 @@ function makeAllowOutput(): HookOutput {
   return {};
 }
 
-function makeSuggestOutput(route: AgentRoute, currentAgent?: string): void {
+function makeSuggestOutput(route: AgentRoute, currentAgent?: string): HookOutput {
   const confidencePct = Math.round(route.confidence * 100);
-  const message = `
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-💡 AGENT SUGGESTION
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-You're using: ${currentAgent || 'general-purpose'}
-Better fit: **${route.agent}** (${confidencePct}% confidence)
-  → ${route.description}
-
-Consider using subagent_type: "${route.agent}"
-
-Proceeding with current agent...
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-`;
-  // Output suggestion as plain text (gets injected into context)
-  // Then return empty object to allow the task to proceed
-  console.log(message);
+  const message = [
+    '--- AGENT SUGGESTION ---',
+    `You're using: ${currentAgent || 'general-purpose'}`,
+    `Better fit: **${route.agent}** (${confidencePct}% confidence)`,
+    `  -> ${route.description}`,
+    `Consider using subagent_type: "${route.agent}"`,
+    'Proceeding with current agent...',
+    '------------------------'
+  ].join('\n');
+  return {
+    hookSpecificOutput: {
+      hookEventName: 'PreToolUse',
+      permissionDecision: 'allow',
+      additionalContext: message
+    }
+  };
 }
 
 async function main() {
@@ -202,12 +202,13 @@ async function main() {
 
     if (bestAgent && GENERIC_AGENTS.has(currentAgent.toLowerCase())) {
       if (currentAgent.toLowerCase() !== bestAgent.agent.toLowerCase()) {
-        // Output suggestion text, then allow
-        makeSuggestOutput(bestAgent, currentAgent);
+        const output = makeSuggestOutput(bestAgent, currentAgent);
+        console.log(JSON.stringify(output));
+        return;
       }
     }
 
-    // Always allow the task to proceed
+    // Allow the task to proceed
     console.log(JSON.stringify(makeAllowOutput()));
   } catch (err) {
     console.log(JSON.stringify(makeAllowOutput()));

@@ -101,21 +101,22 @@ function makeAllowOutput() {
 }
 function makeSuggestOutput(route, currentAgent) {
   const confidencePct = Math.round(route.confidence * 100);
-  const message = `
-\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
-\u{1F4A1} AGENT SUGGESTION
-\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
-
-You're using: ${currentAgent || "general-purpose"}
-Better fit: **${route.agent}** (${confidencePct}% confidence)
-  \u2192 ${route.description}
-
-Consider using subagent_type: "${route.agent}"
-
-Proceeding with current agent...
-\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
-`;
-  console.log(message);
+  const message = [
+    "--- AGENT SUGGESTION ---",
+    `You're using: ${currentAgent || "general-purpose"}`,
+    `Better fit: **${route.agent}** (${confidencePct}% confidence)`,
+    `  -> ${route.description}`,
+    `Consider using subagent_type: "${route.agent}"`,
+    "Proceeding with current agent...",
+    "------------------------"
+  ].join("\n");
+  return {
+    hookSpecificOutput: {
+      hookEventName: "PreToolUse",
+      permissionDecision: "allow",
+      additionalContext: message
+    }
+  };
 }
 async function main() {
   try {
@@ -144,7 +145,9 @@ async function main() {
     const bestAgent = findBestAgent(prompt);
     if (bestAgent && GENERIC_AGENTS.has(currentAgent.toLowerCase())) {
       if (currentAgent.toLowerCase() !== bestAgent.agent.toLowerCase()) {
-        makeSuggestOutput(bestAgent, currentAgent);
+        const output = makeSuggestOutput(bestAgent, currentAgent);
+        console.log(JSON.stringify(output));
+        return;
       }
     }
     console.log(JSON.stringify(makeAllowOutput()));
