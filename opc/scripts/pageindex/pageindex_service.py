@@ -343,7 +343,7 @@ class PageIndexService:
             return nodes
 
         for node in structure:
-            node_id = node.get("id", node.get("title", f"node-{depth}-{len(nodes)}"))
+            node_id = node.get("node_id", node.get("id", node.get("title", f"node-{depth}-{len(nodes)}")))
             title = node.get("title", "")
             text = node.get("text", "")
             line_num = node.get("line_num")
@@ -359,7 +359,7 @@ class PageIndexService:
             })
 
             # Recurse into children
-            children = node.get("children", [])
+            children = node.get("nodes", node.get("children", []))
             if children:
                 child_tree = {"structure": children}
                 child_nodes = self.flatten_tree_nodes(
