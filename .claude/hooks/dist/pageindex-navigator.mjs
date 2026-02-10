@@ -335,87 +335,27 @@ function queryPageIndex(query, docPath, options = {}) {
     return [];
   }
 }
-function buildPythonScript(query, docPath, maxResults, docType) {
+function buildPythonScript(query, docPath, maxResults, _docType) {
   const escapedQuery = query.replace(/'/g, "\\'").replace(/\n/g, " ");
   const escapedDocPath = docPath ? docPath.replace(/'/g, "\\'") : "";
   return `
-import sys
-import json
-import os
+import sys, json, os
 sys.path.insert(0, '.')
-
-from scripts.pageindex.pageindex_service import PageIndexService
-from scripts.pageindex.tree_search import tree_search, multi_doc_search
+from scripts.pageindex.fast_search import search_fts
 
 project_path = os.getcwd()
-service = PageIndexService()
-
-try:
-    results = []
-    query = '${escapedQuery}'
-    doc_path = '${escapedDocPath}' or None
-    doc_type = '${docType || ""}' or None
-    max_results = ${maxResults}
-
-    if doc_path:
-        # Search specific document
-        tree = service.get_tree(project_path, doc_path)
-        if tree and tree.tree_structure:
-            search_results = tree_search(
-                query=query,
-                tree_structure=tree.tree_structure,
-                doc_name=doc_path,
-                max_results=max_results,
-                model='haiku'  # Fast model for navigation
-            )
-            for r in search_results:
-                results.append({
-                    'node_id': r.node_id,
-                    'title': r.title,
-                    'text': r.text[:500] if r.text else '',
-                    'line_num': r.line_num,
-                    'relevance_reason': r.relevance_reason,
-                    'confidence': r.confidence,
-                    'doc_path': doc_path
-                })
-    else:
-        # Search all indexed docs (optionally filtered by type)
-        all_trees = service.list_trees(project_path=project_path)
-        if doc_type:
-            all_trees = [t for t in all_trees if t.doc_type.value == doc_type]
-
-        trees_with_structure = {}
-        for t in all_trees[:10]:  # Limit to 10 docs
-            full_tree = service.get_tree(project_path, t.doc_path)
-            if full_tree and full_tree.tree_structure:
-                trees_with_structure[t.doc_path] = full_tree.tree_structure
-
-        if trees_with_structure:
-            multi_results = multi_doc_search(
-                query=query,
-                trees=trees_with_structure,
-                max_results_per_doc=2,
-                model='haiku'
-            )
-            for doc_path, doc_results in multi_results.items():
-                for r in doc_results:
-                    results.append({
-                        'node_id': r.node_id,
-                        'title': r.title,
-                        'text': r.text[:500] if r.text else '',
-                        'line_num': r.line_num,
-                        'relevance_reason': r.relevance_reason,
-                        'confidence': r.confidence,
-                        'doc_path': doc_path
-                    })
-
-    # Sort by confidence and limit
-    results.sort(key=lambda x: x['confidence'], reverse=True)
-    results = results[:max_results]
-
-    print(json.dumps({'results': results}))
-finally:
-    service.close()
+results = search_fts(
+    query='${escapedQuery}',
+    project_path=project_path,
+    doc_path='${escapedDocPath}' or None,
+    max_results=${maxResults}
+)
+print(json.dumps({'results': [
+    {'node_id': r.node_id, 'title': r.title, 'text': r.text[:500] if r.text else '',
+     'line_num': r.line_num, 'relevance_reason': f'FTS match (score: {r.score:.3f})',
+     'confidence': min(r.score, 1.0), 'doc_path': r.doc_path}
+    for r in results
+]}))
 `;
 }
 

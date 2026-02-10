@@ -22,10 +22,18 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 from scripts.pageindex.pageindex_service import (
     PageIndexService, DocType, compute_project_id
 )
-from scripts.pageindex.tree_search import (
-    tree_search, format_search_results, format_tree_for_prompt
-)
-from scripts.pageindex.pageindex.page_index_md import md_to_tree
+from scripts.pageindex.fast_search import search_fts, search_hybrid
+
+# Lazy imports for commands that need them
+def _get_tree_search():
+    from scripts.pageindex.tree_search import (
+        tree_search, format_search_results, format_tree_for_prompt
+    )
+    return tree_search, format_search_results, format_tree_for_prompt
+
+def _get_md_to_tree():
+    from scripts.pageindex.pageindex.page_index_md import md_to_tree
+    return md_to_tree
 
 
 def get_project_root() -> str:
@@ -74,6 +82,7 @@ def cmd_generate(args):
     with open(file_path, 'r', encoding='utf-8') as f:
         content = f.read()
 
+    md_to_tree = _get_md_to_tree()
     tree_result = asyncio.run(md_to_tree(
         str(file_path),
         if_thinning=args.thin,
@@ -96,6 +105,7 @@ def cmd_generate(args):
         print(f"  Hash: {index.doc_hash[:16]}...")
 
         if args.show_tree:
+            _, _, format_tree_for_prompt = _get_tree_search()
             print(f"\nTree structure:")
             print(format_tree_for_prompt(tree_result))
 
@@ -111,48 +121,78 @@ def cmd_generate(args):
 
 
 def cmd_search(args):
-    """Search indexed documents."""
+    """Search indexed documents using fast FTS or hybrid RRF."""
     project_root = get_project_root()
+    mode = getattr(args, 'mode', 'hybrid')
 
-    service = PageIndexService()
-    try:
-        if args.doc:
-            tree_index = service.get_tree(project_root, args.doc)
-            if not tree_index:
-                print(f"Error: No index found for {args.doc}")
-                return 1
-            trees = {args.doc: tree_index.tree_structure}
-        else:
-            all_trees = service.list_trees(project_path=project_root)
-            if not all_trees:
-                print("No indexed documents found. Run 'pageindex generate' first.")
-                return 1
+    print(f"Searching for: {args.query} (mode: {mode})")
+    print("-" * 50)
 
-            trees = {}
-            for t in all_trees:
-                full_tree = service.get_tree(project_root, t.doc_path)
-                if full_tree:
-                    trees[t.doc_path] = full_tree.tree_structure
+    if mode == "fts":
+        results = search_fts(
+            query=args.query,
+            project_path=project_root,
+            doc_path=args.doc,
+            max_results=args.limit,
+        )
+    elif mode == "hybrid":
+        results = search_hybrid(
+            query=args.query,
+            project_path=project_root,
+            doc_path=args.doc,
+            max_results=args.limit,
+        )
+    else:
+        # LLM mode - fallback to original tree_search
+        tree_search_fn, format_search_results, _ = _get_tree_search()
+        service = PageIndexService()
+        try:
+            if args.doc:
+                tree_index = service.get_tree(project_root, args.doc)
+                if not tree_index:
+                    print(f"Error: No index found for {args.doc}")
+                    return 1
+                trees = {args.doc: tree_index.tree_structure}
+            else:
+                all_trees = service.list_trees(project_path=project_root)
+                if not all_trees:
+                    print("No indexed documents found.")
+                    return 1
+                trees = {}
+                for t in all_trees:
+                    full_tree = service.get_tree(project_root, t.doc_path)
+                    if full_tree:
+                        trees[t.doc_path] = full_tree.tree_structure
 
-        print(f"Searching {len(trees)} document(s) for: {args.query}")
-        print("-" * 50)
+            for doc_path, tree_struct in trees.items():
+                llm_results = tree_search_fn(
+                    query=args.query,
+                    tree_structure=tree_struct,
+                    doc_name=doc_path,
+                    max_results=args.limit,
+                    model=getattr(args, 'model', 'sonnet'),
+                )
+                if llm_results:
+                    print(f"\n[DOC] {doc_path}:")
+                    print(format_search_results(llm_results, include_text=True))
+        finally:
+            service.close()
+        return 0
 
-        for doc_path, tree_struct in trees.items():
-            results = tree_search(
-                query=args.query,
-                tree_structure=tree_struct,
-                doc_name=doc_path,
-                max_results=args.limit,
-                model=args.model
-            )
+    if not results:
+        print("No results found.")
+        return 0
 
-            if results:
-                print(f"\n[DOC] {doc_path}:")
-                print(format_search_results(results, include_text=args.include_text))
+    for r in results:
+        doc_label = f" [{r.doc_path}]" if r.doc_path else ""
+        depth_indent = "  " * r.depth
+        print(f"\n  {depth_indent}{r.title}{doc_label}")
+        print(f"  {depth_indent}  Score: {r.score:.4f} | Line: {r.line_num or '?'} | ID: {r.node_id}")
+        if r.text:
+            text_preview = r.text[:200].replace('\n', ' ')
+            print(f"  {depth_indent}  {text_preview}")
 
-    finally:
-        service.close()
-
+    print(f"\n{len(results)} result(s)")
     return 0
 
 
@@ -243,6 +283,7 @@ def cmd_rebuild(args):
 
             print(f"  [REBUILD] {tree.doc_path}...")
 
+            md_to_tree = _get_md_to_tree()
             tree_result = asyncio.run(md_to_tree(
                 str(doc_path),
                 if_add_node_text='yes',
@@ -292,9 +333,12 @@ Examples:
     search_parser = subparsers.add_parser("search", help="Search indexed documents")
     search_parser.add_argument("query", help="Search query")
     search_parser.add_argument("--doc", "-d", help="Search specific document only")
-    search_parser.add_argument("--limit", "-l", type=int, default=5, help="Max results per document")
-    search_parser.add_argument("--model", "-m", default="sonnet", help="LLM model (sonnet/haiku)")
-    search_parser.add_argument("--include-text", "-t", action="store_true", help="Include node text in results")
+    search_parser.add_argument("--limit", "-l", type=int, default=5, help="Max results")
+    search_parser.add_argument(
+        "--mode", "-m", choices=["fts", "hybrid", "llm"], default="hybrid",
+        help="Search mode: fts (fast, no model), hybrid (FTS+vector RRF, default), llm (original LLM reasoning)"
+    )
+    search_parser.add_argument("--model", default="sonnet", help="LLM model for --mode llm")
 
     list_parser = subparsers.add_parser("list", help="List indexed documents")
     list_parser.add_argument("--all", "-a", action="store_true", help="List from all projects")

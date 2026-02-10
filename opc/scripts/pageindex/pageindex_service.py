@@ -34,6 +34,19 @@ class DocType(Enum):
 
 
 @dataclass
+class NodeResult:
+    """A flattened node returned from search."""
+    node_id: str
+    doc_path: str
+    title: str
+    text: str = ""
+    line_num: Optional[int] = None
+    depth: int = 0
+    score: float = 0.0
+    parent_node_id: Optional[str] = None
+
+
+@dataclass
 class TreeIndex:
     id: Optional[str] = None
     project_id: str = ""
@@ -303,6 +316,330 @@ class PageIndexService:
         """
         trees = self.list_trees(project_path=project_path)
         return {t.doc_path: t for t in trees}
+
+    # --- Node flattening, storage, and search ---
+
+    def flatten_tree_nodes(
+        self,
+        tree_structure: Dict[str, Any],
+        doc_path: str,
+        parent_id: Optional[str] = None,
+        depth: int = 0,
+    ) -> List[Dict[str, Any]]:
+        """Recursively flatten a tree structure into flat node rows.
+
+        Args:
+            tree_structure: Tree JSONB (has 'structure' key with list of nodes)
+            doc_path: Document path
+            parent_id: Parent node ID for recursion
+            depth: Current depth level
+
+        Returns:
+            List of flat node dicts ready for DB insertion
+        """
+        nodes = []
+        structure = tree_structure.get("structure", [])
+        if not isinstance(structure, list):
+            return nodes
+
+        for node in structure:
+            node_id = node.get("id", node.get("title", f"node-{depth}-{len(nodes)}"))
+            title = node.get("title", "")
+            text = node.get("text", "")
+            line_num = node.get("line_num")
+
+            nodes.append({
+                "node_id": str(node_id),
+                "doc_path": doc_path,
+                "parent_node_id": parent_id,
+                "title": title,
+                "text": text[:2000] if text else "",
+                "line_num": line_num,
+                "depth": depth,
+            })
+
+            # Recurse into children
+            children = node.get("children", [])
+            if children:
+                child_tree = {"structure": children}
+                child_nodes = self.flatten_tree_nodes(
+                    child_tree, doc_path, parent_id=str(node_id), depth=depth + 1
+                )
+                nodes.extend(child_nodes)
+
+        return nodes
+
+    def store_nodes(
+        self,
+        project_id: str,
+        nodes: List[Dict[str, Any]],
+        embeddings: Optional[List[Optional[List[float]]]] = None,
+    ) -> int:
+        """Upsert flattened nodes into pageindex_nodes.
+
+        Args:
+            project_id: Project ID hash
+            nodes: List of flat node dicts from flatten_tree_nodes
+            embeddings: Optional list of embedding vectors (same length as nodes)
+
+        Returns:
+            Number of nodes stored
+        """
+        if not nodes:
+            return 0
+
+        conn = self._get_sync_connection()
+        count = 0
+
+        with conn.cursor() as cur:
+            for i, node in enumerate(nodes):
+                embedding = None
+                if embeddings and i < len(embeddings):
+                    embedding = embeddings[i]
+
+                if embedding:
+                    cur.execute("""
+                        INSERT INTO pageindex_nodes
+                            (project_id, doc_path, node_id, parent_node_id, title, text, line_num, depth, embedding)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s::vector)
+                        ON CONFLICT (project_id, doc_path, node_id)
+                        DO UPDATE SET
+                            parent_node_id = EXCLUDED.parent_node_id,
+                            title = EXCLUDED.title,
+                            text = EXCLUDED.text,
+                            line_num = EXCLUDED.line_num,
+                            depth = EXCLUDED.depth,
+                            embedding = EXCLUDED.embedding,
+                            created_at = NOW()
+                    """, (
+                        project_id, node["doc_path"], node["node_id"],
+                        node["parent_node_id"], node["title"], node["text"],
+                        node["line_num"], node["depth"],
+                        str(embedding),
+                    ))
+                else:
+                    cur.execute("""
+                        INSERT INTO pageindex_nodes
+                            (project_id, doc_path, node_id, parent_node_id, title, text, line_num, depth)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                        ON CONFLICT (project_id, doc_path, node_id)
+                        DO UPDATE SET
+                            parent_node_id = EXCLUDED.parent_node_id,
+                            title = EXCLUDED.title,
+                            text = EXCLUDED.text,
+                            line_num = EXCLUDED.line_num,
+                            depth = EXCLUDED.depth,
+                            created_at = NOW()
+                    """, (
+                        project_id, node["doc_path"], node["node_id"],
+                        node["parent_node_id"], node["title"], node["text"],
+                        node["line_num"], node["depth"],
+                    ))
+                count += 1
+
+            conn.commit()
+
+        return count
+
+    def delete_nodes_for_doc(self, project_id: str, doc_path: str) -> int:
+        """Delete all nodes for a specific document (before re-flattening).
+
+        Returns:
+            Number of nodes deleted
+        """
+        conn = self._get_sync_connection()
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM pageindex_nodes WHERE project_id = %s AND doc_path = %s",
+                (project_id, doc_path),
+            )
+            count = cur.rowcount
+            conn.commit()
+        return count
+
+    def search_nodes_fts(
+        self,
+        project_id: str,
+        query: str,
+        doc_path: Optional[str] = None,
+        max_results: int = 5,
+    ) -> List[NodeResult]:
+        """Full-text search on pageindex_nodes. No model loading required.
+
+        Args:
+            project_id: Project ID hash
+            query: Search query text
+            doc_path: Optional filter to specific document
+            max_results: Maximum results to return
+
+        Returns:
+            List of NodeResult sorted by FTS relevance
+        """
+        conn = self._get_sync_connection()
+
+        doc_filter = ""
+        where_params: list = [project_id, query]
+        if doc_path:
+            doc_filter = "AND doc_path = %s"
+            where_params.append(doc_path)
+
+        # Params order must match SQL placeholder order:
+        # 1. query (ts_rank_cd in SELECT)
+        # 2. project_id (WHERE)
+        # 3. query (WHERE fts match)
+        # 4. [doc_path] (WHERE optional)
+        # 5. max_results (LIMIT)
+        all_params: list = [query] + where_params + [max_results]
+
+        sql = f"""
+            SELECT node_id, doc_path, title, text, line_num, depth, parent_node_id,
+                   ts_rank_cd(fts_vector, plainto_tsquery('english', %s)) AS score
+            FROM pageindex_nodes
+            WHERE project_id = %s
+              AND fts_vector @@ plainto_tsquery('english', %s)
+              {doc_filter}
+            ORDER BY score DESC
+            LIMIT %s
+        """
+
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(sql, all_params)
+            rows = cur.fetchall()
+
+        return [
+            NodeResult(
+                node_id=row["node_id"],
+                doc_path=row["doc_path"],
+                title=row["title"],
+                text=row["text"] or "",
+                line_num=row["line_num"],
+                depth=row["depth"] or 0,
+                score=float(row["score"]),
+                parent_node_id=row["parent_node_id"],
+            )
+            for row in rows
+        ]
+
+    def search_nodes_hybrid(
+        self,
+        project_id: str,
+        query: str,
+        query_embedding: List[float],
+        doc_path: Optional[str] = None,
+        max_results: int = 5,
+        rrf_k: int = 60,
+    ) -> List[NodeResult]:
+        """Hybrid RRF search combining FTS + vector cosine similarity.
+
+        Args:
+            project_id: Project ID hash
+            query: Search query text
+            query_embedding: Pre-computed query embedding vector
+            doc_path: Optional filter to specific document
+            max_results: Maximum results to return
+            rrf_k: RRF constant (default 60)
+
+        Returns:
+            List of NodeResult sorted by RRF score
+        """
+        conn = self._get_sync_connection()
+
+        doc_filter = ""
+        params: list = [query, project_id]
+        if doc_path:
+            doc_filter = "AND doc_path = %s"
+            params.append(doc_path)
+
+        # Build the RRF query
+        # We need to duplicate params for both CTEs
+        vector_params = [str(query_embedding), project_id]
+        if doc_path:
+            vector_params.append(doc_path)
+
+        all_params = params + vector_params + [rrf_k, rrf_k, max_results]
+
+        sql = f"""
+            WITH fts_ranked AS (
+                SELECT id, node_id, doc_path, title, text, line_num, depth, parent_node_id,
+                       ROW_NUMBER() OVER (
+                           ORDER BY ts_rank_cd(fts_vector, plainto_tsquery('english', %s)) DESC
+                       ) AS fts_rank
+                FROM pageindex_nodes
+                WHERE project_id = %s
+                  AND fts_vector @@ plainto_tsquery('english', %s)
+                  {doc_filter}
+            ),
+            vector_ranked AS (
+                SELECT id, node_id, doc_path, title, text, line_num, depth, parent_node_id,
+                       ROW_NUMBER() OVER (
+                           ORDER BY embedding <=> %s::vector
+                       ) AS vec_rank
+                FROM pageindex_nodes
+                WHERE project_id = %s
+                  AND embedding IS NOT NULL
+                  {doc_filter}
+            ),
+            combined AS (
+                SELECT
+                    COALESCE(f.id, v.id) AS id,
+                    COALESCE(f.node_id, v.node_id) AS node_id,
+                    COALESCE(f.doc_path, v.doc_path) AS doc_path,
+                    COALESCE(f.title, v.title) AS title,
+                    COALESCE(f.text, v.text) AS text,
+                    COALESCE(f.line_num, v.line_num) AS line_num,
+                    COALESCE(f.depth, v.depth) AS depth,
+                    COALESCE(f.parent_node_id, v.parent_node_id) AS parent_node_id,
+                    COALESCE(1.0 / (%s + f.fts_rank), 0) +
+                    COALESCE(1.0 / (%s + v.vec_rank), 0) AS rrf_score
+                FROM fts_ranked f
+                FULL OUTER JOIN vector_ranked v ON f.id = v.id
+            )
+            SELECT node_id, doc_path, title, text, line_num, depth, parent_node_id, rrf_score
+            FROM combined
+            ORDER BY rrf_score DESC
+            LIMIT %s
+        """
+
+        # Fix params: fts CTE needs query twice (plainto_tsquery used twice), plus doc_filter
+        fts_params: list = [query, project_id, query]
+        if doc_path:
+            fts_params.append(doc_path)
+        vec_params: list = [str(query_embedding), project_id]
+        if doc_path:
+            vec_params.append(doc_path)
+        final_params = fts_params + vec_params + [rrf_k, rrf_k, max_results]
+
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(sql, final_params)
+            rows = cur.fetchall()
+
+        return [
+            NodeResult(
+                node_id=row["node_id"],
+                doc_path=row["doc_path"],
+                title=row["title"],
+                text=row["text"] or "",
+                line_num=row["line_num"],
+                depth=row["depth"] or 0,
+                score=float(row["rrf_score"]),
+                parent_node_id=row["parent_node_id"],
+            )
+            for row in rows
+        ]
+
+    def count_nodes(self, project_id: str, doc_path: Optional[str] = None) -> int:
+        """Count nodes for a project, optionally filtered by doc_path."""
+        conn = self._get_sync_connection()
+        if doc_path:
+            sql = "SELECT COUNT(*) FROM pageindex_nodes WHERE project_id = %s AND doc_path = %s"
+            params = (project_id, doc_path)
+        else:
+            sql = "SELECT COUNT(*) FROM pageindex_nodes WHERE project_id = %s"
+            params = (project_id,)
+
+        with conn.cursor() as cur:
+            cur.execute(sql, params)
+            return cur.fetchone()[0]
 
 
 class AsyncPageIndexService:

@@ -25,7 +25,7 @@ from scripts.pageindex.doc_inventory import (
     IndexTier,
     format_inventory_report,
 )
-from scripts.pageindex.pageindex_service import PageIndexService, compute_doc_hash
+from scripts.pageindex.pageindex_service import PageIndexService, compute_doc_hash, compute_project_id
 
 # Lazy import to handle optional dependencies
 md_to_tree = None
@@ -119,6 +119,19 @@ async def index_document(
             tree_structure=tree_result,
             doc_content=content
         )
+
+        # Flatten nodes into pageindex_nodes for fast FTS search
+        try:
+            project_id = compute_project_id(project_root)
+            nodes = service.flatten_tree_nodes(tree_result, doc_path)
+            if nodes:
+                service.delete_nodes_for_doc(project_id, doc_path)
+                service.store_nodes(project_id, nodes)
+                if verbose:
+                    print(f"  [NODES] {doc_path} ({len(nodes)} flat nodes)")
+        except Exception as e:
+            if verbose:
+                print(f"  [WARN] Node flattening failed for {doc_path}: {e}")
 
         if verbose:
             node_count = len(tree_result.get("structure", []))
@@ -227,6 +240,101 @@ async def batch_index_for_init(
     )
 
 
+async def _embed_nodes(nodes: List[Dict[str, Any]], provider: str = "local", verbose: bool = False) -> List[Optional[List[float]]]:
+    """Compute embeddings for a list of flat nodes.
+
+    Embeds "{title}: {text[:500]}" for each node using EmbeddingService.
+    """
+    from scripts.core.db.embedding_service import EmbeddingService
+
+    texts = []
+    for node in nodes:
+        title = node.get("title", "")
+        text = (node.get("text", "") or "")[:500]
+        texts.append(f"{title}: {text}" if text else title)
+
+    if verbose:
+        print(f"    Embedding {len(texts)} texts...")
+
+    embedder = EmbeddingService(provider=provider)
+    try:
+        embeddings = await embedder.embed_batch(texts)
+    finally:
+        if hasattr(embedder, '_provider') and hasattr(embedder._provider, 'aclose'):
+            await embedder._provider.aclose()
+
+    return embeddings
+
+
+def backfill_nodes(project_root: str, verbose: bool = True, embed: bool = False) -> int:
+    """Backfill pageindex_nodes from existing pageindex_trees.
+
+    Flattens all stored tree structures into the pageindex_nodes table
+    for fast FTS search. Run once after creating the nodes table.
+
+    Args:
+        project_root: Project root path
+        verbose: Print progress
+        embed: Also compute BGE embeddings for hybrid search
+    """
+    service = PageIndexService()
+    project_id = compute_project_id(project_root)
+    total_nodes = 0
+
+    try:
+        trees = service.list_trees(project_path=project_root)
+        if not trees:
+            print("No trees found to backfill.")
+            return 0
+
+        if verbose:
+            mode = "flatten + embed" if embed else "flatten only"
+            print(f"\n[Backfill] {len(trees)} trees into pageindex_nodes ({mode})")
+            print("-" * 50)
+
+        for tree_meta in trees:
+            full_tree = service.get_tree(project_root, tree_meta.doc_path)
+            if not full_tree or not full_tree.tree_structure:
+                if verbose:
+                    print(f"  [SKIP] {tree_meta.doc_path} (no tree structure)")
+                continue
+
+            nodes = service.flatten_tree_nodes(full_tree.tree_structure, tree_meta.doc_path)
+            if not nodes:
+                if verbose:
+                    print(f"  [SKIP] {tree_meta.doc_path} (0 nodes)")
+                continue
+
+            embeddings = None
+            if embed:
+                try:
+                    embeddings = asyncio.run(_embed_nodes(nodes, verbose=verbose))
+                except Exception as e:
+                    if verbose:
+                        print(f"    [WARN] Embedding failed: {e}")
+
+            service.delete_nodes_for_doc(project_id, tree_meta.doc_path)
+            stored = service.store_nodes(project_id, nodes, embeddings=embeddings)
+            total_nodes += stored
+            emb_count = sum(1 for e in (embeddings or []) if e) if embeddings else 0
+            if verbose:
+                suffix = f", {emb_count} embedded" if embed else ""
+                print(f"  [OK] {tree_meta.doc_path} ({stored} nodes{suffix})")
+
+        if verbose:
+            print("-" * 50)
+            print(f"[Done] Backfilled {total_nodes} total nodes from {len(trees)} trees")
+
+        count = service.count_nodes(project_id)
+        if verbose:
+            print(f"[DB] pageindex_nodes count: {count}")
+
+    finally:
+        service.close()
+
+    return 0
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Batch index documents for PageIndex",
@@ -282,6 +390,16 @@ Examples:
         action="store_true",
         help="Output stats as JSON"
     )
+    parser.add_argument(
+        "--backfill-nodes",
+        action="store_true",
+        help="Backfill pageindex_nodes from existing pageindex_trees (one-time)"
+    )
+    parser.add_argument(
+        "--embed",
+        action="store_true",
+        help="Compute BGE embeddings during backfill (for hybrid search)"
+    )
 
     args = parser.parse_args()
 
@@ -292,6 +410,11 @@ Examples:
         docs = get_all_docs(project_root, tier=args.tier)
         print(format_inventory_report(docs))
         return 0
+
+    if args.backfill_nodes:
+        return backfill_nodes(project_root, verbose=verbose, embed=args.embed)
+
+
 
     # Run batch indexing
     stats = asyncio.run(batch_index(
