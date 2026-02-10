@@ -71,31 +71,29 @@ function formatSignals(signals) {
 }
 function makeSuggestionOutput(score, signals, phases) {
   const confidencePct = Math.round(score * 100);
-  const message = `
-\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
-\u{1F3BC} MAESTRO ORCHESTRATION SUGGESTED
-\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
-
-This looks like a complex multi-step task (${confidencePct}% confidence).
-
-**Detected signals:**
-${formatSignals(signals)}
-
-**Estimated phases:** ${phases}
-
-**Recommended approach:**
-1. Use Maestro orchestrator for coordination
-2. Discovery interview for thorough requirements
-3. Delegate to specialized agents
-
-**To proceed with Maestro:**
-Say "Yes, use Maestro" or "orchestrate this"
-
-**To skip:**
-Continue with your request normally.
-\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
-`;
-  console.log(message);
+  const message = [
+    "--- MAESTRO ORCHESTRATION SUGGESTED ---",
+    "",
+    `This looks like a complex multi-step task (${confidencePct}% confidence).`,
+    "",
+    "**Detected signals:**",
+    formatSignals(signals),
+    "",
+    `**Estimated phases:** ${phases}`,
+    "",
+    "**Recommended approach:**",
+    "1. Use Maestro orchestrator for coordination",
+    "2. Discovery interview for thorough requirements",
+    "3. Delegate to specialized agents",
+    "",
+    "**To proceed with Maestro:**",
+    'Say "Yes, use Maestro" or "orchestrate this"',
+    "",
+    "**To skip:**",
+    "Continue with your request normally.",
+    "--------------------------------------"
+  ].join("\n");
+  console.log(JSON.stringify({ result: "continue", message }));
 }
 async function main() {
   try {

@@ -170,8 +170,8 @@ function checkGuardrails(prompt: string): Guardrail | null {
 function makeBlockOutput(guardrail: Guardrail): string {
   acknowledgeGuardrail(guardrail.name);
   // UserPromptSubmit hooks can't truly block - they inject context
-  // Output the message directly so Claude sees it as a system instruction
-  return guardrail.message;
+  // Return valid JSON so Claude sees message as additionalContext
+  return JSON.stringify({ result: 'block', reason: guardrail.message });
 }
 
 async function main() {

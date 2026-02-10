@@ -231,7 +231,7 @@ ${stderr}`;
     updateRalphState(signals, projectDir);
     const statusOutput = generateStatusOutput(signals);
     if (statusOutput) {
-      console.log(statusOutput);
+      console.log(JSON.stringify({ hookSpecificOutput: { hookEventName: "PostToolUse", additionalContext: statusOutput } }));
     }
     process.exit(0);
   } catch (error) {

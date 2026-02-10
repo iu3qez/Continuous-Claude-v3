@@ -222,7 +222,8 @@ async function main() {
     }
   }
   statusLines.push("\u2500".repeat(40));
-  console.log(statusLines.join("\n"));
+  const message = statusLines.join("\n");
+  console.log(JSON.stringify({ hookSpecificOutput: { hookEventName: "PostToolUse", additionalContext: message } }));
 }
 main().catch(() => {
 });

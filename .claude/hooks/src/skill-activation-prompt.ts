@@ -6,7 +6,7 @@ import { tmpdir } from 'os';
 
 // Import shared resource reader (Phase 4 module)
 import { readResourceState, ResourceState } from './shared/resource-reader.js';
-import { outputContinue } from './shared/output.js';
+import { outputContinue, outputWithMessage } from './shared/output.js';
 
 // Import validation module for false-positive reduction
 import {
@@ -368,9 +368,8 @@ Do NOT skip this step. The skill provides:
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `;
-            // Output directly - this gets injected into Claude's context
-            console.log(autoInvokeMessage);
-            outputContinue();
+            // Output as valid JSON - message gets injected into Claude's context
+            outputWithMessage(autoInvokeMessage);
             process.exit(0);
         }
 
@@ -381,6 +380,7 @@ Do NOT skip this step. The skill provides:
         const semanticQuery = detectSemanticQuery(data.prompt);
 
         const matchedSkills: MatchedSkill[] = [];
+        const messages: string[] = [];
 
         // Check each skill for matches
         for (const [skillName, config] of Object.entries(rules.skills)) {
@@ -615,7 +615,7 @@ Do NOT skip this step. The skill provides:
                 }
             }
 
-            console.log(output);
+            messages.push(output);
         }
 
         // Check context % from statusLine temp file and add tiered warnings
@@ -627,24 +627,13 @@ Do NOT skip this step. The skill provides:
         if (existsSync(contextFile)) {
             try {
                 const pct = parseInt(readFileSync(contextFile, 'utf-8').trim(), 10);
-                let contextWarning = '';
 
                 if (pct >= 90) {
-                    contextWarning = '\n' +
-                        '='.repeat(50) + '\n' +
-                        '  CONTEXT CRITICAL: ' + pct + '%\n' +
-                        '  Run /create_handoff NOW before auto-compact!\n' +
-                        '='.repeat(50) + '\n';
+                    messages.push('CONTEXT CRITICAL: ' + pct + '%\nRun /create_handoff NOW before auto-compact!');
                 } else if (pct >= 80) {
-                    contextWarning = '\n' +
-                        'CONTEXT WARNING: ' + pct + '%\n' +
-                        'Recommend: /create_handoff then /clear soon\n';
+                    messages.push('CONTEXT WARNING: ' + pct + '%\nRecommend: /create_handoff then /clear soon');
                 } else if (pct >= 70) {
-                    contextWarning = '\nContext at ' + pct + '%. Consider handoff when you reach a stopping point.\n';
-                }
-
-                if (contextWarning) {
-                    console.log(contextWarning);
+                    messages.push('Context at ' + pct + '%. Consider handoff when you reach a stopping point.');
                 }
             } catch {
                 // Ignore read errors
@@ -656,29 +645,21 @@ Do NOT skip this step. The skill provides:
         const resources = readResourceState();
         if (resources && resources.maxAgents > 0) {
             const utilization = resources.activeAgents / resources.maxAgents;
-            let resourceWarning = '';
 
             if (utilization >= 1.0) {
-                // At or over limit: CRITICAL
-                resourceWarning = '\n' +
-                    '='.repeat(50) + '\n' +
-                    'RESOURCE CRITICAL: At limit (' + resources.activeAgents + '/' + resources.maxAgents + ' agents)\n' +
-                    'Do NOT spawn new agents until existing ones complete.\n' +
-                    '='.repeat(50) + '\n';
+                messages.push('RESOURCE CRITICAL: At limit (' + resources.activeAgents + '/' + resources.maxAgents + ' agents)\nDo NOT spawn new agents until existing ones complete.');
             } else if (utilization >= 0.8) {
-                // Near limit (80%+): WARNING
                 const remaining = resources.maxAgents - resources.activeAgents;
-                resourceWarning = '\n' +
-                    'RESOURCE WARNING: Near limit (' + resources.activeAgents + '/' + resources.maxAgents + ' agents)\n' +
-                    'Only ' + remaining + ' agent slot(s) remaining. Limit spawning.\n';
-            }
-
-            if (resourceWarning) {
-                console.log(resourceWarning);
+                messages.push('RESOURCE WARNING: Near limit (' + resources.activeAgents + '/' + resources.maxAgents + ' agents)\nOnly ' + remaining + ' agent slot(s) remaining. Limit spawning.');
             }
         }
 
-        outputContinue();
+        // Single JSON output with all accumulated messages
+        if (messages.length > 0) {
+            outputWithMessage(messages.join('\n\n'));
+        } else {
+            outputContinue();
+        }
         process.exit(0);
     } catch (err) {
         console.error('Error in skill-activation-prompt hook:', err);

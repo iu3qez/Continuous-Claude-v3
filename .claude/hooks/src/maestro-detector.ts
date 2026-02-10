@@ -116,32 +116,30 @@ function formatSignals(signals: DetectedSignal[]): string {
 function makeSuggestionOutput(score: number, signals: DetectedSignal[], phases: number): void {
   const confidencePct = Math.round(score * 100);
 
-  const message = `
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎼 MAESTRO ORCHESTRATION SUGGESTED
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  const message = [
+    '--- MAESTRO ORCHESTRATION SUGGESTED ---',
+    '',
+    `This looks like a complex multi-step task (${confidencePct}% confidence).`,
+    '',
+    '**Detected signals:**',
+    formatSignals(signals),
+    '',
+    `**Estimated phases:** ${phases}`,
+    '',
+    '**Recommended approach:**',
+    '1. Use Maestro orchestrator for coordination',
+    '2. Discovery interview for thorough requirements',
+    '3. Delegate to specialized agents',
+    '',
+    '**To proceed with Maestro:**',
+    'Say "Yes, use Maestro" or "orchestrate this"',
+    '',
+    '**To skip:**',
+    'Continue with your request normally.',
+    '--------------------------------------',
+  ].join('\n');
 
-This looks like a complex multi-step task (${confidencePct}% confidence).
-
-**Detected signals:**
-${formatSignals(signals)}
-
-**Estimated phases:** ${phases}
-
-**Recommended approach:**
-1. Use Maestro orchestrator for coordination
-2. Discovery interview for thorough requirements
-3. Delegate to specialized agents
-
-**To proceed with Maestro:**
-Say "Yes, use Maestro" or "orchestrate this"
-
-**To skip:**
-Continue with your request normally.
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-`;
-
-  console.log(message);
+  console.log(JSON.stringify({ result: 'continue', message }));
 }
 
 async function main() {

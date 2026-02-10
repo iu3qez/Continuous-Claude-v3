@@ -46,6 +46,9 @@ function readResourceState() {
 function outputContinue() {
   console.log(JSON.stringify({ result: "continue" }));
 }
+function outputWithMessage(message) {
+  console.log(JSON.stringify({ result: "continue", message }));
+}
 
 // src/skill-validation-prompt.ts
 var AMBIGUOUS_KEYWORDS = /* @__PURE__ */ new Set([
@@ -386,13 +389,13 @@ Do NOT skip this step. The skill provides:
 
 \u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
 `;
-      console.log(autoInvokeMessage);
-      outputContinue();
+      outputWithMessage(autoInvokeMessage);
       process.exit(0);
     }
     const patternInference = runPatternInference(data.prompt, projectDir);
     const semanticQuery = detectSemanticQuery(data.prompt);
     const matchedSkills = [];
+    const messages = [];
     for (const [skillName, config] of Object.entries(rules.skills)) {
       const triggers = config.promptTriggers;
       if (!triggers) {
@@ -588,7 +591,7 @@ Do NOT skip this step. The skill provides:
           process.exit(0);
         }
       }
-      console.log(output);
+      messages.push(output);
     }
     const rawSessionId = data.session_id || process.env.CLAUDE_SESSION_ID || process.env.CLAUDE_PPID || "default";
     const sessionId = rawSessionId.slice(0, 8);
@@ -596,16 +599,12 @@ Do NOT skip this step. The skill provides:
     if (existsSync2(contextFile)) {
       try {
         const pct = parseInt(readFileSync2(contextFile, "utf-8").trim(), 10);
-        let contextWarning = "";
         if (pct >= 90) {
-          contextWarning = "\n" + "=".repeat(50) + "\n  CONTEXT CRITICAL: " + pct + "%\n  Run /create_handoff NOW before auto-compact!\n" + "=".repeat(50) + "\n";
+          messages.push("CONTEXT CRITICAL: " + pct + "%\nRun /create_handoff NOW before auto-compact!");
         } else if (pct >= 80) {
-          contextWarning = "\nCONTEXT WARNING: " + pct + "%\nRecommend: /create_handoff then /clear soon\n";
+          messages.push("CONTEXT WARNING: " + pct + "%\nRecommend: /create_handoff then /clear soon");
         } else if (pct >= 70) {
-          contextWarning = "\nContext at " + pct + "%. Consider handoff when you reach a stopping point.\n";
-        }
-        if (contextWarning) {
-          console.log(contextWarning);
+          messages.push("Context at " + pct + "%. Consider handoff when you reach a stopping point.");
         }
       } catch {
       }
@@ -613,18 +612,18 @@ Do NOT skip this step. The skill provides:
     const resources = readResourceState();
     if (resources && resources.maxAgents > 0) {
       const utilization = resources.activeAgents / resources.maxAgents;
-      let resourceWarning = "";
       if (utilization >= 1) {
-        resourceWarning = "\n" + "=".repeat(50) + "\nRESOURCE CRITICAL: At limit (" + resources.activeAgents + "/" + resources.maxAgents + " agents)\nDo NOT spawn new agents until existing ones complete.\n" + "=".repeat(50) + "\n";
+        messages.push("RESOURCE CRITICAL: At limit (" + resources.activeAgents + "/" + resources.maxAgents + " agents)\nDo NOT spawn new agents until existing ones complete.");
       } else if (utilization >= 0.8) {
         const remaining = resources.maxAgents - resources.activeAgents;
-        resourceWarning = "\nRESOURCE WARNING: Near limit (" + resources.activeAgents + "/" + resources.maxAgents + " agents)\nOnly " + remaining + " agent slot(s) remaining. Limit spawning.\n";
-      }
-      if (resourceWarning) {
-        console.log(resourceWarning);
+        messages.push("RESOURCE WARNING: Near limit (" + resources.activeAgents + "/" + resources.maxAgents + " agents)\nOnly " + remaining + " agent slot(s) remaining. Limit spawning.");
       }
     }
-    outputContinue();
+    if (messages.length > 0) {
+      outputWithMessage(messages.join("\n\n"));
+    } else {
+      outputContinue();
+    }
     process.exit(0);
   } catch (err) {
     console.error("Error in skill-activation-prompt hook:", err);

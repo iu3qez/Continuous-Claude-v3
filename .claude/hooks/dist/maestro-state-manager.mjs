@@ -7,6 +7,9 @@ import { readFileSync as readFileSync2, existsSync as existsSync4, unlinkSync as
 function outputContinue() {
   console.log(JSON.stringify({ result: "continue" }));
 }
+function outputWithMessage(message) {
+  console.log(JSON.stringify({ result: "continue", message }));
+}
 
 // src/shared/session-isolation.ts
 import { tmpdir, hostname } from "os";
@@ -460,15 +463,7 @@ async function main() {
     if (matchesPattern(prompt, CANCEL_PATTERNS)) {
       log3.info("Maestro deactivated by user", { sessionId });
       clearState(sessionId);
-      console.log(`
-\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
-\u{1F3BC} MAESTRO DEACTIVATED
-\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
-Maestro orchestration mode disabled.
-Returning to normal operation.
-\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
-`);
-      outputContinue();
+      outputWithMessage("MAESTRO DEACTIVATED\nMaestro orchestration mode disabled.\nReturning to normal operation.");
       return;
     }
     if (!state.active && matchesAny(prompt, ACTIVATION_PATTERNS)) {
@@ -485,55 +480,14 @@ Returning to normal operation.
         activatedAt: Date.now()
       }, sessionId);
       if (isResearch) {
-        console.log(`
-\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
-\u{1F3BC} MAESTRO ACTIVATED (Research Mode)
-\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
-
-Task Type: **RESEARCH** (external docs, best practices)
-
-**WORKFLOW:**
-1. \u23F3 Discovery Interview (CURRENT)
-2. \u23F3 Propose Plan
-3. \u23F3 Await Approval
-4. \u23F3 Execute
-
-**YOUR FIRST ACTION:**
-Use AskUserQuestion to clarify:
-- What specifically to research?
-- What format for findings?
-- Any constraints or preferences?
-
-Task tool BLOCKED until interview complete.
-\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
-`);
+        outputWithMessage(
+          "MAESTRO ACTIVATED (Research Mode)\n\nTask Type: **RESEARCH** (external docs, best practices)\n\n**WORKFLOW:**\n1. Discovery Interview (CURRENT)\n2. Propose Plan\n3. Await Approval\n4. Execute\n\n**YOUR FIRST ACTION:**\nUse AskUserQuestion to clarify:\n- What specifically to research?\n- What format for findings?\n- Any constraints or preferences?\n\nTask tool BLOCKED until interview complete."
+        );
       } else {
-        console.log(`
-\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
-\u{1F3BC} MAESTRO ACTIVATED (Implementation Mode)
-\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
-
-Task Type: **IMPLEMENTATION** (coding, building, fixing)
-
-**WORKFLOW:**
-1. \u23F3 Codebase Recon (CURRENT) \u2190 scout allowed
-2. \u23F3 Discovery Interview
-3. \u23F3 Propose Plan
-4. \u23F3 Await Approval
-5. \u23F3 Execute
-
-**YOUR FIRST ACTION:**
-Spawn 1-2 scout agents to understand codebase:
-- Existing patterns relevant to task
-- File structure and conventions
-- Related code that might be affected
-
-Only scout agents allowed. Other agents BLOCKED.
-Say "recon complete" when done exploring.
-\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
-`);
+        outputWithMessage(
+          'MAESTRO ACTIVATED (Implementation Mode)\n\nTask Type: **IMPLEMENTATION** (coding, building, fixing)\n\n**WORKFLOW:**\n1. Codebase Recon (CURRENT) - scout allowed\n2. Discovery Interview\n3. Propose Plan\n4. Await Approval\n5. Execute\n\n**YOUR FIRST ACTION:**\nSpawn 1-2 scout agents to understand codebase:\n- Existing patterns relevant to task\n- File structure and conventions\n- Related code that might be affected\n\nOnly scout agents allowed. Other agents BLOCKED.\nSay "recon complete" when done exploring.'
+        );
       }
-      outputContinue();
       return;
     }
     if (state.active) {
@@ -541,28 +495,9 @@ Say "recon complete" when done exploring.
         state.reconComplete = true;
         log3.info("State transition: recon complete", { sessionId });
         writeState(state, sessionId);
-        console.log(`
-\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
-\u{1F3BC} MAESTRO: Recon Complete
-\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
-
-**WORKFLOW PROGRESS:**
-1. \u2705 Codebase Recon
-2. \u23F3 Discovery Interview (CURRENT)
-3. \u23F3 Propose Plan
-4. \u23F3 Await Approval
-5. \u23F3 Execute
-
-**YOUR NEXT ACTION:**
-Use AskUserQuestion with INFORMED questions based on recon:
-- "I found X pattern, should we follow it?"
-- "Existing code uses Y approach, continue or change?"
-- "This will affect N files, confirm scope?"
-
-Task tool BLOCKED until interview complete.
-\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
-`);
-        outputContinue();
+        outputWithMessage(
+          'MAESTRO: Recon Complete\n\n**WORKFLOW PROGRESS:**\n1. [done] Codebase Recon\n2. Discovery Interview (CURRENT)\n3. Propose Plan\n4. Await Approval\n5. Execute\n\n**YOUR NEXT ACTION:**\nUse AskUserQuestion with INFORMED questions based on recon:\n- "I found X pattern, should we follow it?"\n- "Existing code uses Y approach, continue or change?"\n- "This will affect N files, confirm scope?"\n\nTask tool BLOCKED until interview complete.'
+        );
         return;
       }
       if (state.reconComplete && !state.interviewComplete && matchesPattern(prompt, INTERVIEW_COMPLETE_PATTERNS)) {
@@ -570,45 +505,19 @@ Task tool BLOCKED until interview complete.
         log3.info("State transition: interview complete", { sessionId });
         writeState(state, sessionId);
         const step = state.taskType === "research" ? 1 : 2;
-        console.log(`
-\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
-\u{1F3BC} MAESTRO: Interview Complete
-\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
-
-**WORKFLOW PROGRESS:**
-${state.taskType === "implementation" ? "1. \u2705 Codebase Recon\n2. \u2705 Discovery Interview" : "1. \u2705 Discovery Interview"}
-${state.taskType === "implementation" ? "3" : "2"}. \u23F3 Propose Plan (CURRENT)
-${state.taskType === "implementation" ? "4" : "3"}. \u23F3 Await Approval
-${state.taskType === "implementation" ? "5" : "4"}. \u23F3 Execute
-
-**YOUR NEXT ACTION:**
-Present orchestration plan to user.
-Task tool still BLOCKED until plan approved.
-\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
-`);
-        outputContinue();
+        const progress = state.taskType === "implementation" ? "1. [done] Codebase Recon\n2. [done] Discovery Interview\n3. Propose Plan (CURRENT)\n4. Await Approval\n5. Execute" : "1. [done] Discovery Interview\n2. Propose Plan (CURRENT)\n3. Await Approval\n4. Execute";
+        outputWithMessage(
+          "MAESTRO: Interview Complete\n\n**WORKFLOW PROGRESS:**\n" + progress + "\n\n**YOUR NEXT ACTION:**\nPresent orchestration plan to user.\nTask tool still BLOCKED until plan approved."
+        );
         return;
       }
       if (state.interviewComplete && !state.planApproved && matchesPattern(prompt, PLAN_APPROVAL_PATTERNS)) {
         state.planApproved = true;
         log3.info("State transition: plan approved", { sessionId });
         writeState(state, sessionId);
-        console.log(`
-\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
-\u{1F3BC} MAESTRO: Plan Approved
-\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
-
-**WORKFLOW PROGRESS:**
-1. \u2705 Discovery Interview
-2. \u2705 Propose Plan
-3. \u2705 Await Approval
-4. \u23F3 Execute (CURRENT)
-
-**Task tool is now UNBLOCKED.**
-You may spawn agents to execute the plan.
-\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
-`);
-        outputContinue();
+        outputWithMessage(
+          "MAESTRO: Plan Approved\n\n**WORKFLOW PROGRESS:**\n1. [done] Discovery Interview\n2. [done] Propose Plan\n3. [done] Await Approval\n4. Execute (CURRENT)\n\n**Task tool is now UNBLOCKED.**\nYou may spawn agents to execute the plan."
+        );
         return;
       }
       if (!state.interviewComplete) {
@@ -616,22 +525,9 @@ You may spawn agents to execute the plan.
         if (looksLikeAnswers) {
           state.interviewComplete = true;
           writeState(state);
-          console.log(`
-\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
-\u{1F3BC} MAESTRO: Answers Received
-\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
-
-Discovery answers received.
-
-**YOUR NEXT ACTION:**
-1. Classify task type based on answers
-2. Present orchestration plan
-3. Wait for approval
-
-Task tool still BLOCKED until plan approved.
-\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
-`);
-          outputContinue();
+          outputWithMessage(
+            "MAESTRO: Answers Received\n\nDiscovery answers received.\n\n**YOUR NEXT ACTION:**\n1. Classify task type based on answers\n2. Present orchestration plan\n3. Wait for approval\n\nTask tool still BLOCKED until plan approved."
+          );
           return;
         }
       }

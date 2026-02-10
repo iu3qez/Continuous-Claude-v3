@@ -124,7 +124,7 @@ function checkGuardrails(prompt) {
 }
 function makeBlockOutput(guardrail) {
   acknowledgeGuardrail(guardrail.name);
-  return guardrail.message;
+  return JSON.stringify({ result: "block", reason: guardrail.message });
 }
 async function main() {
   try {

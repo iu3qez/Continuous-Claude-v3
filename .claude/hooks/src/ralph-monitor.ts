@@ -291,7 +291,7 @@ function main() {
         // Generate status output
         const statusOutput = generateStatusOutput(signals);
         if (statusOutput) {
-            console.log(statusOutput);
+            console.log(JSON.stringify({ hookSpecificOutput: { hookEventName: 'PostToolUse', additionalContext: statusOutput } }));
         }
 
         process.exit(0);
