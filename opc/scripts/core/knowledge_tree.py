@@ -470,7 +470,7 @@ def generate_pageindex_for_project(project_path: Path, verbose: bool = False) ->
         from scripts.pageindex.batch_index import batch_index_for_init
 
         if verbose:
-            print("\n📑 Generating PageIndex trees...")
+            print("\n[PageIndex] Generating PageIndex trees...")
 
         stats = asyncio.run(batch_index_for_init(
             project_root=str(project_path),
@@ -484,11 +484,11 @@ def generate_pageindex_for_project(project_path: Path, verbose: bool = False) ->
 
     except ImportError as e:
         if verbose:
-            print(f"⚠️  PageIndex not available: {e}")
+            print(f"[WARN] PageIndex not available: {e}")
         return {"enabled": False, "error": str(e)}
     except Exception as e:
         if verbose:
-            print(f"⚠️  PageIndex generation failed: {e}")
+            print(f"[WARN] PageIndex generation failed: {e}")
         return {"enabled": False, "error": str(e)}
 
 
