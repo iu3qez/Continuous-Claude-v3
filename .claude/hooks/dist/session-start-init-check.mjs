@@ -97,7 +97,7 @@ async function main() {
     return;
   }
   const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
-  if (projectDir.includes(".claude") || projectDir.includes("continuous-claude")) {
+  if (projectDir.includes(".claude") && !projectDir.includes("continuous-claude")) {
     console.log(JSON.stringify({ result: "continue" }));
     return;
   }
