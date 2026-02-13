@@ -27,7 +27,7 @@ powershell.exe -Command "ab open https://example.com"
 powershell.exe -Command "ab click '@e1'"
 ```
 
-**Location:** `%APPDATA%\npm\node_modules\agent-browser\bin\ab-cli.mjs`
+**Location:** `%APPDATA%\npm\node_modules\agent-browser\bin\agent-browser.js`
 
 > **PowerShell Note:** Always quote `@e1` as `'@e1'` - the `@` symbol is special in PowerShell.
 
@@ -40,6 +40,23 @@ ab --help
 # Linux/Mac: Check agent-browser
 command -v agent-browser && agent-browser --help
 ```
+
+### Auto-Connect (v0.10)
+
+Connect to an already-running Chrome instance instead of launching a new one:
+
+```powershell
+ab --auto-connect open https://example.com    # Auto-discover running Chrome via CDP
+ab --auto-connect snapshot -i                 # Snapshot existing browser
+```
+
+Or set the environment variable:
+```powershell
+$env:AGENT_BROWSER_AUTO_CONNECT = "true"
+ab open https://example.com                   # Auto-connects without flag
+```
+
+> **Note:** Requires Chrome launched with `--remote-debugging-port`. Use `--cdp <port>` if you know the specific port.
 
 ### Install if needed
 
@@ -115,6 +132,7 @@ ab pdf output.pdf A4               # PDF with format (Letter, A4, etc.)
 
 ```powershell
 ab click '@e1'           # Click element
+ab click '@e1' --new-tab # Click link, open in new tab (v0.10)
 ab dblclick '@e1'        # Double-click
 ab hover '@e1'           # Hover element
 ab tap '@e1'             # Tap (touch event)
@@ -215,6 +233,7 @@ Find and interact with elements by semantic attributes instead of refs:
 ab find role button click                          # Click first button
 ab find role textbox fill "hello" --name "Email"   # Fill input by name
 ab find role checkbox check --name "Terms"         # Check by name
+ab find role button click --name "Submit" --exact   # Exact name match (v0.10 fix)
 
 # By text
 ab find text "Sign up" click                       # Click by visible text
@@ -223,9 +242,11 @@ ab find text "Submit" click --exact                 # Exact text match
 # By label
 ab find label "Email" fill "user@example.com"      # Fill by label text
 ab find label "Remember me" check                  # Check by label
+ab find label "Email" fill "test@example.com" --exact  # Exact label match (v0.10 fix)
 
 # By placeholder
 ab find placeholder "Search..." fill "query"       # Fill by placeholder
+ab find placeholder "Search" fill "q" --exact       # Exact placeholder match (v0.10 fix)
 
 # By alt text, title, test ID
 ab find alt "Company Logo" click
@@ -233,6 +254,8 @@ ab find title "Close dialog" click
 ab find testid "submit-btn" click
 ab find testid "email-input" fill "user@example.com"
 ```
+
+> **v0.10 fix:** `--exact` now works correctly for `find role`, `find label`, and `find placeholder`. Before v0.10, the flag was silently dropped for these locator types.
 
 ### Tabs
 
@@ -311,12 +334,14 @@ ab har_start                          # Start HAR capture
 ab har_stop ./network.har             # Stop + save HAR
 ```
 
-### State Persistence
+### State Persistence (Manual)
 
 ```powershell
-ab state_save ./auth-state.json       # Save cookies + storage
-ab state_load ./auth-state.json       # Restore browser state
+ab state save ./auth-state.json       # Save cookies + storage
+ab state load ./auth-state.json       # Restore browser state
 ```
+
+> **Tip:** For automatic state persistence, use `--session-name` instead (see [Session Persistence](#session-persistence-v010) below).
 
 ### Dialog Handling
 
@@ -359,6 +384,54 @@ ab pause                              # Pause execution (for debugging)
 | `role=` | `"role=button"` | Match by ARIA role |
 
 > **Best practice:** Always use `@ref` selectors from snapshots. They're stable across page states and work with all commands.
+
+## Session Persistence (v0.10)
+
+Auto-save and restore cookies + localStorage across browser restarts using `--session-name`:
+
+```powershell
+# First run: logs in, state auto-saved on close
+ab --session-name myapp open https://app.example.com/login
+# ... login flow ...
+ab close
+
+# Next run: state auto-restored, already logged in
+ab --session-name myapp open https://app.example.com/dashboard
+```
+
+Or set via environment variable:
+```powershell
+$env:AGENT_BROWSER_SESSION_NAME = "myapp"
+ab open https://app.example.com     # Auto-restores state
+```
+
+### Encryption
+
+Encrypt saved state at rest with AES-256-GCM:
+```powershell
+# Generate key (run once, save somewhere safe)
+openssl rand -hex 32
+# Set encryption key
+$env:AGENT_BROWSER_ENCRYPTION_KEY = "<64-char-hex-key>"
+```
+
+### State Expiration
+
+Auto-delete stale state files:
+```powershell
+$env:AGENT_BROWSER_STATE_EXPIRE_DAYS = "7"    # Default: 30
+```
+
+### State Management Commands (v0.10)
+
+```powershell
+ab state list                           # List saved state files
+ab state show myapp-default.json        # Show state summary
+ab state rename old-name new-name       # Rename state file
+ab state clear                          # Clear current session state
+ab state clear --all                    # Clear all saved states
+ab state clean --older-than 7           # Delete states older than 7 days
+```
 
 ## Sessions (Parallel Browsers)
 
@@ -477,13 +550,19 @@ ab tab_close 1                      # Close second tab
 ### Cookie and Storage Management
 
 ```powershell
-# Save auth state for reuse
+# Option 1: Auto-persist with --session-name (recommended, v0.10)
+ab --session-name myapp open https://app.example.com/login
+# ... login ...
+ab close
+# Next time: auto-restored
+ab --session-name myapp open https://app.example.com/dashboard  # Already logged in
+
+# Option 2: Manual save/load
 ab open https://app.example.com/login
 # ... login ...
-ab state_save ./auth.json
-
-# Later: restore state (skip login)
-ab state_load ./auth.json
+ab state save ./auth.json
+# Later:
+ab state load ./auth.json
 ab open https://app.example.com/dashboard   # Already logged in
 
 # Direct cookie manipulation
@@ -554,7 +633,7 @@ When assigning agents to browser testing tasks:
 | Visual debugging | No (headless default) | Yes |
 | Console/Network | Yes | Yes |
 | JS evaluation | Yes | Yes |
-| State persistence | Yes (state_save/load) | No |
+| State persistence | Yes (auto via --session-name + manual save/load) | No |
 | Network mocking | Yes (route) | No |
 | Video recording | Yes | No |
 | Headed mode | --headed flag | Always visible |
