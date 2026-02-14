@@ -17,29 +17,37 @@ When this command is invoked:
    - Begin the analysis process by ingesting relevant context from the handoff document, reading additional files it mentions
    - Then propose a course of action to the user and confirm, or ask for clarification on direction.
 
-2. **If a ticket number (like ENG-XXXX) was provided**:
-   - locate the most recent handoff document for the ticket. Tickets will be located in `thoughts/shared/handoffs/ENG-XXXX` where `ENG-XXXX` is the ticket number. e.g. for `ENG-2124` the handoffs would be in `thoughts/shared/handoffs/ENG-2124/`. **List this directory's contents.**
+2. **If a session name or ticket number was provided** (e.g., `general`, `open-source-release`, `ENG-XXXX`):
+   - Locate the handoff folder at `thoughts/shared/handoffs/{name}/`. **List this directory's contents.**
    - There may be zero, one or multiple files in the directory.
-   - **If there are zero files in the directory, or the directory does not exist**: tell the user: "I'm sorry, I can't seem to find that handoff document. Can you please provide me with a path to it?"
+   - **If there are zero files in the directory, or the directory does not exist**: tell the user: "I can't find that handoff. Can you provide a path to it?"
    - **If there is only one file in the directory**: proceed with that handoff
-   - **If there are multiple files in the directory**: using the date and time specified in the file name (it will be in the format `YYYY-MM-DD_HH-MM-SS` in 24-hour time format), proceed with the _most recent_ handoff document.
+   - **If there are multiple files in the directory**: using the date and time in the filename (format `YYYY-MM-DD_HH-MM`), proceed with the _most recent_ handoff document.
    - Immediately read the handoff document FULLY
    - Immediately read any research or plan documents that it links to under `thoughts/shared/plans` or `thoughts/shared/research`; do NOT use a sub-agent to read these critical files.
    - Begin the analysis process by ingesting relevant context from the handoff document, reading additional files it mentions
    - Then propose a course of action to the user and confirm, or ask for clarification on direction.
 
-3. **If no parameters provided**, respond with:
-```
-I'll help you resume work from a handoff document. Let me find the available handoffs.
+3. **If no parameters provided**:
+   - **Actually list available handoffs** by searching for all files under `thoughts/shared/handoffs/`:
+     ```bash
+     find thoughts/shared/handoffs/ -type f \( -name "*.yaml" -o -name "*.md" \) 2>/dev/null | sort -r
+     ```
+   - If no handoffs exist, tell the user: "No handoffs found in `thoughts/shared/handoffs/`. Create one with `/create_handoff`."
+   - If handoffs exist, present them grouped by session folder with the most recent first:
+     ```
+     I found the following handoffs:
 
-Which handoff would you like to resume from?
+     **general/**
+     - 2026-02-14_16-30_bug-investigation.yaml (most recent)
+     - 2026-02-13_10-00_setup-complete.yaml
 
-Tip: You can invoke this command directly with a handoff path: `/resume_handoff `thoughts/shared/handoffs/ENG-XXXX/YYYY-MM-DD_HH-MM-SS_ENG-XXXX_description.md`
+     **open-source-release/**
+     - 2026-02-12_09-15_memory-system-fix.yaml
 
-or using a ticket number to resume from the most recent handoff for that ticket: `/resume_handoff ENG-XXXX`
-```
-
-Then wait for the user's input.
+     Which handoff would you like to resume from?
+     ```
+   - Then wait for the user's input.
 
 ## Process Steps
 
