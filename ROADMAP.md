@@ -5,6 +5,7 @@
 _No current goal. Next planned item will be promoted on next planning session._
 
 ## Completed
+- [x] [fix] replace hardcoded Windows paths with portable cross-platform paths (2026-02-14) `ae6dae7`
 - [x] Knowledge tree & ROADMAP audit + repair (2026-02-09)
 - [x] Comprehensive README update with Ralph, browser automation, and corrected counts (2026-02-09) ed034eb
 - [x] Ralph 8-phase scale hardening for 100+ task reliability (2026-02-07) cc4fe68
