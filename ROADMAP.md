@@ -5,6 +5,8 @@
 _No current goal. Next planned item will be promoted on next planning session._
 
 ## Completed
+- [x] [fix] align resume_handoff with create_handoff naming conventions (2026-02-14) `38a7c9b`
+- [x] [fix] Linux environment setup - paths, statusLine, and pageindex schema (2026-02-14) `9a4d12a`
 - [x] [fix] replace hardcoded Windows paths with portable cross-platform paths (2026-02-14) `ae6dae7`
 - [x] Knowledge tree & ROADMAP audit + repair (2026-02-09)
 - [x] Comprehensive README update with Ralph, browser automation, and corrected counts (2026-02-09) ed034eb
