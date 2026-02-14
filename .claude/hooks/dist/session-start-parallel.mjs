@@ -323,7 +323,8 @@ async function main() {
   } catch {
     input = {};
   }
-  const hooksDir = "C:/Users/david.hayes/.claude/hooks";
+  const homeDir2 = process.env.HOME || process.env.USERPROFILE || "";
+  const hooksDir = homeDir2 ? `${homeDir2}/.claude/hooks`.replace(/\\/g, "/") : "";
   const distDir = `${hooksDir}/dist`;
   const results = await Promise.all([
     // Inline task (no subprocess)
@@ -343,21 +344,31 @@ async function main() {
       stdinContent,
       5e3
     ),
-    // PowerShell daemon scripts
-    runCommand(
-      "tree-daemon",
-      "powershell",
-      ["-ExecutionPolicy", "Bypass", "-File", `${hooksDir}/session-start-tree-daemon.ps1`],
-      stdinContent,
-      15e3
-    ),
-    runCommand(
-      "memory-daemon",
-      "powershell",
-      ["-ExecutionPolicy", "Bypass", "-File", `${hooksDir}/session-start-memory-daemon.ps1`],
-      stdinContent,
-      1e4
-    )
+    // Daemon scripts - use shell scripts on Linux/macOS, PowerShell on Windows
+    ...process.platform === "win32" ? [
+      runCommand(
+        "tree-daemon",
+        "powershell",
+        ["-ExecutionPolicy", "Bypass", "-File", `${hooksDir}/session-start-tree-daemon.ps1`],
+        stdinContent,
+        15e3
+      ),
+      runCommand(
+        "memory-daemon",
+        "powershell",
+        ["-ExecutionPolicy", "Bypass", "-File", `${hooksDir}/session-start-memory-daemon.ps1`],
+        stdinContent,
+        1e4
+      )
+    ] : [
+      runCommand(
+        "tree-daemon",
+        "bash",
+        [`${hooksDir}/session-start-tree-daemon.sh`],
+        stdinContent,
+        15e3
+      )
+    ]
   ]);
   const totalDuration = Date.now() - totalStart;
   const outputs = [];

@@ -1,69 +1,49 @@
-﻿# Continuous-Claude Windows Cheat Sheet
+# Continuous-Claude Cheat Sheet
 
 > **See also:** [Architecture Docs](docs/architecture/INDEX.md) for system overview and navigation
 
 ## Memory Daemon
 
-```powershell
+```bash
 # Check status
-python C:\Users\david.hayes\.claude\scripts\core\core\memory_daemon.py status
-
-# Start manually
-C:\Users\david.hayes\.claude\scripts\start-memory-daemon.ps1
+cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/memory_daemon.py status
 
 # Stop
-python C:\Users\david.hayes\.claude\scripts\core\core\memory_daemon.py stop
+cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/memory_daemon.py stop
 ```
 
 ## Docker Services (PostgreSQL - Port 5432)
 
-```powershell
+```bash
 # Start PostgreSQL (auto-starts on session via session-start-docker hook)
-& "C:\Program Files\Docker\Docker\resources\bin\docker.exe" compose -f "C:\Users\david.hayes\.claude\docker\docker-compose.yml" up -d
+docker compose -f ~/.claude/docker/docker-compose.yml up -d
 
 # Check status
-& "C:\Program Files\Docker\Docker\resources\bin\docker.exe" ps --filter "name=continuous-claude-postgres"
+docker ps --filter "name=continuous-claude-postgres"
 
 # Stop PostgreSQL
-& "C:\Program Files\Docker\Docker\resources\bin\docker.exe" compose -f "C:\Users\david.hayes\.claude\docker\docker-compose.yml" down
+docker compose -f ~/.claude/docker/docker-compose.yml down
 
 # View logs
-& "C:\Program Files\Docker\Docker\resources\bin\docker.exe" logs continuous-claude-postgres
+docker logs continuous-claude-postgres
 
 # Query database directly
-& "C:\Program Files\Docker\Docker\resources\bin\docker.exe" exec continuous-claude-postgres psql -U claude -d continuous_claude -c "SELECT COUNT(*) FROM archival_memory;"
+docker exec continuous-claude-postgres psql -U claude -d continuous_claude -c "SELECT COUNT(*) FROM archival_memory;"
 ```
 
 **Note:** Container uses port 5432 (default PostgreSQL port)
 
-## Task Scheduler (Auto-Start)
-
-```powershell
-# View task
-Get-ScheduledTask -TaskName 'ClaudeMemoryDaemon'
-
-# Run now
-Start-ScheduledTask -TaskName 'ClaudeMemoryDaemon'
-
-# Remove auto-start
-Unregister-ScheduledTask -TaskName 'ClaudeMemoryDaemon' -Confirm:$false
-
-# Re-create auto-start
-C:\Users\david.hayes\.claude\scripts\setup-task-scheduler.ps1
-```
-
 ## Hooks
 
-```powershell
+```bash
 # Rebuild TypeScript hooks after changes
-cd C:\Users\david.hayes\.claude\hooks
-npm run build
+cd ~/.claude/hooks && npm run build
 
 # Build single hook
-node node_modules/esbuild/bin/esbuild src/my-hook.ts --bundle --platform=node --format=esm --outdir=dist --out-extension:.js=.mjs
+cd ~/.claude/hooks && node node_modules/esbuild/bin/esbuild src/my-hook.ts --bundle --platform=node --format=esm --outdir=dist --out-extension:.js=.mjs
 
 # Test a hook manually (example)
-echo '{}' | node C:\Users\david.hayes\.claude\hooks\dist\session-register.mjs
+echo '{}' | node ~/.claude/hooks/dist/session-register.mjs
 ```
 
 ### Key Hooks
@@ -72,8 +52,7 @@ echo '{}' | node C:\Users\david.hayes\.claude\hooks\dist\session-register.mjs
 | `session-start-docker.mjs` | SessionStart | Auto-start PostgreSQL container |
 | `session-register.mjs` | SessionStart | Register in coordination DB |
 | `session-start-continuity.mjs` | SessionStart | Load handoff ledger |
-| `session-start-tree-daemon.ps1` | SessionStart | Start knowledge tree watcher |
-| `session-start-memory-daemon.ps1` | SessionStart | **Auto-start memory daemon** |
+| `session-start-tree-daemon.sh` | SessionStart | Start knowledge tree watcher |
 | `memory-awareness.mjs` | UserPromptSubmit | Auto-inject relevant memories |
 | `pageindex-watch.mjs` | PostToolUse:Write\|Edit | Rebuild PageIndex on .md changes |
 | `pre-compact-extract.mjs` | PreCompact | Extract learnings before compression |
@@ -91,14 +70,14 @@ echo '{}' | node C:\Users\david.hayes\.claude\hooks\dist\session-register.mjs
 
 ## Repo Sync
 
-```powershell
+```bash
 # Manual sync (if needed)
-cd C:\Users\david.hayes\continuous-claude\scripts
+cd ~/continuous-claude/scripts
 bash sync-claude.sh --to-repo --dry-run  # Preview
 bash sync-claude.sh --to-repo            # Apply
 
 # Pull team updates
-cd C:\Users\david.hayes\continuous-claude && git pull
+cd ~/continuous-claude && git pull
 bash scripts/sync-claude.sh --from-repo
 ```
 
@@ -106,16 +85,16 @@ bash scripts/sync-claude.sh --from-repo
 
 ## Knowledge Tree
 
-```powershell
+```bash
 # Check daemon status
-cd ~/.claude/scripts/core/core; uv run python tree_daemon.py --project . --status
+cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/tree_daemon.py --project . --status
 
 # Regenerate manually
-cd ~/.claude/scripts/core/core; uv run python knowledge_tree.py --project .
+cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/knowledge_tree.py --project .
 
 # Query tree
-cd ~/.claude/scripts/core/core; uv run python query_tree.py --project . --describe
-cd ~/.claude/scripts/core/core; uv run python query_tree.py --project . --query "where to add API"
+cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/query_tree.py --project . --describe
+cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/query_tree.py --project . --query "where to add API"
 ```
 
 **Output:** `{project}/.claude/knowledge-tree.json`
@@ -123,7 +102,7 @@ cd ~/.claude/scripts/core/core; uv run python query_tree.py --project . --query 
 
 ## ROADMAP
 
-```powershell
+```bash
 # Location
 {project}/ROADMAP.md  # or {project}/.claude/ROADMAP.md
 ```
@@ -144,7 +123,7 @@ cd ~/.claude/scripts/core/core; uv run python query_tree.py --project . --query 
 | `post-plan-roadmap` | ExitPlanMode | Current Focus + Recent Planning |
 | `prd-roadmap-sync` | Write\|Edit PRD files | Planned |
 | `git-commit-roadmap` | Bash git commit | Completed |
-| `roadmap-completion` | TaskUpdate completed | Current Focus → Completed |
+| `roadmap-completion` | TaskUpdate completed | Current Focus -> Completed |
 
 ### Plan Directory Fallback
 The post-plan-roadmap hook checks 3 locations (in order):
@@ -154,44 +133,38 @@ The post-plan-roadmap hook checks 3 locations (in order):
 
 ## Rollback
 
-```powershell
+```bash
 # Stop everything first
-python C:\Users\david.hayes\.claude\scripts\core\core\memory_daemon.py stop
-& "C:\Program Files\Docker\Docker\resources\bin\docker.exe" compose -f "C:\Users\david.hayes\.claude\docker\docker-compose.yml" down
+cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/memory_daemon.py stop
+docker compose -f ~/.claude/docker/docker-compose.yml down
 
-# Restore from backup
-Remove-Item "C:\Users\david.hayes\.claude" -Recurse -Force
-Copy-Item "C:\Users\david.hayes\claude-archives\superClaude-v4.1.0-20260110-175711" "C:\Users\david.hayes\.claude" -Recurse
+# Restore from backup (adjust path to your backup)
+rm -rf ~/.claude
+cp -r ~/claude-archives/<backup-name> ~/.claude
 ```
 
 ## Key Directories
 
 | Path | Purpose |
 |------|---------|
-| `.claude\hooks\` | Hook scripts (100+ files) |
-| `.claude\hooks\dist\` | Compiled JS hooks (100+ files) |
-| `.claude\scripts\pageindex\` | PageIndex CLI and tree search |
-| `.claude\agents\` | Agent definitions (53 files) |
-| `.claude\skills\` | Skill definitions (383 files) |
-| `.claude\scripts\core\core\` | Memory daemon, TLDR |
-| `.claude\docker\` | PostgreSQL compose |
-| `.claude\commands\` | SuperClaude commands (preserved) |
-| `thoughts\shared\handoffs\` | Session handoffs |
-| `thoughts\ledgers\` | Continuity ledgers |
+| `~/.claude/hooks/` | Hook scripts (100+ files) |
+| `~/.claude/hooks/dist/` | Compiled JS hooks (100+ files) |
+| `~/.claude/scripts/pageindex/` | PageIndex CLI and tree search |
+| `~/.claude/agents/` | Agent definitions (53 files) |
+| `~/.claude/skills/` | Skill definitions (383 files) |
+| `~/.claude/scripts/core/` | Memory daemon, TLDR |
+| `~/.claude/docker/` | PostgreSQL compose |
+| `~/.claude/commands/` | SuperClaude commands (preserved) |
+| `thoughts/shared/handoffs/` | Session handoffs |
+| `thoughts/ledgers/` | Continuity ledgers |
 
 ## Environment Variables
 
-```powershell
-# Set PostgreSQL connection (user-level)
-[System.Environment]::SetEnvironmentVariable('DATABASE_URL', 'postgresql://claude:claude_dev@localhost:5432/continuous_claude', 'User')
-
-# Verify
-$env:DATABASE_URL
-
-# Required in ~/.claude/.env
-DATABASE_URL=postgresql://claude:claude_dev@localhost:5432/continuous_claude
-BRAINTRUST_API_KEY=sk-...
-TRACE_TO_BRAINTRUST=true
+```bash
+# Required in ~/.claude/.env (or opc/.env)
+export DATABASE_URL=postgresql://claude:claude_dev@localhost:5432/continuous_claude
+export BRAINTRUST_API_KEY=sk-...
+export TRACE_TO_BRAINTRUST=true
 ```
 
 ## Troubleshooting
@@ -202,44 +175,44 @@ The system loads DATABASE_URL in this order:
 2. Shell environment variables
 3. `~/.claude/.env` (supplements only)
 
-```powershell
+```bash
 # Check if daemon is running
-python C:\Users\david.hayes\.claude\scripts\core\core\memory_daemon.py status
+cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/memory_daemon.py status
 
 # Check Docker
-& "C:\Program Files\Docker\Docker\resources\bin\docker.exe" ps
+docker ps
 
 # Check hook logs (if any errors)
-Get-Content C:\Users\david.hayes\.claude\memory-daemon.log -Tail 20
+tail -20 ~/.claude/memory-daemon.log
 
 # Verify settings.json is valid JSON
-Get-Content C:\Users\david.hayes\.claude\settings.json | ConvertFrom-Json
+python3 -m json.tool ~/.claude/settings.json > /dev/null && echo "Valid" || echo "Invalid"
 ```
 
 ---
-*Created: 2026-01-10 | Continuous-Claude-v3 Windows Adaptation*
+*Created: 2026-01-10 | Updated: 2026-02-14 - Cross-platform*
 
 ---
 
 ## Memory System (Semantic Recall)
 
 ### Recall Learnings
-```powershell
+```bash
 # Hybrid search (text + vector) - RECOMMENDED
-cd ~/.claude && PYTHONPATH=. uv run python scripts/core/recall_learnings.py --query "your topic"
+cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/recall_learnings.py --query "your topic"
 
 # Pure vector search (similarity scores 0.4-0.9)
-cd ~/.claude && PYTHONPATH=. uv run python scripts/core/recall_learnings.py --query "topic" --vector-only
+cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/recall_learnings.py --query "topic" --vector-only
 
 # Text-only (fast, no embedding)
-cd ~/.claude && PYTHONPATH=. uv run python scripts/core/recall_learnings.py --query "topic" --text-only
+cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/recall_learnings.py --query "topic" --text-only
 ```
 
 ### Store Learning
-```powershell
-cd ~/.claude && PYTHONPATH=. uv run python scripts/core/store_learning.py `
-  --session-id "name" --type WORKING_SOLUTION `
-  --content "What you learned" --context "topic" `
+```bash
+cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/store_learning.py \
+  --session-id "name" --type WORKING_SOLUTION \
+  --content "What you learned" --context "topic" \
   --tags "tag1,tag2" --confidence high
 ```
 
@@ -260,12 +233,12 @@ cd ~/.claude && PYTHONPATH=. uv run python scripts/core/store_learning.py `
 | Vector-only | 0.4-0.9 | Cosine similarity |
 
 ### Backfill Embeddings
-```powershell
-cd ~/.claude/scripts/core; uv run python core/backfill_embeddings.py
+```bash
+cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/backfill_embeddings.py
 ```
 
 ### Quick DB Queries
-```powershell
+```bash
 # Count memories
 docker exec continuous-claude-postgres psql -U claude -d continuous_claude -c "SELECT COUNT(*) FROM archival_memory;"
 
@@ -285,31 +258,31 @@ docker exec continuous-claude-postgres psql -U claude -d continuous_claude -c "S
 PageIndex provides **reasoning-based document search** with 98.7% accuracy (vs ~50% for vector similarity).
 
 ### Generate Tree for Document
-```powershell
+```bash
 cd $CLAUDE_OPC_DIR && uv run python scripts/pageindex/cli/pageindex_cli.py generate ROADMAP.md
 ```
 
 ### Search Indexed Documents
-```powershell
+```bash
 cd $CLAUDE_OPC_DIR && uv run python scripts/pageindex/cli/pageindex_cli.py search "current goals"
 ```
 
 ### Hybrid Search (Vector + PageIndex) - RECOMMENDED
-```powershell
+```bash
 cd $CLAUDE_OPC_DIR && uv run python scripts/core/recall_learnings.py --query "topic" --hybrid
 ```
 
 ### PageIndex-Only Search
-```powershell
+```bash
 cd $CLAUDE_OPC_DIR && uv run python scripts/core/recall_learnings.py --query "topic" --pageindex
 ```
 
 ### List Indexed Documents
-```powershell
-cd $CLAUDE_OPC_DIR && uv run python scripts/pageindex/cli/pageindex_cli.py list
+```bash
+cd $CLAUDE_OPC_DIR && uv run python scripts/core/recall_learnings.py list
 ```
 
 **When to use:** Large structured docs (ROADMAP, ARCHITECTURE). 98.7% accuracy vs ~50% vector similarity.
 
 ---
-*Updated: 2026-02-03 | + PageIndex System, Five Pillars*
+*Updated: 2026-02-14 | Cross-platform, portable paths*

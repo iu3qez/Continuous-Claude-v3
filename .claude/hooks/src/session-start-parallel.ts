@@ -163,7 +163,8 @@ export async function main(): Promise<void> {
     input = {} as SessionStartInput;
   }
 
-  const hooksDir = 'C:/Users/david.hayes/.claude/hooks';
+  const homeDir2 = process.env.HOME || process.env.USERPROFILE || '';
+  const hooksDir = homeDir2 ? `${homeDir2}/.claude/hooks`.replace(/\\/g, '/') : '';
   const distDir = `${hooksDir}/dist`;
 
   // Run all tasks in parallel
@@ -187,21 +188,31 @@ export async function main(): Promise<void> {
       5000
     ),
 
-    // PowerShell daemon scripts
-    runCommand(
-      'tree-daemon',
-      'powershell',
-      ['-ExecutionPolicy', 'Bypass', '-File', `${hooksDir}/session-start-tree-daemon.ps1`],
-      stdinContent,
-      15000
-    ),
-    runCommand(
-      'memory-daemon',
-      'powershell',
-      ['-ExecutionPolicy', 'Bypass', '-File', `${hooksDir}/session-start-memory-daemon.ps1`],
-      stdinContent,
-      10000
-    ),
+    // Daemon scripts - use shell scripts on Linux/macOS, PowerShell on Windows
+    ...(process.platform === 'win32' ? [
+      runCommand(
+        'tree-daemon',
+        'powershell',
+        ['-ExecutionPolicy', 'Bypass', '-File', `${hooksDir}/session-start-tree-daemon.ps1`],
+        stdinContent,
+        15000
+      ),
+      runCommand(
+        'memory-daemon',
+        'powershell',
+        ['-ExecutionPolicy', 'Bypass', '-File', `${hooksDir}/session-start-memory-daemon.ps1`],
+        stdinContent,
+        10000
+      ),
+    ] : [
+      runCommand(
+        'tree-daemon',
+        'bash',
+        [`${hooksDir}/session-start-tree-daemon.sh`],
+        stdinContent,
+        15000
+      ),
+    ]),
   ]);
 
   const totalDuration = Date.now() - totalStart;
