@@ -1,0 +1,40 @@
+/* Page transition overlay */
+.page-transition-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--surface-dark, #0E0E11);
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
+.page-transition-overlay.active {
+  opacity: 1;
+}
+
+/* Main content fade */
+.page-content {
+  animation: pageEnter 200ms ease forwards;
+}
+
+@keyframes pageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .page-content {
+    animation: none;
+  }
+  .page-transition-overlay {
+    transition: none;
+  }
+}

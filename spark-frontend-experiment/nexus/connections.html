@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Connections | Workbook</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles/nexus-tokens.css">
+  <link rel="stylesheet" href="styles/interactions.css">
+  <link rel="stylesheet" href="styles/animations.css">
+  <link rel="stylesheet" href="styles/skeleton.css">
+  <link rel="stylesheet" href="styles/transitions.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            heading: ['Playfair Display', 'Georgia', 'serif'],
+            body: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            surface: { DEFAULT: '#161618', dark: '#0C0C0E', ai: '#14141A' },
+            border: { DEFAULT: '#232326' },
+            txt: { primary: '#EDEDEF', secondary: '#8F8F94', tertiary: '#6B6B70' },
+            accent: { DEFAULT: '#4F46E5', hover: '#6366F1' },
+            danger: { DEFAULT: '#DC2626' },
+            warning: { DEFAULT: '#D97706' },
+            success: { DEFAULT: '#059669' },
+            gold: { DEFAULT: '#B45309' },
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    h1, h2, h3, h4, h5, h6 { font-family: 'Playfair Display', Georgia, serif; }
+
+    /* Stagger animation */
+    @keyframes staggerIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .stagger { animation: staggerIn 0.3s ease-out forwards; opacity: 0; }
+    .stagger-1 { animation-delay: 0.05s; }
+    .stagger-2 { animation-delay: 0.1s; }
+    .stagger-3 { animation-delay: 0.15s; }
+    .stagger-4 { animation-delay: 0.2s; }
+
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: #0C0C0E; }
+    ::-webkit-scrollbar-thumb { background: #232326; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #3a3a3f; }
+
+    /* Card base */
+    .card { background: #161618; border: 1px solid #232326; border-radius: 4px; }
+
+    /* Sidebar nav */
+    .nav-item { border-radius: 6px; transition: background-color 0.15s ease; }
+    .nav-item:hover { background: rgba(255,255,255,0.04); }
+    .nav-active { background: rgba(79,70,229,0.1); }
+
+    /* Connection tile hover */
+    .conn-tile {
+      cursor: pointer;
+      transition: all 150ms ease;
+    }
+    .conn-tile:hover {
+      border-color: #3F3F46;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+
+    /* Status-specific hover colors */
+    .conn-tile[data-status="error"]:hover {
+      border-color: rgba(220, 38, 38, 0.4);
+    }
+    .conn-tile[data-status="connected"]:hover {
+      border-color: rgba(5, 150, 105, 0.3);
+    }
+    .conn-tile[data-status="syncing"]:hover {
+      border-color: rgba(59, 130, 246, 0.3);
+    }
+    .conn-tile[data-status="paused"]:hover {
+      border-color: rgba(156, 163, 175, 0.3);
+    }
+    .conn-tile[data-status="pending"]:hover {
+      border-color: rgba(234, 179, 8, 0.3);
+    }
+
+    /* Add Connection button hover lift */
+    .bg-accent {
+      transition: all 150ms ease;
+    }
+    .bg-accent:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+    }
+
+    /* Data flow animated dash */
+    @keyframes dashFlow {
+      to { stroke-dashoffset: -20; }
+    }
+    .flow-line-active {
+      stroke-dasharray: 6 4;
+      animation: dashFlow 1.5s linear infinite;
+    }
+    .flow-line-inactive {
+      stroke-dasharray: 4 6;
+      opacity: 0.3;
+    }
+
+    /* Pulse for connected dot */
+    @keyframes subtlePulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+    .pulse-connected {
+      animation: subtlePulse 2s ease-in-out infinite;
+    }
+
+    /* Spinner for syncing state */
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .conn-spinner {
+      animation: spin 1s linear infinite;
+    }
+
+    /* Light mode overrides */
+    html:not(.dark) body { background: #F8F8FA; color: #1a1a1e; }
+    html:not(.dark) .bg-surface-dark { background: #FFFFFF; }
+    html:not(.dark) .bg-surface { background: #F4F4F5; }
+    html:not(.dark) .card { background: #FFFFFF; border-color: #E5E5E8; }
+  </style>
+</head>
+<body class="bg-surface-dark text-txt-primary font-body" data-page-id="connections">
+  <div class="flex h-screen overflow-hidden">
+    <!-- Sidebar - 240px full-width -->
+    <aside id="sidebar" class="sidebar-bg w-60 bg-[#0C0C0E] border-r border-[#232326] flex flex-col py-4 px-3 gap-0.5 h-screen overflow-y-auto flex-shrink-0">
+      <div class="flex items-center gap-2.5 px-2 mb-4">
+        <div class="w-8 h-8 rounded-lg bg-[#4F46E5] flex items-center justify-center flex-shrink-0"><i data-lucide="book-open" class="w-4 h-4 text-white"></i></div>
+        <span class="font-heading text-base font-semibold text-[#EDEDEF] tracking-tight">Workbook</span>
+      </div>
+      <button onclick="document.getElementById('cmdInput')?.focus()" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md mb-3 group w-full text-left" title="Search (Cmd+K)">
+        <i data-lucide="search" class="w-4 h-4 text-[#8F8F94] group-hover:text-[#EDEDEF] flex-shrink-0"></i>
+        <span class="text-sm text-[#6B6B70]">Search</span>
+        <span class="ml-auto font-mono text-[10px] text-[#6B6B70]/60 bg-[#232326] px-1.5 py-0.5 rounded">Cmd+K</span>
+      </button>
+      <div class="mb-1">
+        <div class="px-2 py-1 text-[10px] font-mono font-semibold text-[#6B6B70] uppercase tracking-widest">Workspace</div>
+        <a href="dashboard.html" data-nav-page="dashboard" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="layout-dashboard" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Dashboard</span></a>
+        <a href="calendar.html" data-nav-page="calendar" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="calendar" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Calendar</span></a>
+        <a href="meetings.html" data-nav-page="meetings" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="users" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Meetings</span></a>
+        <a href="actions.html" data-nav-page="actions" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="check-square" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Actions</span></a>
+        <a href="decisions.html" data-nav-page="decisions" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="git-branch" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Decisions</span></a>
+        <a href="proposals.html" data-nav-page="proposals" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="sparkles" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Proposals</span></a>
+        <a href="my-work.html" data-nav-page="my-work" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="user" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">My Work</span></a>
+        <a href="workspaces.html" data-nav-page="workspaces" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]" title="Workspaces">
+          <i data-lucide="layers" class="w-4 h-4 flex-shrink-0"></i>
+          <span class="text-sm">Workspaces</span>
+        </a>
+      </div>
+      <div class="mb-1">
+        <div class="px-2 py-1 text-[10px] font-mono font-semibold text-[#6B6B70] uppercase tracking-widest">AI</div>
+        <a href="agents.html" data-nav-page="agents" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="bot" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Agent Dashboard</span></a>
+        <a href="marketplace.html" data-nav-page="marketplace" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="store" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Marketplace</span></a>
+        <a href="elt-rollup.html" data-nav-page="elt-rollup" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="bar-chart-3" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">ELT Rollup</span></a>
+      </div>
+      <div class="mb-1">
+        <div class="px-2 py-1 text-[10px] font-mono font-semibold text-[#6B6B70] uppercase tracking-widest">Admin</div>
+        <a href="connections.html" data-nav-page="connections" class="nav-active nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#4F46E5]"><i data-lucide="plug" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Connections</span></a>
+        <a href="settings.html" data-nav-page="settings" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="settings" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Settings</span></a>
+      </div>
+      <div class="flex-1"></div>
+      <div class="flex items-center gap-2.5 px-2 py-1.5">
+        <i data-lucide="bot" class="w-4 h-4 text-[#6B6B70]"></i>
+        <span class="text-xs text-[#6B6B70]">AI Agent</span>
+        <span class="ml-auto flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-[#059669]"></span><span class="text-[10px] text-[#059669] font-mono">Online</span></span>
+      </div>
+      <button onclick="document.documentElement.classList.toggle('dark')" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF] w-full text-left">
+        <i data-lucide="sun-moon" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Toggle Theme</span>
+      </button>
+      <div class="flex items-center gap-2.5 px-2 py-1.5 mt-1">
+        <div class="w-7 h-7 rounded-full bg-[#232326] flex items-center justify-center flex-shrink-0"><span class="font-mono text-[10px] text-[#8F8F94] font-medium">DH</span></div>
+        <span class="text-sm text-[#8F8F94]">David Hayes</span>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="flex-1 flex flex-col overflow-hidden">
+      <!-- Command Bar Container -->
+      <div id="command-bar-container"></div>
+
+      <!-- Page Content -->
+      <main class="flex-1 overflow-auto p-8">
+        <!-- Detail Drawer Container -->
+        <div id="connection-drawer"></div>
+        <!-- Header -->
+        <div class="mb-8">
+          <div class="flex items-start justify-between mb-4">
+            <div>
+              <h1 class="text-4xl font-bold mb-2">Connections</h1>
+              <p class="text-txt-secondary text-lg">Manage your integrations</p>
+            </div>
+            <button class="bg-accent hover:bg-accent-hover text-white px-6 py-3 rounded-lg font-semibold transition-colors">
+              Add Connection
+            </button>
+          </div>
+
+          <!-- Stats Row -->
+          <div class="flex gap-6 mt-6 flex-wrap">
+            <div class="flex items-center gap-2">
+              <span class="text-2xl font-bold">3</span>
+              <span class="text-txt-secondary">Connected</span>
+            </div>
+            <div class="w-px bg-border"></div>
+            <div class="flex items-center gap-2">
+              <span class="text-2xl font-bold text-blue-400">1</span>
+              <span class="text-txt-secondary">Syncing</span>
+            </div>
+            <div class="w-px bg-border"></div>
+            <div class="flex items-center gap-2">
+              <span class="text-2xl font-bold text-red-400">1</span>
+              <span class="text-txt-secondary">Error</span>
+            </div>
+            <div class="w-px bg-border"></div>
+            <div class="flex items-center gap-2">
+              <span class="text-2xl font-bold text-gray-400">1</span>
+              <span class="text-txt-secondary">Paused</span>
+            </div>
+            <div class="w-px bg-border"></div>
+            <div class="flex items-center gap-2">
+              <span class="text-2xl font-bold text-yellow-400">1</span>
+              <span class="text-txt-secondary">Pending</span>
+            </div>
+            <div class="w-px bg-border"></div>
+            <div class="flex items-center gap-2">
+              <span class="text-2xl font-bold">1</span>
+              <span class="text-txt-secondary">Available</span>
+            </div>
+            <div class="w-px bg-border"></div>
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-yellow-500"></span>
+              <span class="text-txt-secondary">Health:</span>
+              <span class="text-yellow-400 font-semibold">Mixed</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Connection Tiles Grid -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+
+          <!-- Tile 1: Salesforce -->
+          <div class="card conn-tile p-5 stagger stagger-1">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">SF</div>
+              <div class="min-w-0">
+                <h3 class="font-semibold text-base truncate">Salesforce</h3>
+                <div class="flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                  <span class="text-xs text-green-400">Connected</span>
+                </div>
+              </div>
+            </div>
+            <p class="text-sm text-txt-secondary mb-1">342 contacts, 89 deals</p>
+            <p class="text-xs text-txt-tertiary mb-3">Synced 2 minutes ago</p>
+            <button onclick="showConnectionDetail('salesforce')" class="w-full py-1.5 rounded border border-border text-sm text-txt-secondary hover:border-accent hover:text-accent transition-colors">Manage</button>
+          </div>
+
+          <!-- Tile 2: Slack (syncing) -->
+          <div class="card conn-tile p-5 stagger stagger-2">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-10 h-10 rounded-lg bg-purple-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">SL</div>
+              <div class="min-w-0">
+                <h3 class="font-semibold text-base truncate">Slack</h3>
+                <div class="flex items-center gap-1.5" data-status="syncing">
+                  <span class="conn-spinner w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full inline-block" style="animation: spin 1s linear infinite;"></span>
+                  <span class="text-xs text-blue-400">Syncing</span>
+                </div>
+              </div>
+            </div>
+            <p class="text-sm text-txt-secondary mb-1">12 channels monitored</p>
+            <p class="text-xs text-txt-tertiary mb-3">Syncing now...</p>
+          </div>
+
+          <!-- Tile 3: Google Workspace -->
+          <div class="card conn-tile p-5 stagger stagger-3">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-10 h-10 rounded-lg bg-red-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">GW</div>
+              <div class="min-w-0">
+                <h3 class="font-semibold text-base truncate">Google Workspace</h3>
+                <div class="flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                  <span class="text-xs text-green-400">Connected</span>
+                </div>
+              </div>
+            </div>
+            <p class="text-sm text-txt-secondary mb-1">Calendar + Drive</p>
+            <p class="text-xs text-txt-tertiary mb-3">Synced 5 minutes ago</p>
+            <button onclick="showConnectionDetail('google')" class="w-full py-1.5 rounded border border-border text-sm text-txt-secondary hover:border-accent hover:text-accent transition-colors">Manage</button>
+          </div>
+
+          <!-- Tile 4: Microsoft 365 (error) -->
+          <div class="card conn-tile p-5 stagger stagger-4">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-10 h-10 rounded-lg bg-sky-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">MS</div>
+              <div class="min-w-0">
+                <h3 class="font-semibold text-base truncate">Microsoft 365</h3>
+                <div class="flex items-center gap-1.5" data-status="error">
+                  <span class="w-2 h-2 rounded-full bg-red-500"></span>
+                  <span class="text-xs text-red-400">Error</span>
+                </div>
+              </div>
+            </div>
+            <p class="text-sm text-txt-secondary mb-1">Email + Teams + OneDrive</p>
+            <p class="text-xs text-red-400 mb-3">Auth expired</p>
+            <button onclick="showConnectionDetail('microsoft365')" data-action="retry" class="w-full py-1.5 rounded border border-red-500 text-sm text-red-400 hover:border-red-400 hover:text-red-300 transition-colors">Retry</button>
+          </div>
+
+          <!-- Tile 5: Jira -->
+          <div class="card conn-tile p-5 stagger stagger-1">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-10 h-10 rounded-lg bg-blue-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">JR</div>
+              <div class="min-w-0">
+                <h3 class="font-semibold text-base truncate">Jira</h3>
+                <div class="flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                  <span class="text-xs text-green-400">Connected</span>
+                </div>
+              </div>
+            </div>
+            <p class="text-sm text-txt-secondary mb-1">47 active issues</p>
+            <p class="text-xs text-txt-tertiary mb-3">Synced 10 minutes ago</p>
+            <button onclick="showConnectionDetail('jira')" class="w-full py-1.5 rounded border border-border text-sm text-txt-secondary hover:border-accent hover:text-accent transition-colors">Manage</button>
+          </div>
+
+          <!-- Tile 6: HubSpot (paused) -->
+          <div class="card conn-tile p-5 stagger stagger-2">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-10 h-10 rounded-lg bg-orange-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">HS</div>
+              <div class="min-w-0">
+                <h3 class="font-semibold text-base truncate">HubSpot</h3>
+                <div class="flex items-center gap-1.5" data-status="paused">
+                  <span class="w-2 h-2 rounded-full bg-gray-500"></span>
+                  <span class="text-xs text-gray-400">Paused</span>
+                </div>
+              </div>
+            </div>
+            <p class="text-sm text-txt-secondary mb-1">Marketing automation</p>
+            <p class="text-xs text-txt-tertiary mb-3">Paused 2 days ago</p>
+            <button onclick="showConnectionDetail('hubspot')" data-action="resume" class="w-full py-1.5 rounded border border-border text-sm text-txt-secondary hover:border-accent hover:text-accent transition-colors">Resume</button>
+          </div>
+
+          <!-- Tile 7: QuickBooks (pending) -->
+          <div class="card conn-tile p-5 stagger stagger-3">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-10 h-10 rounded-lg bg-green-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">QB</div>
+              <div class="min-w-0">
+                <h3 class="font-semibold text-base truncate">QuickBooks</h3>
+                <div class="flex items-center gap-1.5" data-status="pending">
+                  <span class="w-2 h-2 rounded-full bg-yellow-500"></span>
+                  <span class="text-xs text-yellow-400">Pending</span>
+                </div>
+              </div>
+            </div>
+            <p class="text-sm text-txt-secondary mb-1">Financial data</p>
+            <p class="text-xs text-txt-tertiary mb-3">Pending setup...</p>
+            <button onclick="showConnectionDetail('quickbooks')" data-action="cancel" class="w-full py-1.5 rounded border border-border text-sm text-txt-secondary hover:border-accent hover:text-accent transition-colors">Cancel</button>
+          </div>
+
+          <!-- Tile 8: Notion -->
+          <div class="card conn-tile p-5 stagger stagger-4">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-10 h-10 rounded-lg bg-neutral-700 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">NT</div>
+              <div class="min-w-0">
+                <h3 class="font-semibold text-base truncate">Notion</h3>
+                <div class="flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-gray-500"></span>
+                  <span class="text-xs text-txt-tertiary">Not Connected</span>
+                </div>
+              </div>
+            </div>
+            <p class="text-sm text-txt-secondary mb-1">Team knowledge base</p>
+            <p class="text-xs text-txt-tertiary mb-3">-</p>
+            <button onclick="showConnectionDetail('notion')" class="w-full py-1.5 rounded bg-accent hover:bg-accent-hover text-white text-sm font-medium transition-colors">Connect</button>
+          </div>
+
+        </div>
+
+        <!-- Data Flow Visualization -->
+        <div class="mb-8">
+          <h2 class="text-xl font-semibold mb-6">Data Flow</h2>
+          <div class="card p-8 flex items-center justify-center">
+            <svg viewBox="0 0 500 500" width="500" height="500" class="max-w-full">
+              <!-- Connector lines (behind everything) -->
+              <!-- Salesforce (connected) -->
+              <line x1="250" y1="250" x2="250" y2="80" class="flow-line-active" stroke="#4F46E5" stroke-width="1.5" />
+              <!-- Slack (connected) -->
+              <line x1="250" y1="250" x2="370" y2="120" class="flow-line-active" stroke="#4F46E5" stroke-width="1.5" />
+              <!-- Google (connected) -->
+              <line x1="250" y1="250" x2="420" y2="250" class="flow-line-active" stroke="#4F46E5" stroke-width="1.5" />
+              <!-- Microsoft 365 (not connected) -->
+              <line x1="250" y1="250" x2="370" y2="380" class="flow-line-inactive" stroke="#6B6B70" stroke-width="1" />
+              <!-- Jira (connected) -->
+              <line x1="250" y1="250" x2="250" y2="420" class="flow-line-active" stroke="#4F46E5" stroke-width="1.5" />
+              <!-- HubSpot (not connected) -->
+              <line x1="250" y1="250" x2="130" y2="380" class="flow-line-inactive" stroke="#6B6B70" stroke-width="1" />
+              <!-- QuickBooks (connected) -->
+              <line x1="250" y1="250" x2="80" y2="250" class="flow-line-active" stroke="#4F46E5" stroke-width="1.5" />
+              <!-- Notion (not connected) -->
+              <line x1="250" y1="250" x2="130" y2="120" class="flow-line-inactive" stroke="#6B6B70" stroke-width="1" />
+
+              <!-- Platform nodes -->
+              <!-- Salesforce -->
+              <circle cx="250" cy="70" r="24" fill="#2563EB" />
+              <text x="250" y="75" text-anchor="middle" fill="white" font-size="11" font-weight="600" font-family="Inter, sans-serif">SF</text>
+
+              <!-- Slack -->
+              <circle cx="377" cy="112" r="24" fill="#7C3AED" />
+              <text x="377" y="117" text-anchor="middle" fill="white" font-size="11" font-weight="600" font-family="Inter, sans-serif">SL</text>
+
+              <!-- Google Workspace -->
+              <circle cx="430" cy="250" r="24" fill="#DC2626" />
+              <text x="430" y="255" text-anchor="middle" fill="white" font-size="10" font-weight="600" font-family="Inter, sans-serif">GW</text>
+
+              <!-- Microsoft 365 -->
+              <circle cx="377" cy="388" r="24" fill="#3B3B40" stroke="#6B6B70" stroke-width="1" />
+              <text x="377" y="393" text-anchor="middle" fill="#8F8F94" font-size="10" font-weight="600" font-family="Inter, sans-serif">MS</text>
+
+              <!-- Jira -->
+              <circle cx="250" cy="430" r="24" fill="#3B82F6" />
+              <text x="250" y="435" text-anchor="middle" fill="white" font-size="11" font-weight="600" font-family="Inter, sans-serif">JR</text>
+
+              <!-- HubSpot -->
+              <circle cx="123" cy="388" r="24" fill="#3B3B40" stroke="#6B6B70" stroke-width="1" />
+              <text x="123" y="393" text-anchor="middle" fill="#8F8F94" font-size="10" font-weight="600" font-family="Inter, sans-serif">HS</text>
+
+              <!-- QuickBooks -->
+              <circle cx="70" cy="250" r="24" fill="#059669" />
+              <text x="70" y="255" text-anchor="middle" fill="white" font-size="10" font-weight="600" font-family="Inter, sans-serif">QB</text>
+
+              <!-- Notion -->
+              <circle cx="123" cy="112" r="24" fill="#3B3B40" stroke="#6B6B70" stroke-width="1" />
+              <text x="123" y="117" text-anchor="middle" fill="#8F8F94" font-size="10" font-weight="600" font-family="Inter, sans-serif">NT</text>
+
+              <!-- Central hub -->
+              <circle cx="250" cy="250" r="40" fill="#4F46E5" />
+              <circle cx="250" cy="250" r="40" fill="none" stroke="#6366F1" stroke-width="2" opacity="0.5" />
+              <text x="250" y="246" text-anchor="middle" fill="white" font-size="11" font-weight="700" font-family="Inter, sans-serif">Work</text>
+              <text x="250" y="261" text-anchor="middle" fill="white" font-size="11" font-weight="700" font-family="Inter, sans-serif">book</text>
+            </svg>
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initState } from './components/state.js';
+    import { createSidebar, setActivePage } from './components/sidebar.js';
+    import { initCommandBar } from './components/command-bar.js';
+    import { createDrawer, openDrawer, setDrawerContent, setDrawerTitle } from './components/detail-drawer.js';
+    import { createConnectionTile } from './components/connections.js';
+
+    initState();
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar) { createSidebar(sidebar); setActivePage('connections'); }
+    initCommandBar();
+
+    // Create drawer
+    const drawerContainer = document.getElementById('connection-drawer');
+    if (drawerContainer) createDrawer(drawerContainer);
+
+    // Connection detail content generator
+    function showConnectionDetail(platform) {
+      const details = {
+        salesforce: {
+          name: 'Salesforce',
+          status: 'Connected',
+          statusColor: 'var(--success)',
+          records: '342 contacts, 89 deals, 156 activities',
+          lastSync: '2 minutes ago',
+          permissions: ['Read contacts', 'Read deals', 'Read activities', 'Write notes'],
+          aiAccess: ['Meeting Prep Agent', 'Sales Pipeline Guardian', 'Action Enforcer'],
+          usage: { queries: 1247, lastWeek: 342, avgResponse: '1.2s' }
+        },
+        slack: {
+          name: 'Slack',
+          status: 'Connected',
+          statusColor: 'var(--success)',
+          records: '12 channels, 3,421 messages indexed',
+          lastSync: '1 minute ago',
+          permissions: ['Read channels', 'Read messages', 'Post messages'],
+          aiAccess: ['Meeting Prep Agent', 'Action Enforcer'],
+          usage: { queries: 892, lastWeek: 156, avgResponse: '0.8s' }
+        }
+      };
+
+      const detail = details[platform] || details.salesforce;
+      setDrawerTitle(detail.name + ' Integration');
+      setDrawerContent(`
+        <div style="padding: 16px 0;">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 24px;">
+            <div style="width: 12px; height: 12px; border-radius: 50%; background: ${detail.statusColor};"></div>
+            <span style="color: var(--txt-primary); font-size: 14px;">${detail.status}</span>
+          </div>
+
+          <h4 style="color: var(--txt-tertiary); font-size: 12px; text-transform: uppercase; margin-bottom: 8px;">Data Preview</h4>
+          <p style="color: var(--txt-secondary); font-size: 14px; margin-bottom: 24px;">${detail.records}</p>
+
+          <h4 style="color: var(--txt-tertiary); font-size: 12px; text-transform: uppercase; margin-bottom: 8px;">Last Sync</h4>
+          <p style="color: var(--txt-secondary); font-size: 14px; margin-bottom: 24px;">${detail.lastSync}</p>
+
+          <h4 style="color: var(--txt-tertiary); font-size: 12px; text-transform: uppercase; margin-bottom: 8px;">Permissions</h4>
+          <ul style="list-style: none; padding: 0; margin: 0 0 24px 0;">
+            ${detail.permissions.map(p => '<li style="color: var(--txt-secondary); font-size: 13px; padding: 4px 0;">' + p + '</li>').join('')}
+          </ul>
+
+          <h4 style="color: var(--txt-tertiary); font-size: 12px; text-transform: uppercase; margin-bottom: 8px;">AI Agent Access</h4>
+          <ul style="list-style: none; padding: 0; margin: 0 0 24px 0;">
+            ${detail.aiAccess.map(a => '<li style="color: var(--txt-secondary); font-size: 13px; padding: 4px 0;">' + a + '</li>').join('')}
+          </ul>
+
+          <h4 style="color: var(--txt-tertiary); font-size: 12px; text-transform: uppercase; margin-bottom: 8px;">Actions</h4>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <button style="padding: 8px 16px; background: var(--accent); color: white; border: none; border-radius: var(--radius-md); font-size: 13px; cursor: pointer;">Sync Now</button>
+            <button style="padding: 8px 16px; background: transparent; color: var(--txt-primary); border: 1px solid var(--border); border-radius: var(--radius-md); font-size: 13px; cursor: pointer;">Re-authorize</button>
+            <button style="padding: 8px 16px; background: transparent; color: var(--danger); border: 1px solid var(--danger); border-radius: var(--radius-md); font-size: 13px; cursor: pointer;">Disconnect</button>
+          </div>
+        </div>
+      `);
+      openDrawer();
+    }
+    window.showConnectionDetail = showConnectionDetail;
+  </script>
+  <script type="module" src="components/page-init.js"></script>
+  <script type="module" src="demo/init.js"></script>
+  <script src="components/page-transitions.js"></script>
+</body>
+</html>

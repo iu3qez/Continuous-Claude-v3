@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nexus Onboarding - AI Scanning</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="../styles/nexus-tokens.css">
+  <link rel="stylesheet" href="../styles/interactions.css">
+  <link rel="stylesheet" href="../styles/animations.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #0C0C0E;
+      color: #E8E8EA;
+      overflow: hidden;
+    }
+
+    .scanning-item {
+      opacity: 0;
+      transform: translateX(-20px);
+      transition: all 0.4s ease;
+    }
+
+    .scanning-item.visible {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    .check-mark {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #10B981;
+      position: relative;
+      margin-right: 8px;
+      opacity: 0;
+      transform: scale(0);
+      transition: all 0.3s ease;
+    }
+
+    .check-mark.visible {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    .check-mark::after {
+      content: '';
+      position: absolute;
+      left: 5px;
+      top: 2px;
+      width: 4px;
+      height: 8px;
+      border: solid white;
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg);
+    }
+
+    .workspace-card {
+      opacity: 0;
+      transform: translateY(20px) scale(0.95);
+      transition: all 0.5s ease;
+    }
+
+    .workspace-card.visible {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    .count-number {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+    }
+
+    .progress-fill {
+      width: 0%;
+      transition: width 0.1s linear;
+    }
+
+    .avatar-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 20px);
+      gap: 4px;
+    }
+
+    .avatar {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      font-size: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <!-- Skip Button -->
+  <a href="step-6-insight.html" class="fixed top-6 right-6 px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors z-50">
+    Skip
+  </a>
+
+  <!-- Main Container -->
+  <div class="h-screen flex flex-col">
+    <!-- Progress Dots -->
+    <div class="flex justify-center items-center gap-2 pt-12 pb-8">
+      <div class="w-2 h-2 rounded-full bg-blue-500"></div>
+      <div class="w-2 h-2 rounded-full bg-blue-500"></div>
+      <div class="w-2 h-2 rounded-full bg-blue-500"></div>
+      <div class="w-2 h-2 rounded-full bg-blue-500"></div>
+      <div class="w-2 h-2 rounded-full bg-blue-500"></div>
+      <div class="w-2 h-2 rounded-full bg-gray-600"></div>
+    </div>
+
+    <!-- Split Layout -->
+    <div class="flex-1 flex">
+      <!-- Left Side: Data Discovery -->
+      <div class="w-1/2 flex items-center justify-center px-16">
+        <div class="w-full max-w-md space-y-4">
+          <div id="scan-header" class="scanning-item mb-8">
+            <h2 class="text-2xl font-semibold text-gray-300">Scanning connected tools...</h2>
+          </div>
+
+          <div id="contacts" class="scanning-item flex items-center">
+            <span class="check-mark"></span>
+            <span class="text-lg">Found <span class="count-number text-blue-400" data-target="342">0</span> contacts</span>
+          </div>
+
+          <div id="deals" class="scanning-item flex items-center">
+            <span class="check-mark"></span>
+            <span class="text-lg">Found <span class="count-number text-blue-400" data-target="89">0</span> active deals</span>
+          </div>
+
+          <div id="tasks" class="scanning-item flex items-center">
+            <span class="check-mark"></span>
+            <span class="text-lg">Found <span class="count-number text-blue-400" data-target="47">0</span> open tasks</span>
+          </div>
+
+          <div id="events" class="scanning-item flex items-center">
+            <span class="check-mark"></span>
+            <span class="text-lg">Found <span class="count-number text-blue-400" data-target="156">0</span> calendar events</span>
+          </div>
+
+          <div id="emails" class="scanning-item flex items-center">
+            <span class="check-mark"></span>
+            <span class="text-lg">Found <span class="count-number text-blue-400" data-target="1247">0</span> email threads</span>
+          </div>
+
+          <div id="documents" class="scanning-item flex items-center">
+            <span class="check-mark"></span>
+            <span class="text-lg">Found <span class="count-number text-blue-400" data-target="28">0</span> documents</span>
+          </div>
+
+          <div id="complete" class="scanning-item mt-8">
+            <h3 class="text-xl font-semibold text-green-400">Analysis complete!</h3>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Side: Workspace Cards -->
+      <div class="w-1/2 flex items-center justify-center px-16">
+        <div class="w-full max-w-md space-y-3">
+          <div id="workspace-operations" class="workspace-card bg-[#16161A] rounded-lg p-4 border border-gray-800">
+            <div class="flex items-start justify-between mb-3">
+              <div class="flex items-center gap-3">
+                <div class="w-3 h-3 rounded-full bg-orange-500"></div>
+                <h3 class="font-semibold">Operations</h3>
+              </div>
+              <div class="avatar-grid">
+                <div class="avatar" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)">A</div>
+                <div class="avatar" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%)">B</div>
+                <div class="avatar" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)">C</div>
+              </div>
+            </div>
+            <p class="text-sm text-gray-400">8 members</p>
+          </div>
+
+          <div id="workspace-engineering" class="workspace-card bg-[#16161A] rounded-lg p-4 border border-gray-800">
+            <div class="flex items-start justify-between mb-3">
+              <div class="flex items-center gap-3">
+                <div class="w-3 h-3 rounded-full bg-blue-500"></div>
+                <h3 class="font-semibold">Engineering</h3>
+              </div>
+              <div class="avatar-grid">
+                <div class="avatar" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)">D</div>
+                <div class="avatar" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%)">E</div>
+                <div class="avatar" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)">F</div>
+              </div>
+            </div>
+            <p class="text-sm text-gray-400">12 members</p>
+          </div>
+
+          <div id="workspace-sales" class="workspace-card bg-[#16161A] rounded-lg p-4 border border-gray-800">
+            <div class="flex items-start justify-between mb-3">
+              <div class="flex items-center gap-3">
+                <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                <h3 class="font-semibold">Sales</h3>
+              </div>
+              <div class="avatar-grid">
+                <div class="avatar" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)">G</div>
+                <div class="avatar" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%)">H</div>
+                <div class="avatar" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)">I</div>
+              </div>
+            </div>
+            <p class="text-sm text-gray-400">6 members</p>
+          </div>
+
+          <div id="workspace-marketing" class="workspace-card bg-[#16161A] rounded-lg p-4 border border-gray-800">
+            <div class="flex items-start justify-between mb-3">
+              <div class="flex items-center gap-3">
+                <div class="w-3 h-3 rounded-full bg-purple-500"></div>
+                <h3 class="font-semibold">Marketing</h3>
+              </div>
+              <div class="avatar-grid">
+                <div class="avatar" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)">J</div>
+                <div class="avatar" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%)">K</div>
+                <div class="avatar" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)">L</div>
+              </div>
+            </div>
+            <p class="text-sm text-gray-400">5 members</p>
+          </div>
+
+          <div id="workspace-finance" class="workspace-card bg-[#16161A] rounded-lg p-4 border border-gray-800">
+            <div class="flex items-start justify-between mb-3">
+              <div class="flex items-center gap-3">
+                <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                <h3 class="font-semibold">Finance</h3>
+              </div>
+              <div class="avatar-grid">
+                <div class="avatar" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)">M</div>
+                <div class="avatar" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%)">N</div>
+                <div class="avatar" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)">O</div>
+              </div>
+            </div>
+            <p class="text-sm text-gray-400">4 members</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Progress Bar -->
+    <div class="pb-8 px-16">
+      <div class="flex items-center gap-4">
+        <div class="flex-1 h-2 bg-gray-800 rounded-full overflow-hidden">
+          <div id="progress-fill" class="progress-fill h-full bg-blue-500"></div>
+        </div>
+        <span id="progress-percent" class="text-sm font-mono text-gray-400 w-12 text-right">0%</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Animation timeline
+    const timeline = [
+      { time: 0, action: () => showItem('scan-header') },
+      { time: 1000, action: () => showDataItem('contacts', 342) },
+      { time: 2000, action: () => showDataItem('deals', 89) },
+      { time: 3000, action: () => showDataItem('tasks', 47) },
+      { time: 4000, action: () => showDataItem('events', 156) },
+      { time: 5000, action: () => showDataItem('emails', 1247) },
+      { time: 6000, action: () => showDataItem('documents', 28) },
+      { time: 7000, action: () => showItem('complete') },
+      { time: 1000, action: () => showWorkspace('workspace-operations') },
+      { time: 2000, action: () => showWorkspace('workspace-engineering') },
+      { time: 3000, action: () => showWorkspace('workspace-sales') },
+      { time: 4000, action: () => showWorkspace('workspace-marketing') },
+      { time: 5000, action: () => showWorkspace('workspace-finance') }
+    ];
+
+    function showItem(id) {
+      const element = document.getElementById(id);
+      element.classList.add('visible');
+    }
+
+    function showDataItem(id, target) {
+      const element = document.getElementById(id);
+      element.classList.add('visible');
+
+      // Show check mark after a short delay
+      setTimeout(() => {
+        const checkMark = element.querySelector('.check-mark');
+        checkMark.classList.add('visible');
+      }, 200);
+
+      // Count up animation
+      const numberElement = element.querySelector('.count-number');
+      animateCount(numberElement, target);
+    }
+
+    function showWorkspace(id) {
+      const element = document.getElementById(id);
+      element.classList.add('visible');
+    }
+
+    function animateCount(element, target) {
+      const duration = 800;
+      const steps = 30;
+      const stepValue = target / steps;
+      const stepTime = duration / steps;
+      let current = 0;
+
+      const interval = setInterval(() => {
+        current += stepValue;
+        if (current >= target) {
+          element.textContent = target.toLocaleString();
+          clearInterval(interval);
+        } else {
+          element.textContent = Math.floor(current).toLocaleString();
+        }
+      }, stepTime);
+    }
+
+    function updateProgress() {
+      const progressFill = document.getElementById('progress-fill');
+      const progressPercent = document.getElementById('progress-percent');
+      const duration = 8000;
+      const steps = 80;
+      const stepTime = duration / steps;
+      let current = 0;
+
+      const interval = setInterval(() => {
+        current += (100 / steps);
+        if (current >= 100) {
+          progressFill.style.width = '100%';
+          progressPercent.textContent = '100%';
+          clearInterval(interval);
+        } else {
+          progressFill.style.width = current + '%';
+          progressPercent.textContent = Math.floor(current) + '%';
+        }
+      }, stepTime);
+    }
+
+    // Execute timeline
+    timeline.forEach(({ time, action }) => {
+      setTimeout(action, time);
+    });
+
+    // Start progress bar
+    updateProgress();
+
+    // Auto-advance after 8 seconds
+    setTimeout(() => {
+      window.location.href = 'step-6-insight.html';
+    }, 8000);
+  </script>
+    <script type="module" src="../demo/init.js"></script>
+</body>
+</html>

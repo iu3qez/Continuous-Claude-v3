@@ -1,0 +1,608 @@
+/* ============================================================================
+   NEXUS MICRO-INTERACTIONS
+   Production-grade interaction styles using design tokens
+   ============================================================================ */
+
+/* ============================================================================
+   1. CARD INTERACTIONS
+   ============================================================================ */
+
+.card-interactive {
+  border: 1px solid var(--border);
+  transition: all var(--transition-base);
+  cursor: pointer;
+}
+
+.card-interactive:hover {
+  border-color: var(--border-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.card-interactive:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ============================================================================
+   2. BUTTON VARIANTS
+   ============================================================================ */
+
+/* Base button styles */
+.btn-primary,
+.btn-secondary,
+.btn-ghost,
+.btn-icon {
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  outline: none;
+  border: none;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+/* Primary - Filled accent button */
+.btn-primary {
+  background: var(--accent);
+  color: #FFFFFF;
+  border-radius: var(--radius-md);
+  padding: 0.5rem 1rem;
+}
+
+.btn-primary:hover {
+  background: var(--accent-hover);
+  transform: scale(1.02);
+}
+
+.btn-primary:active {
+  background: #4338CA; /* Darker accent */
+  transform: scale(0.98);
+}
+
+.btn-primary:focus-visible {
+  box-shadow: var(--shadow-glow);
+}
+
+/* Secondary - Outlined button */
+.btn-secondary {
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0.5rem 1rem;
+}
+
+.btn-secondary:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-hover);
+}
+
+.btn-secondary:active {
+  background: #1F1F23; /* Slightly darker than surface-hover */
+  border-color: var(--border-active);
+}
+
+.btn-secondary:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-subtle);
+}
+
+/* Ghost - No border button */
+.btn-ghost {
+  background: transparent;
+  color: var(--text-primary);
+  border-radius: var(--radius-md);
+  padding: 0.5rem 1rem;
+}
+
+.btn-ghost:hover {
+  background: var(--surface-hover);
+}
+
+.btn-ghost:active {
+  background: #1F1F23;
+}
+
+.btn-ghost:focus-visible {
+  box-shadow: 0 0 0 2px var(--accent-subtle);
+}
+
+/* Icon - Icon-only circular button */
+.btn-icon {
+  background: transparent;
+  color: var(--text-secondary);
+  border-radius: 50%;
+  width: 2rem;
+  height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.btn-icon:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.btn-icon:active {
+  background: #1F1F23;
+}
+
+.btn-icon:focus-visible {
+  box-shadow: 0 0 0 2px var(--accent-subtle);
+}
+
+/* Disabled state for all buttons */
+.btn-primary:disabled,
+.btn-secondary:disabled,
+.btn-ghost:disabled,
+.btn-icon:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-primary:disabled:hover,
+.btn-secondary:disabled:hover,
+.btn-ghost:disabled:hover,
+.btn-icon:disabled:hover {
+  background: var(--accent); /* Revert to default for primary */
+  transform: none;
+}
+
+.btn-secondary:disabled,
+.btn-ghost:disabled,
+.btn-icon:disabled {
+  background: transparent;
+}
+
+/* ============================================================================
+   3. NAV ITEM INTERACTIONS
+   ============================================================================ */
+
+.nav-item-interactive {
+  background: transparent;
+  color: var(--text-secondary);
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-md);
+  transition: all var(--transition-base);
+  cursor: pointer;
+  border-left: 2px solid transparent;
+  margin-left: -2px; /* Compensate for border */
+}
+
+.nav-item-interactive:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.nav-item-interactive.active,
+.nav-item-interactive[aria-current="page"] {
+  background: var(--accent-subtle);
+  color: var(--accent);
+  border-left-color: var(--accent);
+}
+
+.nav-item-interactive:focus-visible {
+  box-shadow: 0 0 0 2px var(--accent-subtle);
+  outline: none;
+}
+
+/* ============================================================================
+   4. FORM INPUT INTERACTIONS
+   ============================================================================ */
+
+.input-interactive {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0.5rem 0.75rem;
+  color: var(--text-primary);
+  transition: all var(--transition-base);
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.input-interactive:hover:not(:disabled) {
+  border-color: var(--border-hover);
+}
+
+.input-interactive:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-subtle);
+  outline: none;
+}
+
+.input-interactive:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.input-interactive::placeholder {
+  color: var(--text-tertiary);
+}
+
+/* Textarea variant */
+textarea.input-interactive {
+  resize: vertical;
+  min-height: 4rem;
+}
+
+/* Select variant */
+select.input-interactive {
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%239CA3AF' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  padding-right: 2.5rem;
+  appearance: none;
+}
+
+/* ============================================================================
+   5. ROW/LIST ITEM INTERACTIONS
+   ============================================================================ */
+
+.row-interactive {
+  background: transparent;
+  transition: background var(--transition-fast);
+  cursor: pointer;
+}
+
+.row-interactive:hover {
+  background: var(--surface-hover);
+}
+
+.row-interactive:active {
+  background: #1F1F23;
+}
+
+/* Selected state */
+.row-interactive.selected,
+.row-interactive[aria-selected="true"] {
+  background: var(--accent-subtle);
+}
+
+.row-interactive.selected:hover,
+.row-interactive[aria-selected="true"]:hover {
+  background: rgba(79, 70, 229, 0.12);
+}
+
+/* ============================================================================
+   6. BADGE/PILL INTERACTIONS
+   ============================================================================ */
+
+.badge-interactive {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  transition: all var(--transition-fast);
+  cursor: pointer;
+  background: var(--surface-hover);
+  color: var(--text-secondary);
+}
+
+.badge-interactive:hover {
+  filter: brightness(1.15);
+  color: var(--text-primary);
+}
+
+.badge-interactive:active {
+  transform: scale(0.95);
+}
+
+/* Accent variant */
+.badge-interactive.accent {
+  background: var(--accent-subtle);
+  color: var(--accent);
+}
+
+.badge-interactive.accent:hover {
+  background: rgba(79, 70, 229, 0.12);
+}
+
+/* ============================================================================
+   7. TOOLTIP BASE
+   ============================================================================ */
+
+.tooltip {
+  position: relative;
+}
+
+.tooltip::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-0.5rem);
+  padding: 0.375rem 0.75rem;
+  background: #18181B;
+  color: #FAFAFA;
+  border-radius: var(--radius-md);
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--transition-base), transform var(--transition-base);
+  box-shadow: var(--shadow-lg);
+  z-index: 1000;
+}
+
+.tooltip::before {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(0.25rem);
+  border: 4px solid transparent;
+  border-top-color: #18181B;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--transition-base), transform var(--transition-base);
+  z-index: 1000;
+}
+
+.tooltip:hover::after,
+.tooltip:hover::before {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-0.25rem);
+}
+
+.tooltip:hover::before {
+  transform: translateX(-50%) translateY(0rem);
+}
+
+/* Tooltip positioning variants */
+.tooltip.tooltip-right::after {
+  bottom: auto;
+  top: 50%;
+  left: 100%;
+  transform: translateY(-50%) translateX(0.5rem);
+}
+
+.tooltip.tooltip-right::before {
+  bottom: auto;
+  top: 50%;
+  left: 100%;
+  transform: translateY(-50%) translateX(-0.25rem);
+  border-top-color: transparent;
+  border-right-color: #18181B;
+}
+
+.tooltip.tooltip-right:hover::after {
+  transform: translateY(-50%) translateX(0.25rem);
+}
+
+.tooltip.tooltip-right:hover::before {
+  transform: translateY(-50%) translateX(0rem);
+}
+
+/* ============================================================================
+   8. FOCUS VISIBLE GLOBAL
+   ============================================================================ */
+
+*:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-glow);
+}
+
+/* Exclude elements that have custom focus styles */
+.btn-primary:focus-visible,
+.btn-secondary:focus-visible,
+.btn-ghost:focus-visible,
+.btn-icon:focus-visible,
+.input-interactive:focus-visible,
+.nav-item-interactive:focus-visible {
+  /* Custom styles defined in respective sections */
+}
+
+/* ============================================================================
+   9. REDUCED MOTION
+   ============================================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Use opacity-only transitions for essential feedback */
+  .card-interactive:hover,
+  .card-interactive:active {
+    transform: none;
+  }
+
+  .btn-primary:hover,
+  .btn-primary:active,
+  .btn-secondary:hover,
+  .btn-secondary:active,
+  .btn-ghost:hover,
+  .btn-ghost:active {
+    transform: none;
+  }
+
+  .badge-interactive:active {
+    transform: none;
+  }
+
+  .tooltip::after,
+  .tooltip::before {
+    transform: translateX(-50%);
+    transition: opacity var(--transition-base);
+  }
+
+  .tooltip:hover::after,
+  .tooltip:hover::before {
+    transform: translateX(-50%);
+  }
+
+  .tooltip.tooltip-right::after,
+  .tooltip.tooltip-right::before {
+    transform: translateY(-50%);
+  }
+
+  .tooltip.tooltip-right:hover::after,
+  .tooltip.tooltip-right:hover::before {
+    transform: translateY(-50%);
+  }
+}
+
+/* ============================================================================
+   10. UTILITY CLASSES
+   ============================================================================ */
+
+/* Clickable cursor */
+.clickable {
+  cursor: pointer;
+}
+
+/* Smooth transitions */
+.transition-all {
+  transition: all var(--transition-base);
+}
+
+.transition-fast {
+  transition: all var(--transition-fast);
+}
+
+.transition-slow {
+  transition: all var(--transition-slow);
+}
+
+/* Hover lift effect */
+.hover-lift {
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.hover-lift:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Hover glow effect */
+.hover-glow {
+  transition: box-shadow var(--transition-base);
+}
+
+.hover-glow:hover {
+  box-shadow: var(--shadow-glow);
+}
+
+/* Pulse animation for loading states */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Skeleton loading */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--surface-hover) 25%,
+    #2A2A2F 50%,
+    var(--surface-hover) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+  border-radius: var(--radius-md);
+}
+
+@keyframes skeleton-loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* ============================================================================
+   COLLAPSIBLE SIDEBAR
+   ============================================================================ */
+
+/* Toggle button at bottom of sidebar */
+.sidebar-collapse-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 6px 0;
+  margin-top: 4px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--txt-secondary, #8F8F94);
+  font-size: 14px;
+  border-radius: var(--radius-md, 6px);
+  transition: background var(--transition-fast, 150ms ease);
+}
+
+.sidebar-collapse-toggle:hover {
+  background: var(--surface-hover, rgba(255, 255, 255, 0.04));
+  color: var(--txt-primary, #F0EFED);
+}
+
+/* Tooltip on collapsed nav items */
+[data-collapsed="true"] .nav-item {
+  position: relative;
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+[data-collapsed="true"] .nav-item:hover::after {
+  content: attr(title);
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-left: 8px;
+  padding: 4px 10px;
+  background: var(--surface-elevated, #1F1F23);
+  color: var(--txt-primary, #F0EFED);
+  border: 1px solid var(--border, #27272A);
+  border-radius: var(--radius-md, 6px);
+  font-size: 12px;
+  white-space: nowrap;
+  z-index: 100;
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Collapsed sidebar: center icons */
+[data-collapsed="true"] .nav-icon,
+[data-collapsed="true"] [data-lucide] {
+  margin: 0 auto;
+}
+
+/* Collapsed sidebar: hide search shortcut badge, brand text */
+[data-collapsed="true"] .font-heading,
+[data-collapsed="true"] .font-mono.text-\[10px\] {
+  display: none;
+}
+
+/* Smooth width transition for main content */
+main.ml-60 {
+  transition: margin-left 200ms ease-in-out;
+}

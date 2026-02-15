@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Department Discovery - Nexus Onboarding</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="../styles/nexus-tokens.css">
+    <link rel="stylesheet" href="../styles/interactions.css">
+    <link rel="stylesheet" href="../styles/animations.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0C0C0E;
+            color: #E8E8ED;
+            min-height: 100vh;
+        }
+
+        h1, h2 {
+            font-family: 'Playfair Display', serif;
+        }
+
+        .container-main {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 3rem 1.5rem;
+        }
+
+        /* Progress Indicator */
+        .progress-dots {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+            margin-bottom: 3rem;
+        }
+
+        .progress-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #2A2A35;
+            transition: all 0.3s ease;
+        }
+
+        .progress-dot.active {
+            background: var(--accent);
+            box-shadow: 0 0 12px rgba(118, 93, 255, 0.4);
+        }
+
+        /* Department Cards */
+        .departments-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin: 2.5rem 0;
+        }
+
+        .department-card {
+            background: #14141A;
+            border-radius: 12px;
+            padding: 1.5rem;
+            border-left: 4px solid;
+            position: relative;
+            transition: all 0.3s ease;
+            opacity: 0;
+            animation: slideUp 0.5s ease forwards;
+        }
+
+        .department-card:nth-child(1) { animation-delay: 0.1s; }
+        .department-card:nth-child(2) { animation-delay: 0.2s; }
+        .department-card:nth-child(3) { animation-delay: 0.3s; }
+        .department-card:nth-child(4) { animation-delay: 0.4s; }
+        .department-card:nth-child(5) { animation-delay: 0.5s; }
+        .department-card:nth-child(6) { animation-delay: 0.6s; }
+
+        .department-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+        }
+
+        .department-card.active {
+            background: #1A1A22;
+        }
+
+        .department-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .department-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.125rem;
+            flex-shrink: 0;
+        }
+
+        .department-name {
+            font-weight: 600;
+            font-size: 1.125rem;
+            flex: 1;
+        }
+
+        .department-description {
+            color: #9494A0;
+            font-size: 0.875rem;
+            line-height: 1.5;
+            margin-bottom: 1rem;
+        }
+
+        /* Toggle Switch */
+        .toggle-wrapper {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 48px;
+            height: 24px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #2A2A35;
+            border-radius: 24px;
+            transition: 0.3s;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: #E8E8ED;
+            border-radius: 50%;
+            transition: 0.3s;
+        }
+
+        input:checked + .toggle-slider {
+            background-color: var(--accent);
+        }
+
+        input:checked + .toggle-slider:before {
+            transform: translateX(24px);
+        }
+
+        /* Add Custom Button */
+        .btn-add-custom {
+            width: 100%;
+            padding: 1rem;
+            background: transparent;
+            border: 2px dashed #2A2A35;
+            border-radius: 12px;
+            color: #9494A0;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .btn-add-custom:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+            background: rgba(118, 93, 255, 0.05);
+        }
+
+        /* AI Narration Panel */
+        .ai-panel {
+            background: #14141A;
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin: 2.5rem 0;
+            border: 1px solid #2A2A35;
+            animation: fadeIn 0.5s ease 0.8s backwards;
+        }
+
+        .ai-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .ai-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent), #9D7CFF);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.25rem;
+        }
+
+        .ai-text {
+            color: #C4C4CC;
+            line-height: 1.6;
+            font-size: 0.9375rem;
+        }
+
+        /* Navigation */
+        .nav-buttons {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 3rem;
+        }
+
+        .btn-back {
+            color: #9494A0;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .btn-back:hover {
+            color: var(--accent);
+        }
+
+        .btn-next {
+            background: var(--accent);
+            color: white;
+            padding: 0.875rem 2.5rem;
+            border-radius: 8px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-next:hover {
+            background: #9D7CFF;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 16px rgba(118, 93, 255, 0.3);
+        }
+
+        .btn-next:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* Workspace Color Variables */
+        :root {
+            --ws-ops: #3B82F6;
+            --ws-eng: #8B5CF6;
+            --ws-sales: #10B981;
+            --ws-mkt: #F59E0B;
+            --ws-finance: #06B6D4;
+            --ws-hr: #EC4899;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-main">
+        <!-- Progress Indicator -->
+        <div class="progress-dots">
+            <div class="progress-dot active"></div>
+            <div class="progress-dot active"></div>
+            <div class="progress-dot"></div>
+            <div class="progress-dot"></div>
+            <div class="progress-dot"></div>
+            <div class="progress-dot"></div>
+        </div>
+
+        <!-- Title -->
+        <div style="text-align: center; margin-bottom: 1rem;">
+            <h1 style="font-size: 2.5rem; font-weight: 700; margin-bottom: 0.75rem;">Your Workspaces</h1>
+            <p style="color: #9494A0; font-size: 1.125rem;">We've detected these departments based on your industry. Toggle them on or off.</p>
+        </div>
+
+        <!-- Department Cards -->
+        <div class="departments-grid">
+            <!-- Operations -->
+            <div class="department-card active" style="border-left-color: var(--ws-ops);" data-department="operations">
+                <div class="department-header">
+                    <div class="department-icon" style="background: rgba(59, 130, 246, 0.15); color: var(--ws-ops);">O</div>
+                    <div class="department-name">Operations</div>
+                </div>
+                <div class="department-description">
+                    Day-to-day business operations, processes, and efficiency
+                </div>
+                <div class="toggle-wrapper">
+                    <label class="toggle-switch">
+                        <input type="checkbox" checked data-dept="operations">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Engineering -->
+            <div class="department-card active" style="border-left-color: var(--ws-eng);" data-department="engineering">
+                <div class="department-header">
+                    <div class="department-icon" style="background: rgba(139, 92, 246, 0.15); color: var(--ws-eng);">E</div>
+                    <div class="department-name">Engineering</div>
+                </div>
+                <div class="department-description">
+                    Product development, technical projects, and infrastructure
+                </div>
+                <div class="toggle-wrapper">
+                    <label class="toggle-switch">
+                        <input type="checkbox" checked data-dept="engineering">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Sales -->
+            <div class="department-card active" style="border-left-color: var(--ws-sales);" data-department="sales">
+                <div class="department-header">
+                    <div class="department-icon" style="background: rgba(16, 185, 129, 0.15); color: var(--ws-sales);">S</div>
+                    <div class="department-name">Sales</div>
+                </div>
+                <div class="department-description">
+                    Pipeline management, deals, and client relationships
+                </div>
+                <div class="toggle-wrapper">
+                    <label class="toggle-switch">
+                        <input type="checkbox" checked data-dept="sales">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Marketing -->
+            <div class="department-card active" style="border-left-color: var(--ws-mkt);" data-department="marketing">
+                <div class="department-header">
+                    <div class="department-icon" style="background: rgba(245, 158, 11, 0.15); color: var(--ws-mkt);">M</div>
+                    <div class="department-name">Marketing</div>
+                </div>
+                <div class="department-description">
+                    Campaigns, content, and brand management
+                </div>
+                <div class="toggle-wrapper">
+                    <label class="toggle-switch">
+                        <input type="checkbox" checked data-dept="marketing">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Finance -->
+            <div class="department-card" style="border-left-color: var(--ws-finance);" data-department="finance">
+                <div class="department-header">
+                    <div class="department-icon" style="background: rgba(6, 182, 212, 0.15); color: var(--ws-finance);">F</div>
+                    <div class="department-name">Finance</div>
+                </div>
+                <div class="department-description">
+                    Budgets, reporting, and financial compliance
+                </div>
+                <div class="toggle-wrapper">
+                    <label class="toggle-switch">
+                        <input type="checkbox" data-dept="finance">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- HR -->
+            <div class="department-card" style="border-left-color: var(--ws-hr);" data-department="hr">
+                <div class="department-header">
+                    <div class="department-icon" style="background: rgba(236, 72, 153, 0.15); color: var(--ws-hr);">H</div>
+                    <div class="department-name">HR</div>
+                </div>
+                <div class="department-description">
+                    Team management, hiring, and employee experience
+                </div>
+                <div class="toggle-wrapper">
+                    <label class="toggle-switch">
+                        <input type="checkbox" data-dept="hr">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Custom Department -->
+        <button class="btn-add-custom">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M10 4V16M4 10H16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            Add Custom Department
+        </button>
+
+        <!-- AI Narration Panel -->
+        <div class="ai-panel">
+            <div class="ai-header">
+                <div class="ai-avatar">N</div>
+                <div style="font-weight: 600; font-size: 1.125rem;">Nexus AI</div>
+            </div>
+            <div class="ai-text" id="aiNarration">
+                Nice choices! For a tech company your size, Operations and Sales will give you the most immediate value. I'll set up AI agents for each workspace.
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="nav-buttons">
+            <a href="step-1-company.html" class="btn-back">← Back</a>
+            <a href="step-3-tools.html" class="btn-next" id="nextBtn">Next: Connect Tools</a>
+        </div>
+    </div>
+
+    <script>
+        // Track selected departments
+        const selectedDepartments = new Set(['operations', 'engineering', 'sales', 'marketing']);
+
+        // Toggle department selection
+        document.querySelectorAll('.toggle-switch input').forEach(toggle => {
+            toggle.addEventListener('change', function() {
+                const dept = this.dataset.dept;
+                const card = document.querySelector(`[data-department="${dept}"]`);
+
+                if (this.checked) {
+                    selectedDepartments.add(dept);
+                    card.classList.add('active');
+                } else {
+                    selectedDepartments.delete(dept);
+                    card.classList.remove('active');
+                }
+
+                updateAINarration();
+            });
+        });
+
+        // Update AI narration based on selections
+        function updateAINarration() {
+            const count = selectedDepartments.size;
+            const narrationEl = document.getElementById('aiNarration');
+
+            if (count === 0) {
+                narrationEl.textContent = "You haven't selected any departments yet. Choose at least one to get started with Nexus.";
+            } else if (count <= 2) {
+                narrationEl.textContent = "Good start! These workspaces will help you stay focused. I'll set up AI agents to assist with common tasks in each area.";
+            } else if (count <= 4) {
+                narrationEl.textContent = "Nice choices! For a tech company your size, Operations and Sales will give you the most immediate value. I'll set up AI agents for each workspace.";
+            } else {
+                narrationEl.textContent = "That's a comprehensive setup! I'll configure AI agents for all these workspaces. You can always adjust later as your team's needs evolve.";
+            }
+
+            // Update next button state
+            const nextBtn = document.getElementById('nextBtn');
+            if (count === 0) {
+                nextBtn.style.opacity = '0.5';
+                nextBtn.style.cursor = 'not-allowed';
+                nextBtn.style.pointerEvents = 'none';
+            } else {
+                nextBtn.style.opacity = '1';
+                nextBtn.style.cursor = 'pointer';
+                nextBtn.style.pointerEvents = 'auto';
+            }
+
+            // Store selections in localStorage
+            localStorage.setItem('nexus_departments', JSON.stringify([...selectedDepartments]));
+        }
+
+        // Add custom department handler
+        document.querySelector('.btn-add-custom').addEventListener('click', function() {
+            alert('Custom department modal would open here');
+        });
+
+        // Initialize
+        updateAINarration();
+    </script>
+    <script type="module" src="../demo/init.js"></script>
+</body>
+</html>
