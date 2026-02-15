@@ -111,6 +111,9 @@ opc/:memory:/
 # OPC .claude (wizard uses root .claude, not this)
 opc/.claude/
 
+# Frontend prototypes (local experiments, not for release)
+spark-frontend-experiment/
+
 # OPC tool caches
 opc/.venv/
 opc/.mypy_cache/
