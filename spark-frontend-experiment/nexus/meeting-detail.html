@@ -58,12 +58,6 @@
       }
     }
 
-    @keyframes springFocus {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.02); }
-      100% { transform: scale(1); }
-    }
-    .spring-focus:focus-within { animation: springFocus 0.3s ease-out; }
 
     @keyframes pulseDanger {
       0%, 100% { opacity: 1; }
@@ -227,7 +221,7 @@
 
       <!-- Command Bar -->
       <div class="px-4 py-3 stagger stagger-2">
-        <div class="cmd-bar max-w-2xl mx-auto flex items-center gap-2 px-3 py-2 bg-[#161618] border border-[#232326] rounded-md spring-focus">
+        <div class="cmd-bar max-w-2xl mx-auto flex items-center gap-2 px-3 py-2 bg-[#161618] border border-[#232326] rounded-md">
           <i data-lucide="search" class="w-4 h-4 text-txt-secondary flex-shrink-0"></i>
           <input id="cmdInput" type="text" placeholder="Search in meeting or type /command..." class="bg-transparent border-none outline-none text-sm text-txt-primary placeholder-txt-tertiary/50 flex-1 font-body">
           <kbd class="font-mono text-[10px] text-txt-tertiary/60 bg-[#232326] px-1.5 py-0.5 rounded">Cmd+K</kbd>
