@@ -91,7 +91,7 @@
     html:not(.dark) .card { background: #FFFFFF; border-color: #E5E5E8; }
   </style>
 </head>
-<body class="bg-surface-dark text-txt-primary font-body">
+<body class="bg-surface-dark text-txt-primary font-body" data-page-id="workspaces">
   <div class="flex h-screen overflow-hidden">
     <!-- Sidebar - 240px full-width -->
     <aside id="sidebar" class="sidebar-bg w-60 bg-[#0C0C0E] border-r border-[#232326] flex flex-col py-4 px-3 gap-0.5 h-screen overflow-y-auto flex-shrink-0">
@@ -113,7 +113,7 @@
         <a href="decisions.html" data-nav-page="decisions" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="git-branch" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Decisions</span></a>
         <a href="proposals.html" data-nav-page="proposals" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="sparkles" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Proposals</span></a>
         <a href="my-work.html" data-nav-page="my-work" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="user" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">My Work</span></a>
-        <a href="workspaces.html" data-nav-page="workspaces" class="nav-active nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#4F46E5]"><i data-lucide="layers" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Workspaces</span></a>
+        <a href="workspaces.html" data-nav-page="workspaces" class="nav-active nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#4F46E5]" title="Workspaces"><i data-lucide="layers" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Workspaces</span></a>
       </div>
       <div class="mb-1">
         <div class="px-2 py-1 text-[10px] font-mono font-semibold text-[#6B6B70] uppercase tracking-widest">AI</div>
@@ -330,5 +330,6 @@
     initCommandBar();
   </script>
   <script type="module" src="demo/init.js"></script>
+  <script type="module" src="components/page-init.js"></script>
 </body>
 </html>

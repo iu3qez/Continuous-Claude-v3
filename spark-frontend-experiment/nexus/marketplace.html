@@ -24,7 +24,7 @@
         }
     </style>
 </head>
-<body class="bg-bg text-txt">
+<body class="bg-bg text-txt" data-page-id="marketplace">
     <div class="flex min-h-screen">
         <!-- Sidebar - 240px full-width -->
         <aside id="sidebar" class="sidebar-bg w-60 bg-[#0C0C0E] border-r border-[#232326] flex flex-col py-4 px-3 gap-0.5 h-screen overflow-y-auto flex-shrink-0">
@@ -46,6 +46,10 @@
             <a href="decisions.html" data-nav-page="decisions" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="git-branch" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Decisions</span></a>
             <a href="proposals.html" data-nav-page="proposals" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="sparkles" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Proposals</span></a>
             <a href="my-work.html" data-nav-page="my-work" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="user" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">My Work</span></a>
+            <a href="workspaces.html" data-nav-page="workspaces" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]" title="Workspaces">
+              <i data-lucide="layers" class="w-4 h-4 flex-shrink-0"></i>
+              <span class="text-sm">Workspaces</span>
+            </a>
           </div>
           <div class="mb-1">
             <div class="px-2 py-1 text-[10px] font-mono font-semibold text-[#6B6B70] uppercase tracking-widest">AI</div>
@@ -319,7 +323,7 @@
                     </div>
 
                     <div class="flex gap-2">
-                        <button class="flex-1 px-4 py-2 border border-border rounded-lg text-sm font-medium hover:border-accent transition-colors">
+                        <button class="preview-btn flex-1 px-4 py-2 border border-border rounded-lg text-sm font-medium hover:border-accent transition-colors">
                             Preview
                         </button>
                         <button class="flex-1 px-4 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:bg-accent/90 transition-colors install-btn">
@@ -427,6 +431,10 @@
         // Initial render
         renderGrid();
 
+        // Expose to window for module script access
+        window.getFilteredAgents = getFilteredAgents;
+        window.marketplaceAgents = agents;
+
         // Initialize sidebar with active page
         document.addEventListener('DOMContentLoaded', () => {
             if (window.initializeSidebar) {
@@ -443,18 +451,13 @@
         function attachPreviewListeners() {
             document.querySelectorAll('.preview-btn').forEach((btn, index) => {
                 btn.addEventListener('click', () => {
-                    const filtered = window.getFilteredAgents();
+                    var filtered = window.getFilteredAgents ? window.getFilteredAgents() : (window.marketplaceAgents || []);
                     if (filtered && filtered[index]) {
                         showAgentPreview(filtered[index]);
                     }
                 });
             });
         }
-
-        // Expose getFilteredAgents to window for module access
-        window.getFilteredAgents = function() {
-            return getFilteredAgents(currentCategory, searchQuery, currentSort);
-        };
 
         // Attach listeners on initial load
         document.addEventListener('DOMContentLoaded', () => {
@@ -471,6 +474,7 @@
             observer.observe(agentGrid, { childList: true });
         }
     </script>
+  <script type="module" src="components/page-init.js"></script>
   <script type="module" src="demo/init.js"></script>
 </body>
 </html>

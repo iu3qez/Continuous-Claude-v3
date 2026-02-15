@@ -208,7 +208,7 @@
     html:not(.dark) .cmd-bar-bg { background: #FFFFFF; border-color: #E5E5E8; }
   </style>
 </head>
-<body class="bg-[#0C0C0E] text-[#EDEDEF] font-body min-h-screen">
+<body class="bg-[#0C0C0E] text-[#EDEDEF] font-body min-h-screen" data-page-id="calendar">
   <div class="flex h-screen overflow-hidden">
     <!-- Sidebar - 240px full-width -->
     <aside id="sidebar" class="sidebar-bg w-60 bg-[#0C0C0E] border-r border-[#232326] flex flex-col py-4 px-3 gap-0.5 h-screen overflow-y-auto flex-shrink-0">
@@ -230,6 +230,10 @@
         <a href="decisions.html" data-nav-page="decisions" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="git-branch" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Decisions</span></a>
         <a href="proposals.html" data-nav-page="proposals" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="sparkles" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Proposals</span></a>
         <a href="my-work.html" data-nav-page="my-work" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="user" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">My Work</span></a>
+        <a href="workspaces.html" data-nav-page="workspaces" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]" title="Workspaces">
+          <i data-lucide="layers" class="w-4 h-4 flex-shrink-0"></i>
+          <span class="text-sm">Workspaces</span>
+        </a>
       </div>
       <div class="mb-1">
         <div class="px-2 py-1 text-[10px] font-mono font-semibold text-[#6B6B70] uppercase tracking-widest">AI</div>
@@ -267,22 +271,22 @@
 
         <!-- Week / Month toggle -->
         <div class="flex items-center bg-[#161618] border border-[#232326] rounded-md overflow-hidden">
-          <button class="view-toggle view-toggle-active px-3 py-1.5 text-xs font-medium">Week</button>
-          <button class="view-toggle px-3 py-1.5 text-xs font-medium text-[#8F8F94] hover:text-[#EDEDEF]">Month</button>
+          <button data-view="week" class="view-toggle view-toggle-active px-3 py-1.5 text-xs font-medium">Week</button>
+          <button data-view="month" class="view-toggle px-3 py-1.5 text-xs font-medium text-[#8F8F94] hover:text-[#EDEDEF]">Month</button>
         </div>
       </div>
 
       <div class="flex items-center gap-3">
         <!-- Today button -->
-        <button class="px-3 py-1.5 text-xs font-medium border border-[#232326] rounded-md text-[#8F8F94] hover:text-[#EDEDEF] hover:border-[#2E2E32] transition-colors">Today</button>
+        <button id="cal-today" class="px-3 py-1.5 text-xs font-medium border border-[#232326] rounded-md text-[#8F8F94] hover:text-[#EDEDEF] hover:border-[#2E2E32] transition-colors">Today</button>
 
         <!-- Navigation -->
         <div class="flex items-center gap-2">
-          <button class="w-7 h-7 flex items-center justify-center rounded-md border border-[#232326] text-[#8F8F94] hover:text-[#EDEDEF] hover:border-[#2E2E32] transition-colors">
+          <button id="cal-prev" class="w-7 h-7 flex items-center justify-center rounded-md border border-[#232326] text-[#8F8F94] hover:text-[#EDEDEF] hover:border-[#2E2E32] transition-colors">
             <i data-lucide="chevron-left" class="w-3.5 h-3.5"></i>
           </button>
-          <span class="text-sm font-medium text-[#EDEDEF] min-w-[180px] text-center">Feb 10 &ndash; Feb 16, 2026</span>
-          <button class="w-7 h-7 flex items-center justify-center rounded-md border border-[#232326] text-[#8F8F94] hover:text-[#EDEDEF] hover:border-[#2E2E32] transition-colors">
+          <span id="cal-date-label" class="text-sm font-medium text-[#EDEDEF] min-w-[180px] text-center">Feb 10 &ndash; Feb 16, 2026</span>
+          <button id="cal-next" class="w-7 h-7 flex items-center justify-center rounded-md border border-[#232326] text-[#8F8F94] hover:text-[#EDEDEF] hover:border-[#2E2E32] transition-colors">
             <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
           </button>
         </div>
@@ -290,7 +294,7 @@
     </div>
 
     <!-- Week grid card -->
-    <div class="card overflow-hidden stagger stagger-3">
+    <div data-week-view class="card overflow-hidden stagger stagger-3">
 
       <!-- Day headers -->
       <div class="cal-grid">
@@ -532,7 +536,7 @@
     </div><!-- end week card -->
 
     <!-- Month View (hidden by default) -->
-    <div id="month-view" style="display: none;">
+    <div id="month-view" data-month-view style="display: none;">
       <div class="card overflow-hidden">
         <div id="month-grid" class="month-grid">
           <!-- Day headers -->
@@ -591,7 +595,53 @@
   </script>
 
   <!-- Month view toggle and grid population -->
-  <script>
+  <script type="module">
+    import { buildMonthGrid } from './components/calendar-month.js';
+
+    var weekView = document.querySelector('[data-week-view]');
+    var monthView = document.querySelector('[data-month-view]');
+    var weekBtn = document.querySelector('[data-view="week"]');
+    var monthBtn = document.querySelector('[data-view="month"]');
+    var monthGridContainer = document.getElementById('month-grid');
+
+    // Populate month grid on first toggle
+    var monthGridBuilt = false;
+    function ensureMonthGrid() {
+      if (monthGridBuilt) return;
+      if (monthGridContainer) {
+        var grid = buildMonthGrid(2026, 1); // Feb 2026
+        monthGridContainer.parentNode.replaceChild(grid, monthGridContainer);
+        grid.id = 'month-grid';
+        monthGridBuilt = true;
+      }
+    }
+
+    if (monthBtn) {
+      monthBtn.addEventListener('click', function() {
+        ensureMonthGrid();
+        if (weekView) weekView.style.display = 'none';
+        if (monthView) monthView.style.display = '';
+        monthBtn.classList.add('view-toggle-active');
+        monthBtn.classList.remove('text-[#8F8F94]');
+        if (weekBtn) {
+          weekBtn.classList.remove('view-toggle-active');
+          weekBtn.classList.add('text-[#8F8F94]');
+        }
+      });
+    }
+
+    if (weekBtn) {
+      weekBtn.addEventListener('click', function() {
+        if (weekView) weekView.style.display = '';
+        if (monthView) monthView.style.display = 'none';
+        weekBtn.classList.add('view-toggle-active');
+        weekBtn.classList.remove('text-[#8F8F94]');
+        if (monthBtn) {
+          monthBtn.classList.remove('view-toggle-active');
+          monthBtn.classList.add('text-[#8F8F94]');
+        }
+      });
+    }
   </script>
 
   <script type="module">
@@ -651,6 +701,63 @@
     if (sidebar) { createSidebar(sidebar); setActivePage('calendar'); }
     initCommandBar();
   </script>
+  <script type="module">
+    import WorkbookDemo from './components/state.js';
+
+    let currentDate = new Date(2026, 1, 14); // Feb 14, 2026
+
+    function formatDateRange(date) {
+      const start = new Date(date);
+      start.setDate(start.getDate() - start.getDay() + 1); // Monday
+      const end = new Date(start);
+      end.setDate(end.getDate() + 6);
+      const opts = { month: 'short', day: 'numeric' };
+      const year = start.getFullYear();
+      return start.toLocaleDateString('en-US', opts) + ' - ' + end.toLocaleDateString('en-US', opts) + ', ' + year;
+    }
+
+    function updateLabel() {
+      const label = document.getElementById('cal-date-label');
+      if (label) label.textContent = formatDateRange(currentDate);
+    }
+
+    document.getElementById('cal-today')?.addEventListener('click', function() {
+      currentDate = new Date(2026, 1, 14);
+      updateLabel();
+    });
+
+    document.getElementById('cal-prev')?.addEventListener('click', function() {
+      currentDate.setDate(currentDate.getDate() - 7);
+      updateLabel();
+    });
+
+    document.getElementById('cal-next')?.addEventListener('click', function() {
+      currentDate.setDate(currentDate.getDate() + 7);
+      updateLabel();
+    });
+
+    // Week/Month toggle
+    const viewToggle = document.querySelector('[data-view-toggle]');
+    const weekBtn = document.querySelector('[data-view="week"]');
+    const monthBtn = document.querySelector('[data-view="month"]');
+    const weekView = document.querySelector('.week-view, [data-week-view]');
+    const monthView = document.querySelector('.month-view, [data-month-view]');
+
+    if (weekBtn) weekBtn.addEventListener('click', function() {
+      if (weekView) weekView.style.display = '';
+      if (monthView) monthView.style.display = 'none';
+      weekBtn.classList.add('bg-[#232326]', 'text-[#EDEDEF]');
+      if (monthBtn) monthBtn.classList.remove('bg-[#232326]', 'text-[#EDEDEF]');
+    });
+
+    if (monthBtn) monthBtn.addEventListener('click', function() {
+      if (weekView) weekView.style.display = 'none';
+      if (monthView) monthView.style.display = '';
+      monthBtn.classList.add('bg-[#232326]', 'text-[#EDEDEF]');
+      if (weekBtn) weekBtn.classList.remove('bg-[#232326]', 'text-[#EDEDEF]');
+    });
+  </script>
+  <script type="module" src="components/page-init.js"></script>
   <script type="module" src="demo/init.js"></script>
 </body>
 </html>

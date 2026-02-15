@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Executive Rollup - Nexus</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="./styles/nexus-tokens.css">
+  <link rel="stylesheet" href="./styles/animations.css">
+  <link rel="stylesheet" href="./styles/skeleton.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    .circular-progress {
+      position: relative;
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1rem;
+    }
+    .circular-progress::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: conic-gradient(
+        var(--progress-color) calc(var(--progress) * 1%),
+        rgba(255, 255, 255, 0.1) 0
+      );
+      mask: radial-gradient(farthest-side, transparent calc(100% - 8px), white calc(100% - 7px));
+      -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 8px), white calc(100% - 7px));
+    }
+    .dept-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+    }
+    @media (max-width: 1024px) {
+      .dept-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    @media (max-width: 640px) {
+      .dept-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body class="bg-background text-foreground" data-page-id="elt-rollup">
+  <div class="flex h-screen overflow-hidden">
+    <!-- Sidebar - 240px full-width -->
+    <aside id="sidebar" class="sidebar-bg w-60 bg-[#0C0C0E] border-r border-[#232326] flex flex-col py-4 px-3 gap-0.5 h-screen overflow-y-auto flex-shrink-0">
+      <div class="flex items-center gap-2.5 px-2 mb-4">
+        <div class="w-8 h-8 rounded-lg bg-[#4F46E5] flex items-center justify-center flex-shrink-0"><i data-lucide="hexagon" class="w-4 h-4 text-white"></i></div>
+        <span class="font-heading text-base font-semibold text-[#EDEDEF] tracking-tight">NEXUS</span>
+      </div>
+      <button onclick="document.getElementById('cmdInput')?.focus()" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md mb-3 group w-full text-left" title="Search (Cmd+K)">
+        <i data-lucide="search" class="w-4 h-4 text-[#8F8F94] group-hover:text-[#EDEDEF] flex-shrink-0"></i>
+        <span class="text-sm text-[#6B6B70]">Search</span>
+        <span class="ml-auto font-mono text-[10px] text-[#6B6B70]/60 bg-[#232326] px-1.5 py-0.5 rounded">Cmd+K</span>
+      </button>
+      <div class="mb-1">
+        <div class="px-2 py-1 text-[10px] font-mono font-semibold text-[#6B6B70] uppercase tracking-widest">Workspace</div>
+        <a href="dashboard.html" data-nav-page="dashboard" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="layout-dashboard" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Dashboard</span></a>
+        <a href="calendar.html" data-nav-page="calendar" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="calendar" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Calendar</span></a>
+        <a href="meetings.html" data-nav-page="meetings" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="users" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Meetings</span></a>
+        <a href="actions.html" data-nav-page="actions" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="check-square" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Actions</span></a>
+        <a href="decisions.html" data-nav-page="decisions" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="git-branch" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Decisions</span></a>
+        <a href="proposals.html" data-nav-page="proposals" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="sparkles" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Proposals</span></a>
+        <a href="my-work.html" data-nav-page="my-work" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="user" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">My Work</span></a>
+      <a href="workspaces.html" data-nav-page="workspaces" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]" title="Workspaces">
+        <i data-lucide="layers" class="w-4 h-4 flex-shrink-0"></i>
+        <span class="text-sm">Workspaces</span>
+      </a>
+      </div>
+      <div class="mb-1">
+        <div class="px-2 py-1 text-[10px] font-mono font-semibold text-[#6B6B70] uppercase tracking-widest">AI</div>
+        <a href="agents.html" data-nav-page="agents" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="bot" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Agent Dashboard</span></a>
+        <a href="marketplace.html" data-nav-page="marketplace" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="store" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Marketplace</span></a>
+        <a href="elt-rollup.html" data-nav-page="elt-rollup" class="nav-active nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#4F46E5]"><i data-lucide="bar-chart-3" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">ELT Rollup</span></a>
+      </div>
+      <div class="mb-1">
+        <div class="px-2 py-1 text-[10px] font-mono font-semibold text-[#6B6B70] uppercase tracking-widest">Admin</div>
+        <a href="connections.html" data-nav-page="connections" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="plug" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Connections</span></a>
+        <a href="settings.html" data-nav-page="settings" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="settings" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Settings</span></a>
+      </div>
+      <div class="flex-1"></div>
+      <div class="flex items-center gap-2.5 px-2 py-1.5">
+        <i data-lucide="bot" class="w-4 h-4 text-[#6B6B70]"></i>
+        <span class="text-xs text-[#6B6B70]">AI Agent</span>
+        <span class="ml-auto flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-[#059669]"></span><span class="text-[10px] text-[#059669] font-mono">Online</span></span>
+      </div>
+      <button onclick="document.documentElement.classList.toggle('dark')" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF] w-full text-left">
+        <i data-lucide="sun-moon" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Toggle Theme</span>
+      </button>
+      <div class="flex items-center gap-2.5 px-2 py-1.5 mt-1">
+        <div class="w-7 h-7 rounded-full bg-[#232326] flex items-center justify-center flex-shrink-0"><span class="font-mono text-[10px] text-[#8F8F94] font-medium">DH</span></div>
+        <span class="text-sm text-[#8F8F94]">David Hayes</span>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="flex-1 flex flex-col overflow-hidden">
+      <div id="command-bar"></div>
+
+      <main class="flex-1 overflow-auto app-main">
+    <!-- Header -->
+    <header class="flex items-center justify-between mb-8">
+      <div>
+        <h1 class="text-4xl font-bold mb-2" style="font-family: 'Playfair Display', serif;">Executive Rollup</h1>
+        <p class="text-foreground-secondary text-lg" style="font-family: 'Inter', sans-serif;">ELT Weekly Intelligence Brief</p>
+        <div class="mt-3">
+          <span class="inline-block px-3 py-1 rounded-full text-sm font-medium" style="background: var(--accent-subtle); color: var(--accent); font-family: 'Inter', sans-serif;">
+            CEO View Only
+          </span>
+        </div>
+      </div>
+      <button class="px-4 py-2 rounded-lg font-medium transition-all duration-200 hover:bg-surface-elevated active:scale-95"
+              style="background: var(--surface-elevated); color: var(--foreground); font-family: 'Inter', sans-serif;">
+        <svg class="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+        </svg>
+        Refresh
+      </button>
+    </header>
+
+    <!-- Executive Summary Card -->
+    <div class="mb-8 p-6 rounded-lg" style="background: #14141A; border-left: 4px solid var(--accent-subtle);">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-10 h-10 rounded-lg flex items-center justify-center" style="background: var(--accent-subtle);">
+          <svg class="w-6 h-6" style="color: var(--accent);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+          </svg>
+        </div>
+        <h2 class="text-xl font-semibold" style="font-family: 'Inter', sans-serif;">Executive Intelligence</h2>
+      </div>
+
+      <div class="space-y-4 text-foreground" style="font-family: 'Inter', sans-serif; font-size: 16px; line-height: 1.7;">
+        <p>
+          This week saw strong momentum across Operations and Engineering, with 94% of committed actions completed on time. Marketing launched the Q2 campaign ahead of schedule, achieving a 127% engagement rate compared to projections.
+        </p>
+        <p>
+          Two areas need attention: Sales pipeline velocity dropped 12% week-over-week, primarily due to extended qualification cycles in enterprise deals. The Finance team has 3 overdue compliance items related to the Q1 audit response, with deadlines now within 5 business days.
+        </p>
+        <p>
+          Overall organizational health remains strong at 82%, with cross-functional collaboration metrics at an all-time high. Engineering's infrastructure modernization is on track for Q2 completion, positioning us well for the summer product launches.
+        </p>
+      </div>
+
+      <button class="mt-6 px-4 py-2 rounded-lg font-medium transition-all duration-200 hover:bg-surface-elevated active:scale-95"
+              style="background: var(--surface-elevated); color: var(--accent); font-family: 'Inter', sans-serif;">
+        <svg class="w-4 h-4 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+        </svg>
+        Regenerate Summary
+      </button>
+    </div>
+
+    <!-- Department Health Grid -->
+    <h2 class="text-2xl font-semibold mb-6" style="font-family: 'Inter', sans-serif;">Department Health</h2>
+    <div class="dept-grid">
+      <!-- Operations -->
+      <div class="p-6 rounded-lg transition-all duration-200 hover:scale-102" style="background: var(--surface-card);">
+        <div class="flex items-center gap-2 mb-4">
+          <div class="w-3 h-3 rounded-full" style="background: var(--workspace-operations);"></div>
+          <h3 class="text-lg font-semibold" style="font-family: 'Inter', sans-serif;">Operations</h3>
+        </div>
+        <div class="circular-progress" style="--progress: 92; --progress-color: #10B981;">
+          <span class="text-3xl font-bold" style="font-family: 'JetBrains Mono', monospace;">92</span>
+        </div>
+        <div class="text-center">
+          <div class="flex items-center justify-center gap-2 mb-2">
+            <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path>
+            </svg>
+            <span class="text-lg font-semibold text-green-500" style="font-family: 'Inter', sans-serif;">Strong</span>
+          </div>
+          <p class="text-foreground-secondary text-sm" style="font-family: 'Inter', sans-serif;">3 active items</p>
+        </div>
+      </div>
+
+      <!-- Engineering -->
+      <div class="p-6 rounded-lg transition-all duration-200 hover:scale-102" style="background: var(--surface-card);">
+        <div class="flex items-center gap-2 mb-4">
+          <div class="w-3 h-3 rounded-full" style="background: var(--workspace-engineering);"></div>
+          <h3 class="text-lg font-semibold" style="font-family: 'Inter', sans-serif;">Engineering</h3>
+        </div>
+        <div class="circular-progress" style="--progress: 88; --progress-color: #10B981;">
+          <span class="text-3xl font-bold" style="font-family: 'JetBrains Mono', monospace;">88</span>
+        </div>
+        <div class="text-center">
+          <div class="flex items-center justify-center gap-2 mb-2">
+            <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path>
+            </svg>
+            <span class="text-lg font-semibold text-green-500" style="font-family: 'Inter', sans-serif;">Strong</span>
+          </div>
+          <p class="text-foreground-secondary text-sm" style="font-family: 'Inter', sans-serif;">3 active items</p>
+        </div>
+      </div>
+
+      <!-- Marketing -->
+      <div class="p-6 rounded-lg transition-all duration-200 hover:scale-102" style="background: var(--surface-card);">
+        <div class="flex items-center gap-2 mb-4">
+          <div class="w-3 h-3 rounded-full" style="background: var(--workspace-marketing);"></div>
+          <h3 class="text-lg font-semibold" style="font-family: 'Inter', sans-serif;">Marketing</h3>
+        </div>
+        <div class="circular-progress" style="--progress: 85; --progress-color: #6B7280;">
+          <span class="text-3xl font-bold" style="font-family: 'JetBrains Mono', monospace;">85</span>
+        </div>
+        <div class="text-center">
+          <div class="flex items-center justify-center gap-2 mb-2">
+            <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14"></path>
+            </svg>
+            <span class="text-lg font-semibold text-gray-500" style="font-family: 'Inter', sans-serif;">On Track</span>
+          </div>
+          <p class="text-foreground-secondary text-sm" style="font-family: 'Inter', sans-serif;">3 active items</p>
+        </div>
+      </div>
+
+      <!-- Sales -->
+      <div class="p-6 rounded-lg transition-all duration-200 hover:scale-102" style="background: var(--surface-card);">
+        <div class="flex items-center gap-2 mb-4">
+          <div class="w-3 h-3 rounded-full" style="background: var(--workspace-sales);"></div>
+          <h3 class="text-lg font-semibold" style="font-family: 'Inter', sans-serif;">Sales</h3>
+        </div>
+        <div class="circular-progress" style="--progress: 71; --progress-color: #EF4444;">
+          <span class="text-3xl font-bold" style="font-family: 'JetBrains Mono', monospace;">71</span>
+        </div>
+        <div class="text-center">
+          <div class="flex items-center justify-center gap-2 mb-2">
+            <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+            </svg>
+            <span class="text-lg font-semibold text-red-500" style="font-family: 'Inter', sans-serif;">Needs Attention</span>
+          </div>
+          <p class="text-foreground-secondary text-sm" style="font-family: 'Inter', sans-serif;">3 active items</p>
+        </div>
+      </div>
+
+      <!-- Finance -->
+      <div class="p-6 rounded-lg transition-all duration-200 hover:scale-102" style="background: var(--surface-card);">
+        <div class="flex items-center gap-2 mb-4">
+          <div class="w-3 h-3 rounded-full" style="background: var(--workspace-finance);"></div>
+          <h3 class="text-lg font-semibold" style="font-family: 'Inter', sans-serif;">Finance</h3>
+        </div>
+        <div class="circular-progress" style="--progress: 68; --progress-color: #EF4444;">
+          <span class="text-3xl font-bold" style="font-family: 'JetBrains Mono', monospace;">68</span>
+        </div>
+        <div class="text-center">
+          <div class="flex items-center justify-center gap-2 mb-2">
+            <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+            </svg>
+            <span class="text-lg font-semibold text-red-500" style="font-family: 'Inter', sans-serif;">At Risk</span>
+          </div>
+          <p class="text-foreground-secondary text-sm" style="font-family: 'Inter', sans-serif;">3 active items</p>
+        </div>
+      </div>
+
+      <!-- HR -->
+      <div class="p-6 rounded-lg transition-all duration-200 hover:scale-102" style="background: var(--surface-card);">
+        <div class="flex items-center gap-2 mb-4">
+          <div class="w-3 h-3 rounded-full" style="background: var(--workspace-hr);"></div>
+          <h3 class="text-lg font-semibold" style="font-family: 'Inter', sans-serif;">HR</h3>
+        </div>
+        <div class="circular-progress" style="--progress: 90; --progress-color: #6B7280;">
+          <span class="text-3xl font-bold" style="font-family: 'JetBrains Mono', monospace;">90</span>
+        </div>
+        <div class="text-center">
+          <div class="flex items-center justify-center gap-2 mb-2">
+            <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14"></path>
+            </svg>
+            <span class="text-lg font-semibold text-gray-500" style="font-family: 'Inter', sans-serif;">Strong</span>
+          </div>
+          <p class="text-foreground-secondary text-sm" style="font-family: 'Inter', sans-serif;">3 active items</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cross-Department Dependency Map -->
+    <section style="margin-top: 48px;">
+      <h2 style="font-family: 'Playfair Display', serif; font-size: 24px; color: var(--txt-primary); margin-bottom: 24px;">
+        Cross-Department Dependencies
+      </h2>
+      <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 40px; position: relative; min-height: 300px;">
+        <!-- Department nodes arranged in a circle pattern -->
+        <!-- Use absolute positioning within the container -->
+        <!-- 6 nodes: Ops (top), Eng (top-right), Sales (bottom-right), Mkt (bottom), Finance (bottom-left), HR (top-left) -->
+        <!-- Connected by SVG or CSS lines -->
+        <!-- Active blockers shown as red connections -->
+
+        <!-- Central hub -->
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 48px; height: 48px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; z-index: 2;">
+          <span style="color: white; font-weight: 600; font-size: 14px;">AI</span>
+        </div>
+
+        <!-- Department nodes (positioned around center) -->
+        <div style="position: absolute; top: 20px; left: 50%; transform: translateX(-50%);">
+          <div style="width: 64px; height: 64px; border-radius: 50%; background: var(--surface-elevated); border: 2px solid var(--ws-ops); display: flex; align-items: center; justify-content: center;">
+            <span style="color: var(--ws-ops); font-size: 12px; font-weight: 600;">OPS</span>
+          </div>
+        </div>
+        <div style="position: absolute; top: 60px; right: 60px;">
+          <div style="width: 64px; height: 64px; border-radius: 50%; background: var(--surface-elevated); border: 2px solid var(--ws-eng); display: flex; align-items: center; justify-content: center;">
+            <span style="color: var(--ws-eng); font-size: 12px; font-weight: 600;">ENG</span>
+          </div>
+        </div>
+        <div style="position: absolute; bottom: 60px; right: 60px;">
+          <div style="width: 64px; height: 64px; border-radius: 50%; background: var(--surface-elevated); border: 2px solid var(--ws-sales); display: flex; align-items: center; justify-content: center;">
+            <span style="color: var(--ws-sales); font-size: 12px; font-weight: 600;">SALES</span>
+          </div>
+        </div>
+        <div style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);">
+          <div style="width: 64px; height: 64px; border-radius: 50%; background: var(--surface-elevated); border: 2px solid var(--ws-mkt); display: flex; align-items: center; justify-content: center;">
+            <span style="color: var(--ws-mkt); font-size: 12px; font-weight: 600;">MKT</span>
+          </div>
+        </div>
+        <div style="position: absolute; bottom: 60px; left: 60px;">
+          <div style="width: 64px; height: 64px; border-radius: 50%; background: var(--surface-elevated); border: 2px solid var(--ws-finance); display: flex; align-items: center; justify-content: center;">
+            <span style="color: var(--ws-finance); font-size: 12px; font-weight: 600;">FIN</span>
+          </div>
+        </div>
+        <div style="position: absolute; top: 60px; left: 60px;">
+          <div style="width: 64px; height: 64px; border-radius: 50%; background: var(--surface-elevated); border: 2px solid var(--ws-hr); display: flex; align-items: center; justify-content: center;">
+            <span style="color: var(--ws-hr); font-size: 12px; font-weight: 600;">HR</span>
+          </div>
+        </div>
+
+        <!-- Blocker indicators -->
+        <div style="position: absolute; top: 50%; right: 120px; transform: translateY(-50%); background: rgba(220, 38, 38, 0.1); border: 1px solid var(--danger); border-radius: var(--radius-md); padding: 4px 8px; font-size: 11px; color: var(--danger);">
+          Blocked: API spec needed
+        </div>
+      </div>
+    </section>
+
+    <!-- Risk Heat Map -->
+    <section style="margin-top: 48px;">
+      <h2 style="font-family: 'Playfair Display', serif; font-size: 24px; color: var(--txt-primary); margin-bottom: 24px;">
+        Risk Heat Map
+      </h2>
+      <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 32px;">
+        <div style="display: grid; grid-template-columns: 40px 1fr 1fr; grid-template-rows: auto 1fr 1fr 40px; gap: 0; min-height: 280px;">
+          <!-- Y-axis label -->
+          <div style="grid-row: 2/4; display: flex; align-items: center; justify-content: center;">
+            <span style="writing-mode: vertical-rl; transform: rotate(180deg); color: var(--txt-tertiary); font-size: 12px;">Impact</span>
+          </div>
+
+          <!-- High Impact row -->
+          <div style="border: 1px solid var(--border); border-right: none; padding: 16px; background: rgba(217, 119, 6, 0.05); position: relative;">
+            <span style="color: var(--txt-tertiary); font-size: 10px; position: absolute; top: 4px; left: 4px;">High / Low</span>
+            <!-- Risk items as dots -->
+            <div style="width: 12px; height: 12px; border-radius: 50%; background: var(--warning); position: absolute; top: 40%; left: 30%;" title="Vendor contract renewal"></div>
+          </div>
+          <div style="border: 1px solid var(--border); padding: 16px; background: rgba(220, 38, 38, 0.05); position: relative;">
+            <span style="color: var(--txt-tertiary); font-size: 10px; position: absolute; top: 4px; left: 4px;">High / High</span>
+            <div style="width: 14px; height: 14px; border-radius: 50%; background: var(--danger); position: absolute; top: 35%; left: 40%;" title="Sales pipeline velocity drop"></div>
+            <div style="width: 10px; height: 10px; border-radius: 50%; background: var(--danger); position: absolute; top: 60%; left: 65%;" title="Compliance deadline March 15"></div>
+          </div>
+
+          <!-- Low Impact row -->
+          <div style="border: 1px solid var(--border); border-top: none; border-right: none; padding: 16px; background: rgba(5, 150, 105, 0.05); position: relative;">
+            <span style="color: var(--txt-tertiary); font-size: 10px; position: absolute; top: 4px; left: 4px;">Low / Low</span>
+            <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--success); position: absolute; top: 50%; left: 50%;" title="Documentation updates"></div>
+          </div>
+          <div style="border: 1px solid var(--border); border-top: none; padding: 16px; background: rgba(217, 119, 6, 0.03); position: relative;">
+            <span style="color: var(--txt-tertiary); font-size: 10px; position: absolute; top: 4px; left: 4px;">Low / High</span>
+            <div style="width: 10px; height: 10px; border-radius: 50%; background: var(--warning); position: absolute; top: 45%; left: 35%;" title="Team capacity strain"></div>
+          </div>
+
+          <!-- X-axis label -->
+          <div></div>
+          <div style="text-align: center; padding-top: 8px;">
+            <span style="color: var(--txt-tertiary); font-size: 12px;">Likelihood</span>
+          </div>
+          <div></div>
+        </div>
+
+        <!-- AI annotation -->
+        <div style="margin-top: 16px; padding: 12px; background: var(--accent-subtle); border-radius: var(--radius-md);">
+          <span style="color: var(--accent); font-size: 13px;">AI Note: Sales pipeline risk increased from medium to high this week. 2 deals moved to "at risk" status.</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Strategic Decisions Pending -->
+    <section style="margin-top: 48px; margin-bottom: 48px;">
+      <h2 style="font-family: 'Playfair Display', serif; font-size: 24px; color: var(--txt-primary); margin-bottom: 24px;">
+        Strategic Decisions Pending
+      </h2>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px;">
+          <h3 style="color: var(--txt-primary); font-size: 16px; font-weight: 600; margin-bottom: 8px;">Q2 Budget Allocation</h3>
+          <p style="color: var(--txt-secondary); font-size: 14px; margin-bottom: 12px;">Engineering requests 20% increase. Marketing needs campaign budget. Finance recommends flat.</p>
+          <div style="display: flex; gap: 8px;">
+            <button style="padding: 6px 16px; background: var(--accent); color: white; border: none; border-radius: var(--radius-md); font-size: 13px; cursor: pointer;">Decide Now</button>
+            <button style="padding: 6px 16px; background: transparent; color: var(--txt-secondary); border: 1px solid var(--border); border-radius: var(--radius-md); font-size: 13px; cursor: pointer;">Defer</button>
+          </div>
+        </div>
+        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px;">
+          <h3 style="color: var(--txt-primary); font-size: 16px; font-weight: 600; margin-bottom: 8px;">New CRM Migration Timeline</h3>
+          <p style="color: var(--txt-secondary); font-size: 14px; margin-bottom: 12px;">Salesforce migration can start Q2 or Q3. Earlier start = more disruption but faster ROI.</p>
+          <div style="display: flex; gap: 8px;">
+            <button style="padding: 6px 16px; background: var(--accent); color: white; border: none; border-radius: var(--radius-md); font-size: 13px; cursor: pointer;">Decide Now</button>
+            <button style="padding: 6px 16px; background: transparent; color: var(--txt-secondary); border: 1px solid var(--border); border-radius: var(--radius-md); font-size: 13px; cursor: pointer;">Defer</button>
+          </div>
+        </div>
+      </div>
+    </section>
+      </main>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initState } from './components/state.js';
+    import { createSidebar, setActivePage } from './components/sidebar.js';
+    import { initCommandBar } from './components/command-bar.js';
+
+    initState();
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar) { createSidebar(sidebar); setActivePage('elt-rollup'); }
+    initCommandBar();
+  </script>
+  <script type="module" src="demo/init.js"></script>
+  <script type="module" src="components/page-init.js"></script>
+</body>
+</html>
