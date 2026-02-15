@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXUS - Workspaces | Workbook</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles/nexus-tokens.css">
+  <link rel="stylesheet" href="styles/animations.css">
+  <link rel="stylesheet" href="styles/skeleton.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            heading: ['Playfair Display', 'Georgia', 'serif'],
+            body: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            surface: { DEFAULT: '#161618', dark: '#0C0C0E', ai: '#14141A' },
+            border: { DEFAULT: '#232326' },
+            txt: { primary: '#EDEDEF', secondary: '#8F8F94', tertiary: '#6B6B70' },
+            accent: { DEFAULT: '#4F46E5', hover: '#6366F1' },
+            danger: { DEFAULT: '#DC2626' },
+            warning: { DEFAULT: '#D97706' },
+            success: { DEFAULT: '#059669' },
+            gold: { DEFAULT: '#B45309' },
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    h1, h2, h3, h4, h5, h6 { font-family: 'Playfair Display', Georgia, serif; }
+
+    /* Stagger animation */
+    @keyframes staggerIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .stagger { animation: staggerIn 0.3s ease-out forwards; opacity: 0; }
+    .stagger-1 { animation-delay: 0.05s; }
+    .stagger-2 { animation-delay: 0.1s; }
+    .stagger-3 { animation-delay: 0.15s; }
+    .stagger-4 { animation-delay: 0.2s; }
+    .stagger-5 { animation-delay: 0.25s; }
+    .stagger-6 { animation-delay: 0.3s; }
+
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: #0C0C0E; }
+    ::-webkit-scrollbar-thumb { background: #232326; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #3a3a3f; }
+
+    /* Card base */
+    .card { background: #161618; border: 1px solid #232326; border-radius: 4px; }
+
+    /* Sidebar nav */
+    .nav-item { border-radius: 6px; transition: background-color 0.15s ease; }
+    .nav-item:hover { background: rgba(255,255,255,0.04); }
+    .nav-active { background: rgba(79,70,229,0.1); }
+
+    /* Workspace card hover */
+    .workspace-card {
+      transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+    }
+    .workspace-card:hover {
+      background-color: rgba(255,255,255,0.03);
+      border-color: #2E2E32;
+      transform: translateY(-1px);
+    }
+
+    /* Light mode overrides */
+    html:not(.dark) body { background: #F8F8FA; color: #1a1a1e; }
+    html:not(.dark) .bg-surface-dark { background: #FFFFFF; }
+    html:not(.dark) .bg-surface { background: #F4F4F5; }
+    html:not(.dark) .card { background: #FFFFFF; border-color: #E5E5E8; }
+  </style>
+</head>
+<body class="bg-surface-dark text-txt-primary font-body">
+  <div class="flex h-screen overflow-hidden">
+    <!-- Sidebar - 240px full-width -->
+    <aside id="sidebar" class="sidebar-bg w-60 bg-[#0C0C0E] border-r border-[#232326] flex flex-col py-4 px-3 gap-0.5 h-screen overflow-y-auto flex-shrink-0">
+      <div class="flex items-center gap-2.5 px-2 mb-4">
+        <div class="w-8 h-8 rounded-lg bg-[#4F46E5] flex items-center justify-center flex-shrink-0"><i data-lucide="hexagon" class="w-4 h-4 text-white"></i></div>
+        <span class="font-heading text-base font-semibold text-[#EDEDEF] tracking-tight">NEXUS</span>
+      </div>
+      <button onclick="document.getElementById('cmdInput')?.focus()" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md mb-3 group w-full text-left" title="Search (Cmd+K)">
+        <i data-lucide="search" class="w-4 h-4 text-[#8F8F94] group-hover:text-[#EDEDEF] flex-shrink-0"></i>
+        <span class="text-sm text-[#6B6B70]">Search</span>
+        <span class="ml-auto font-mono text-[10px] text-[#6B6B70]/60 bg-[#232326] px-1.5 py-0.5 rounded">Cmd+K</span>
+      </button>
+      <div class="mb-1">
+        <div class="px-2 py-1 text-[10px] font-mono font-semibold text-[#6B6B70] uppercase tracking-widest">Workspace</div>
+        <a href="dashboard.html" data-nav-page="dashboard" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="layout-dashboard" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Dashboard</span></a>
+        <a href="calendar.html" data-nav-page="calendar" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="calendar" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Calendar</span></a>
+        <a href="meetings.html" data-nav-page="meetings" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="users" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Meetings</span></a>
+        <a href="actions.html" data-nav-page="actions" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="check-square" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Actions</span></a>
+        <a href="decisions.html" data-nav-page="decisions" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="git-branch" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Decisions</span></a>
+        <a href="proposals.html" data-nav-page="proposals" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="sparkles" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Proposals</span></a>
+        <a href="my-work.html" data-nav-page="my-work" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="user" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">My Work</span></a>
+        <a href="workspaces.html" data-nav-page="workspaces" class="nav-active nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#4F46E5]"><i data-lucide="layers" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Workspaces</span></a>
+      </div>
+      <div class="mb-1">
+        <div class="px-2 py-1 text-[10px] font-mono font-semibold text-[#6B6B70] uppercase tracking-widest">AI</div>
+        <a href="agents.html" data-nav-page="agents" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="bot" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Agent Dashboard</span></a>
+        <a href="marketplace.html" data-nav-page="marketplace" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="store" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Marketplace</span></a>
+        <a href="elt-rollup.html" data-nav-page="elt-rollup" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="bar-chart-3" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">ELT Rollup</span></a>
+      </div>
+      <div class="mb-1">
+        <div class="px-2 py-1 text-[10px] font-mono font-semibold text-[#6B6B70] uppercase tracking-widest">Admin</div>
+        <a href="connections.html" data-nav-page="connections" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="plug" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Connections</span></a>
+        <a href="settings.html" data-nav-page="settings" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="settings" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Settings</span></a>
+      </div>
+      <div class="flex-1"></div>
+      <div class="flex items-center gap-2.5 px-2 py-1.5">
+        <i data-lucide="bot" class="w-4 h-4 text-[#6B6B70]"></i>
+        <span class="text-xs text-[#6B6B70]">AI Agent</span>
+        <span class="ml-auto flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-[#059669]"></span><span class="text-[10px] text-[#059669] font-mono">Online</span></span>
+      </div>
+      <button onclick="document.documentElement.classList.toggle('dark')" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF] w-full text-left">
+        <i data-lucide="sun-moon" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Toggle Theme</span>
+      </button>
+      <div class="flex items-center gap-2.5 px-2 py-1.5 mt-1">
+        <div class="w-7 h-7 rounded-full bg-[#232326] flex items-center justify-center flex-shrink-0"><span class="font-mono text-[10px] text-[#8F8F94] font-medium">DH</span></div>
+        <span class="text-sm text-[#8F8F94]">David Hayes</span>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="flex-1 flex flex-col overflow-hidden">
+      <!-- Command Bar Container -->
+      <div id="command-bar-container"></div>
+
+      <!-- Page Content -->
+      <main class="flex-1 overflow-auto p-8">
+        <!-- Header -->
+        <div class="mb-8">
+          <div class="flex items-start justify-between mb-4">
+            <div>
+              <h1 class="text-4xl font-bold mb-2">Workspaces</h1>
+              <p class="text-txt-secondary text-lg">Organize teams, members, and AI agents</p>
+            </div>
+            <button class="bg-accent hover:bg-accent-hover text-white px-6 py-3 rounded-lg font-semibold transition-colors">
+              Create Workspace
+            </button>
+          </div>
+
+          <!-- Stats Row -->
+          <div class="flex gap-6 mt-6 flex-wrap">
+            <div class="flex items-center gap-2">
+              <span class="text-2xl font-bold">6</span>
+              <span class="text-txt-secondary">Workspaces</span>
+            </div>
+            <div class="w-px bg-border"></div>
+            <div class="flex items-center gap-2">
+              <span class="text-2xl font-bold">81</span>
+              <span class="text-txt-secondary">Total Members</span>
+            </div>
+            <div class="w-px bg-border"></div>
+            <div class="flex items-center gap-2">
+              <span class="text-2xl font-bold">17</span>
+              <span class="text-txt-secondary">Active Agents</span>
+            </div>
+            <div class="w-px bg-border"></div>
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-green-500"></span>
+              <span class="text-txt-secondary">Status:</span>
+              <span class="text-green-400 font-semibold">4 Active</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Workspace Cards Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
+
+          <!-- Operations -->
+          <div class="card workspace-card p-5 stagger stagger-1" data-workspace="operations">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center flex-shrink-0">
+                <i data-lucide="briefcase" class="w-5 h-5 text-white"></i>
+              </div>
+              <div class="min-w-0">
+                <h3 class="workspace-name font-semibold text-base truncate">Operations</h3>
+                <div class="flex items-center gap-1.5" data-status="active">
+                  <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                  <span class="text-xs text-green-400">Active</span>
+                </div>
+              </div>
+            </div>
+            <p class="text-sm text-txt-secondary mb-2">Cross-functional operations management and process optimization</p>
+            <div class="flex items-center gap-4 text-xs text-txt-tertiary">
+              <span>15 members</span>
+              <span>4 agents</span>
+            </div>
+          </div>
+
+          <!-- Engineering -->
+          <div class="card workspace-card p-5 stagger stagger-2" data-workspace="engineering">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-10 h-10 rounded-lg bg-violet-600 flex items-center justify-center flex-shrink-0">
+                <i data-lucide="code" class="w-5 h-5 text-white"></i>
+              </div>
+              <div class="min-w-0">
+                <h3 class="workspace-name font-semibold text-base truncate">Engineering</h3>
+                <div class="flex items-center gap-1.5" data-status="active">
+                  <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                  <span class="text-xs text-green-400">Active</span>
+                </div>
+              </div>
+            </div>
+            <p class="text-sm text-txt-secondary mb-2">Product development, architecture, and technical infrastructure</p>
+            <div class="flex items-center gap-4 text-xs text-txt-tertiary">
+              <span>22 members</span>
+              <span>6 agents</span>
+            </div>
+          </div>
+
+          <!-- Sales -->
+          <div class="card workspace-card p-5 stagger stagger-3" data-workspace="sales">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-10 h-10 rounded-lg bg-emerald-600 flex items-center justify-center flex-shrink-0">
+                <i data-lucide="target" class="w-5 h-5 text-white"></i>
+              </div>
+              <div class="min-w-0">
+                <h3 class="workspace-name font-semibold text-base truncate">Sales</h3>
+                <div class="flex items-center gap-1.5" data-status="active">
+                  <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                  <span class="text-xs text-green-400">Active</span>
+                </div>
+              </div>
+            </div>
+            <p class="text-sm text-txt-secondary mb-2">Pipeline management, deal tracking, and client engagement</p>
+            <div class="flex items-center gap-4 text-xs text-txt-tertiary">
+              <span>18 members</span>
+              <span>3 agents</span>
+            </div>
+          </div>
+
+          <!-- Marketing -->
+          <div class="card workspace-card p-5 stagger stagger-4" data-workspace="marketing">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-10 h-10 rounded-lg bg-pink-600 flex items-center justify-center flex-shrink-0">
+                <i data-lucide="megaphone" class="w-5 h-5 text-white"></i>
+              </div>
+              <div class="min-w-0">
+                <h3 class="workspace-name font-semibold text-base truncate">Marketing</h3>
+                <div class="flex items-center gap-1.5" data-status="active">
+                  <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                  <span class="text-xs text-green-400">Active</span>
+                </div>
+              </div>
+            </div>
+            <p class="text-sm text-txt-secondary mb-2">Campaign management, content strategy, and brand development</p>
+            <div class="flex items-center gap-4 text-xs text-txt-tertiary">
+              <span>12 members</span>
+              <span>2 agents</span>
+            </div>
+          </div>
+
+          <!-- Finance -->
+          <div class="card workspace-card p-5 stagger stagger-5" data-workspace="finance">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-10 h-10 rounded-lg bg-amber-600 flex items-center justify-center flex-shrink-0">
+                <i data-lucide="wallet" class="w-5 h-5 text-white"></i>
+              </div>
+              <div class="min-w-0">
+                <h3 class="workspace-name font-semibold text-base truncate">Finance</h3>
+                <div class="flex items-center gap-1.5" data-status="inactive">
+                  <span class="w-2 h-2 rounded-full bg-gray-500"></span>
+                  <span class="text-xs text-gray-400">Inactive</span>
+                </div>
+              </div>
+            </div>
+            <p class="text-sm text-txt-secondary mb-2">Financial reporting, budgeting, and compliance tracking</p>
+            <div class="flex items-center gap-4 text-xs text-txt-tertiary">
+              <span>8 members</span>
+              <span>1 agent</span>
+            </div>
+          </div>
+
+          <!-- HR -->
+          <div class="card workspace-card p-5 stagger stagger-6" data-workspace="hr">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-10 h-10 rounded-lg bg-cyan-600 flex items-center justify-center flex-shrink-0">
+                <i data-lucide="users" class="w-5 h-5 text-white"></i>
+              </div>
+              <div class="min-w-0">
+                <h3 class="workspace-name font-semibold text-base truncate">HR</h3>
+                <div class="flex items-center gap-1.5" data-status="inactive">
+                  <span class="w-2 h-2 rounded-full bg-gray-500"></span>
+                  <span class="text-xs text-gray-400">Inactive</span>
+                </div>
+              </div>
+            </div>
+            <p class="text-sm text-txt-secondary mb-2">Talent acquisition, employee experience, and people analytics</p>
+            <div class="flex items-center gap-4 text-xs text-txt-tertiary">
+              <span>6 members</span>
+              <span>1 agent</span>
+            </div>
+          </div>
+
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initState } from './components/state.js';
+    import { createSidebar, setActivePage } from './components/sidebar.js';
+    import { initCommandBar } from './components/command-bar.js';
+
+    initState();
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar) { createSidebar(sidebar); setActivePage('workspaces'); }
+    initCommandBar();
+  </script>
+  <script type="module" src="demo/init.js"></script>
+</body>
+</html>
