@@ -4,6 +4,47 @@
 
 To guide an AI assistant in creating a detailed, step-by-step task list in Markdown format based on user requirements, feature requests, or existing documentation. The task list should guide a developer through implementation.
 
+## Task Atomicity Rules [C:10]
+
+Every task MUST satisfy these constraints for reliable subagent delegation:
+
+| Constraint | Limit | Why |
+|------------|-------|-----|
+| Source files | Max 3-5 per task | Subagent context budget (~150k tokens) |
+| Behavior | 1 observable behavior per task | Focus prevents scope creep |
+| Description | Under 2000 words | Concise prompts produce better agent output |
+| Test cases | 1-3 per behavior slice | Sufficient coverage without overload |
+
+### Splitting Examples
+
+**WRONG -- monolithic task:**
+```markdown
+- [ ] 3.0 Implement authentication middleware
+  - [ ] 3.1 Create JWT validation, session management, role-based access,
+        rate limiting, token refresh, and error handling
+```
+
+**RIGHT -- behavior slices:**
+```markdown
+- [ ] 3.0 Parent: Authentication Middleware
+  - [ ] 3.1 Validate JWT tokens on protected routes {RED: arbiter, GREEN: kraken}
+    - Behavior: Requests with invalid/expired JWT get 401 response
+    - Tests: valid token passes, expired token rejected, missing token rejected
+    - Files: src/middleware/auth.ts, src/middleware/auth.test.ts
+  - [ ] 3.2 Extract user context from valid JWT {RED: arbiter, GREEN: kraken}
+    - Behavior: Valid JWT populates req.user with id, email, roles
+    - Tests: user object populated, roles array present, email matches token
+    - Files: src/middleware/auth.ts, src/types/user.ts
+  - [ ] 3.3 Enforce role-based access on admin routes {RED: arbiter, GREEN: kraken}
+    - Behavior: Non-admin users get 403 on admin endpoints
+    - Tests: admin role passes, user role rejected, missing role rejected
+    - Files: src/middleware/rbac.ts, src/middleware/rbac.test.ts
+  - [ ] 3.4 Handle token refresh flow {RED: arbiter, GREEN: kraken}
+    - Behavior: Expired access token with valid refresh token gets new pair
+    - Tests: refresh succeeds, expired refresh rejected, invalid refresh rejected
+    - Files: src/middleware/refresh.ts, src/middleware/refresh.test.ts
+```
+
 ## Output
 
 - **Format:** Markdown (`.md`)
@@ -72,13 +113,31 @@ Update the file after completing each sub-task, not just after completing an ent
   - [ ] 0.5.2 Load shadcn-create skill: Read `~/.claude/skills/shadcn-create/SKILL.md`
   - [ ] 0.5.3 Research components via shadcn MCP: Use `mcp__21st-dev-magic__search_components` to find relevant components
   - [ ] 0.5.4 Document component plan: List components to use from shadcn/ui library
-- [ ] 1.0 Parent Task Title
-  - [ ] 1.1 [Sub-task description 1.1]
-  - [ ] 1.2 [Sub-task description 1.2]
-- [ ] 2.0 Parent Task Title
-  - [ ] 2.1 [Sub-task description 2.1]
-- [ ] 3.0 Parent Task Title (may not require sub-tasks if purely structural or configuration)
+- [ ] 1.0 Parent: [Feature Area]
+  - [ ] 1.1 [Behavior description] {RED: arbiter, GREEN: kraken}
+    - Behavior: [One sentence describing the observable behavior]
+    - Tests: [1-3 test case descriptions]
+    - Files: [Max 3-5 source files]
+  - [ ] 1.2 [Behavior description] {RED: arbiter, GREEN: kraken}
+    - Behavior: [One sentence]
+    - Tests: [1-3 test cases]
+    - Files: [Max 3-5 files]
+- [ ] 2.0 Parent: [Feature Area]
+  - [ ] 2.1 [Behavior description] {RED: arbiter, GREEN: kraken}
+    - Behavior: [One sentence]
+    - Tests: [1-3 test cases]
+    - Files: [Max 3-5 files]
+- [ ] 3.0 [Config/setup task] (no TDD annotation if purely structural)
 ```
+
+### TDD Behavior Slice Format
+
+The `{RED: arbiter, GREEN: kraken}` annotation tells Ralph's delegation loop to execute the 3-phase TDD sequence:
+1. **RED** -- arbiter writes failing tests
+2. **GREEN** -- kraken writes minimal code to pass
+3. **VERIFY** -- arbiter runs full suite + typecheck + lint
+
+Tasks without this annotation (config, setup, research) use single-agent dispatch.
 
 ## Frontend Design Tooling (MANDATORY for UI features)
 
@@ -104,6 +163,24 @@ Each UI task should reference the design tooling:
 - Before creating a component → Check shadcn/ui library via MCP
 - When styling → Follow frontend-design plugin patterns
 - When theming → Use shadcn-create skill guidance
+
+## Agent Assignment Guidance
+
+When generating tasks for Ralph-orchestrated builds, annotate each task with the appropriate agent pattern:
+
+| Task Type | Pattern | Agents | Annotation |
+|-----------|---------|--------|------------|
+| Implementation (TDD) | RED-GREEN-VERIFY | arbiter, kraken, arbiter | `{RED: arbiter, GREEN: kraken}` |
+| Test-only (add coverage) | Write + run | arbiter | `{TEST: arbiter}` |
+| Config/setup | Direct execution | spark | `{SETUP: spark}` |
+| Research/investigation | Explore + report | scout | `{RESEARCH: scout}` |
+| Bug fix (with regression test) | RED-GREEN-VERIFY | arbiter, kraken, arbiter | `{RED: arbiter, GREEN: kraken}` |
+
+### Rules
+- Every implementation task SHOULD use TDD annotation unless it is pure config/setup
+- Research tasks produce reports, not code -- use scout
+- Config tasks (env vars, package.json, tsconfig) use spark for direct execution
+- Bug fixes follow TDD: write failing test reproducing bug (RED), fix it (GREEN), verify (VERIFY)
 
 ## Interaction Model
 
