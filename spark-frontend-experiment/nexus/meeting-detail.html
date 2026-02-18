@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meeting Detail | Workbook</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="styles/nexus-tokens.css">
+  <link rel="stylesheet" href="styles/interactions.css">
+  <link rel="stylesheet" href="styles/animations.css">
+  <link rel="stylesheet" href="styles/transitions.css">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            heading: ['Playfair Display', 'Georgia', 'serif'],
+            body: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            surface: { DEFAULT: '#161618', dark: '#0C0C0E', ai: '#14141A' },
+            border: { DEFAULT: '#232326' },
+            txt: { primary: '#EDEDEF', secondary: '#8F8F94', tertiary: '#6B6B70' },
+            accent: { DEFAULT: '#4F46E5', hover: '#6366F1' },
+            danger: { DEFAULT: '#DC2626' },
+            warning: { DEFAULT: '#D97706' },
+            success: { DEFAULT: '#059669' },
+            gold: { DEFAULT: '#B45309' },
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    h1, h2, h3, h4, h5, h6 { font-family: 'Playfair Display', Georgia, serif; }
+    .font-data, [data-mono] { font-family: 'JetBrains Mono', monospace; }
+
+    /* Stagger animation - 4 levels, 200ms total */
+    @keyframes staggerIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .stagger { animation: staggerIn 0.3s ease-out forwards; opacity: 0; }
+    .stagger-1 { animation-delay: 0.05s; }
+    .stagger-2 { animation-delay: 0.1s; }
+    .stagger-3 { animation-delay: 0.15s; }
+    .stagger-4 { animation-delay: 0.2s; }
+
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+
+    @keyframes pulseDanger {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+    .pulse-danger { animation: pulseDanger 2s ease-in-out infinite; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner { animation: spin 1s linear infinite; }
+
+    .critical-glow { box-shadow: 0 0 20px rgba(220, 38, 38, 0.1); }
+    .critical-border-glow { box-shadow: inset 4px 0 8px -4px rgba(220, 38, 38, 0.15); }
+
+    /* AI panel collapse */
+    .ai-panel-collapsed { width: 56px; overflow: hidden; }
+    .ai-panel-collapsed .ai-panel-label { display: none; }
+    .ai-panel-collapsed .flex-1.overflow-y-auto { display: none; }
+    .ai-panel-collapsed .ai-panel-input { display: none; }
+    .ai-panel-collapsed .ai-panel-icon { display: none; }
+    .ai-panel-collapsed .ai-panel-chevron { display: block !important; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #232326; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #3a3a3f; }
+
+    .cmd-bar { transition: box-shadow 0.2s ease, border-color 0.2s ease; }
+    .cmd-bar:focus-within {
+      border-color: #4F46E5;
+      box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+    }
+
+    @keyframes typingDot {
+      0%, 60%, 100% { opacity: 0.3; }
+      30% { opacity: 1; }
+    }
+    .typing-dot:nth-child(1) { animation: typingDot 1.4s infinite 0s; }
+    .typing-dot:nth-child(2) { animation: typingDot 1.4s infinite 0.2s; }
+    .typing-dot:nth-child(3) { animation: typingDot 1.4s infinite 0.4s; }
+
+    /* Meridian timeline styles */
+    .timeline-line { background: #232326; }
+    .timeline-node { background: #0C0C0E; border: 2px solid #232326; }
+    .timeline-node-active { border-color: #4F46E5; }
+
+    /* Meridian block styles */
+    .decision-block { background: rgba(79,70,229,0.04); border: 1px solid rgba(79,70,229,0.1); border-radius: 4px; }
+    .action-block { background: rgba(5,150,105,0.04); border: 1px solid rgba(5,150,105,0.1); border-radius: 4px; }
+    .note-block { color: #8F8F94; }
+
+    /* Meridian reference and metadata */
+    .card { background: #161618; border: 1px solid #232326; border-radius: 4px; }
+    .ref-panel { background: #161618; border: 1px solid #232326; border-radius: 4px; }
+    .metadata-chip { background: #232326; color: #8F8F94; border-radius: 4px; }
+    .card-section-rule { border-color: rgba(255,255,255,0.05); }
+
+    /* Timeline hover */
+    .timeline-section:hover .timeline-node { border-color: #4F46E5; transition: border-color 0.15s ease; }
+
+    /* Light mode overrides */
+    html:not(.dark) body { background: #F8F8FA; color: #1a1a1e; }
+    html:not(.dark) .bg-surface-dark { background: #F8F8FA; }
+    html:not(.dark) .bg-surface { background: #FFFFFF; }
+    html:not(.dark) .bg-surface-ai { background: #F0EEFF; }
+    html:not(.dark) .border-border { border-color: #E5E5E8; }
+    html:not(.dark) .text-txt-primary { color: #1a1a1e; }
+    html:not(.dark) .text-txt-secondary { color: #6B6B70; }
+    html:not(.dark) .text-txt-tertiary { color: #9a9aa0; }
+    html:not(.dark) .sidebar-bg { background: #FFFFFF; border-color: #E5E5E8; }
+    html:not(.dark) .timeline-line { background: #E5E5E8; }
+    html:not(.dark) .timeline-node { border-color: #E5E5E8; background: #FFFFFF; }
+    html:not(.dark) .decision-block { background: rgba(79,70,229,0.04); border-color: rgba(79,70,229,0.15); }
+    html:not(.dark) .action-block { background: rgba(5,150,105,0.04); border-color: rgba(5,150,105,0.15); }
+    html:not(.dark) .note-block { color: #6B6B70; }
+    html:not(.dark) .card { background: #FFFFFF; border-color: #E5E5E8; }
+    html:not(.dark) .ref-panel { background: #FFFFFF; border-color: #E5E5E8; }
+    html:not(.dark) .metadata-chip { background: #F0F0F3; color: #6B6B70; }
+    html:not(.dark) .card-section-rule { border-color: #E5E5E8; }
+    html:not(.dark) .bg-\[\#0C0C0E\] { background: #F8F8FA; }
+    html:not(.dark) .bg-\[\#161618\] { background: #FFFFFF; }
+    html:not(.dark) .bg-\[\#14141A\] { background: #F5F3FF; }
+    html:not(.dark) .bg-\[\#232326\] { background: #E5E5E8; }
+    html:not(.dark) .border-\[\#232326\] { border-color: #E5E5E8; }
+    html:not(.dark) .text-\[\#EDEDEF\] { color: #1a1a1e; }
+    html:not(.dark) .text-\[\#8F8F94\] { color: #6B6B70; }
+    html:not(.dark) ::-webkit-scrollbar-track { background: #F8F8FA; }
+    html:not(.dark) ::-webkit-scrollbar-thumb { background: #D4D4D8; }
+  </style>
+</head>
+<body class="bg-[#0C0C0E] text-[#EDEDEF] font-body min-h-screen flex">
+
+  <!-- Sidebar Container -->
+  <div id="sidebar"></div>
+
+  <!-- Sidebar - 240px full-width with sections -->
+  <aside id="sidebar" class="sidebar-bg w-60 bg-[#0C0C0E] border-r border-[#232326] flex flex-col py-4 px-3 gap-0.5 fixed h-screen z-50 stagger stagger-1 overflow-y-auto">
+    <div class="flex items-center gap-2.5 px-2 mb-4">
+      <div class="w-8 h-8 rounded-lg bg-[#4F46E5] flex items-center justify-center flex-shrink-0">
+        <i data-lucide="book-open" class="w-4 h-4 text-white"></i>
+      </div>
+      <span class="font-heading text-base font-semibold text-[#EDEDEF] tracking-tight">Workbook</span>
+    </div>
+    <button onclick="document.getElementById('cmdInput')?.focus()" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md mb-3 group w-full text-left" title="Search (Cmd+K)">
+      <i data-lucide="search" class="w-4 h-4 text-[#8F8F94] group-hover:text-[#EDEDEF] flex-shrink-0"></i>
+      <span class="text-sm text-[#6B6B70] group-hover:text-[#8F8F94]">Search</span>
+      <span class="ml-auto font-mono text-[10px] text-[#6B6B70]/60 bg-[#232326] px-1.5 py-0.5 rounded">Cmd+K</span>
+    </button>
+    <div class="mb-1">
+      <div class="px-2 py-1 text-[10px] font-mono font-semibold text-[#6B6B70] uppercase tracking-widest">Workspace</div>
+      <a href="dashboard.html" data-nav-page="dashboard" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]" title="Dashboard (Cmd+1)"><i data-lucide="layout-dashboard" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Dashboard</span></a>
+      <a href="calendar.html" data-nav-page="calendar" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]" title="Calendar"><i data-lucide="calendar" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Calendar</span></a>
+      <a href="meetings.html" data-nav-page="meetings" class="nav-active nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#4F46E5]" title="Meetings (Cmd+2)"><i data-lucide="users" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Meetings</span></a>
+      <a href="actions.html" data-nav-page="actions" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]" title="Actions (Cmd+3)"><i data-lucide="check-square" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Actions</span></a>
+      <a href="decisions.html" data-nav-page="decisions" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]" title="Decisions"><i data-lucide="git-branch" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Decisions</span></a>
+      <a href="proposals.html" data-nav-page="proposals" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]" title="AI Proposals (Cmd+4)"><i data-lucide="sparkles" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Proposals</span></a>
+      <a href="my-work.html" data-nav-page="my-work" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]" title="My Work"><i data-lucide="user" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">My Work</span></a>
+    </div>
+    <div class="mb-1">
+      <div class="px-2 py-1 text-[10px] font-mono font-semibold text-[#6B6B70] uppercase tracking-widest">AI</div>
+      <a href="agents.html" data-nav-page="agents" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]" title="Agent Dashboard"><i data-lucide="bot" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Agent Dashboard</span></a>
+      <a href="marketplace.html" data-nav-page="marketplace" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]" title="Marketplace"><i data-lucide="store" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Marketplace</span></a>
+      <a href="elt-rollup.html" data-nav-page="elt-rollup" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]" title="ELT Rollup"><i data-lucide="bar-chart-3" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">ELT Rollup</span></a>
+    </div>
+    <div class="mb-1">
+      <div class="px-2 py-1 text-[10px] font-mono font-semibold text-[#6B6B70] uppercase tracking-widest">Admin</div>
+      <a href="connections.html" data-nav-page="connections" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]" title="Connections"><i data-lucide="plug" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Connections</span></a>
+      <a href="settings.html" data-nav-page="settings" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]" title="Settings"><i data-lucide="settings" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Settings</span></a>
+    </div>
+    <div class="flex-1"></div>
+    <div class="flex items-center gap-2.5 px-2 py-1.5" title="AI Agent: Online">
+      <i data-lucide="bot" class="w-4 h-4 text-[#6B6B70]"></i>
+      <span class="text-xs text-[#6B6B70]">AI Agent</span>
+      <span class="ml-auto flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-[#059669]"></span><span class="text-[10px] text-[#059669] font-mono">Online</span></span>
+    </div>
+    <button onclick="document.documentElement.classList.toggle('dark')" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF] w-full text-left" title="Toggle Theme">
+      <i data-lucide="sun-moon" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Toggle Theme</span>
+    </button>
+    <div class="flex items-center gap-2.5 px-2 py-1.5 mt-1">
+      <div class="w-7 h-7 rounded-full bg-[#232326] flex items-center justify-center flex-shrink-0"><span class="font-mono text-[10px] text-[#8F8F94] font-medium">DH</span></div>
+      <span class="text-sm text-[#8F8F94]">David Hayes</span>
+    </div>
+  </aside>
+
+  <!-- Main content - split pane -->
+  <main class="ml-60 flex-1 flex h-screen">
+
+    <!-- LEFT PANEL: Meeting Content (~60%) -->
+    <div class="w-[60%] overflow-y-auto h-screen border-r border-[#232326]">
+
+      <!-- Critical Alert Banner -->
+      <div class="bg-danger/10 border-b border-danger/20 px-4 py-2.5 flex items-center gap-3 stagger stagger-2">
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-danger pulse-danger"></span>
+          <span class="font-mono text-xs text-danger font-medium">BLOCKER</span>
+        </div>
+        <span class="text-sm text-txt-primary">EU privacy compliance blocks Q1 campaign launch -- $135K downside risk</span>
+        <div class="flex-1"></div>
+        <span class="font-mono text-[10px] text-txt-tertiary/50">Esc</span>
+      </div>
+
+      <!-- Command Bar -->
+      <div class="px-4 py-3 stagger stagger-2">
+        <div class="cmd-bar max-w-2xl mx-auto flex items-center gap-2 px-3 py-2 bg-[#161618] border border-[#232326] rounded-md">
+          <i data-lucide="search" class="w-4 h-4 text-txt-secondary flex-shrink-0"></i>
+          <input id="cmdInput" type="text" placeholder="Search in meeting or type /command..." class="bg-transparent border-none outline-none text-sm text-txt-primary placeholder-txt-tertiary/50 flex-1 font-body">
+          <kbd class="font-mono text-[10px] text-txt-tertiary/60 bg-[#232326] px-1.5 py-0.5 rounded">Cmd+K</kbd>
+        </div>
+      </div>
+
+      <!-- Meeting Header -->
+      <div class="px-4 pb-4 stagger stagger-3">
+        <div class="flex items-start justify-between mb-2">
+          <div>
+            <div class="flex items-center gap-2 mb-1">
+              <a href="meetings.html" class="text-txt-tertiary hover:text-txt-secondary transition-colors">
+                <i data-lucide="arrow-left" class="w-4 h-4"></i>
+              </a>
+              <h1 class="text-xl font-heading font-semibold text-txt-primary">Emergency Campaign Blocker</h1>
+              <span class="font-mono text-[10px] px-2 py-0.5 rounded-full bg-danger/10 text-danger border border-danger/20">Emergency</span>
+              <span class="font-mono text-[10px] px-2 py-0.5 rounded-full bg-warning/10 text-warning border border-warning/20">Ad-hoc</span>
+            </div>
+            <div class="flex items-center gap-2 flex-wrap mt-1.5">
+              <span class="metadata-chip text-[10px] px-2 py-0.5 font-mono">Feb 10, 2026</span>
+              <span class="metadata-chip text-[10px] px-2 py-0.5">MKT Workspace</span>
+              <span class="metadata-chip text-[10px] px-2 py-0.5">45 min</span>
+              <span class="metadata-chip text-[10px] px-2 py-0.5">4 attendees</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-1">
+            <button onclick="document.getElementById('quickPrepPanel').classList.toggle('hidden')"
+              class="inline-flex items-center gap-2 px-3 py-1.5 rounded bg-white/5 border border-white/10 text-txt-secondary text-xs hover:bg-white/10 transition-colors">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+              </svg>
+              Quick Prep
+            </button>
+            <button class="px-2.5 py-1.5 rounded bg-danger hover:bg-danger/80 text-white text-xs font-mono font-medium transition-colors">
+              Escalate
+            </button>
+            <button class="px-2.5 py-1.5 rounded bg-[#232326] hover:bg-[#2E2E33] text-txt-secondary text-xs transition-colors">
+              <i data-lucide="more-horizontal" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Attendees (Meridian style: names with dots) -->
+        <div class="flex items-center gap-3 mt-3 pb-3 border-b border-[#232326]">
+          <span class="text-[10px] text-txt-tertiary uppercase tracking-wider">Attendees</span>
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-txt-secondary">Sarah Chen (Chair)</span>
+            <span class="text-[#232326]">&middot;</span>
+            <span class="text-xs text-txt-secondary">Marcus Johnson</span>
+            <span class="text-[#232326]">&middot;</span>
+            <span class="text-xs text-txt-secondary">Lisa Park</span>
+            <span class="text-[#232326]">&middot;</span>
+            <span class="text-xs text-txt-secondary">David Hayes</span>
+          </div>
+        </div>
+
+        <!-- Prep Status Sparkbar -->
+        <div class="flex items-center gap-2 text-[10px] text-txt-tertiary mt-2.5">
+          <span>Prep</span>
+          <div class="flex-1 h-1 rounded-full bg-white/5 overflow-hidden" style="max-width: 160px;">
+            <div class="h-full rounded-full bg-gradient-to-r from-warning to-accent" style="width: 73%"></div>
+          </div>
+          <span class="text-txt-secondary">73%</span>
+        </div>
+      </div>
+
+      <!-- Quick Prep Summary (hidden by default) -->
+      <div id="quickPrepPanel" class="hidden px-4 pb-4 stagger stagger-3">
+        <div class="border border-white/10 rounded-lg p-4 bg-white/[0.02]">
+          <div class="text-txt-primary font-semibold text-sm font-heading mb-3">Quick Prep Summary</div>
+          <div class="space-y-3">
+            <div class="flex items-start gap-3">
+              <div class="w-1.5 h-1.5 rounded-full bg-accent mt-1.5 shrink-0"></div>
+              <div>
+                <div class="text-txt-primary text-xs font-medium">AI Brief</div>
+                <div class="text-txt-secondary text-[10px]">Campaign launch blocked by EU privacy compliance. $180K media buy committed through Feb 14. Total downside risk: $135K if delayed past window.</div>
+              </div>
+            </div>
+            <div class="flex items-start gap-3">
+              <div class="w-1.5 h-1.5 rounded-full bg-danger mt-1.5 shrink-0"></div>
+              <div>
+                <div class="text-txt-primary text-xs font-medium">Pending Decisions (2)</div>
+                <div class="text-txt-secondary text-[10px]">Legal escalation to GC with 48-hour deadline. Authorize $12K/day media hold capped at $48K.</div>
+              </div>
+            </div>
+            <div class="flex items-start gap-3">
+              <div class="w-1.5 h-1.5 rounded-full bg-warning mt-1.5 shrink-0"></div>
+              <div>
+                <div class="text-txt-primary text-xs font-medium">My Actions (3)</div>
+                <div class="text-txt-secondary text-[10px]">Review cost analysis, approve media hold authorization, brief CEO at ELT Monthly.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Editorial Timeline (Meridian-style) -->
+      <div class="px-4 pb-6 stagger stagger-4">
+        <div class="relative pl-12">
+          <!-- Vertical timeline line -->
+          <div class="timeline-line absolute left-4 top-0 bottom-0 w-px"></div>
+
+          <!-- 11:00 - Campaign Launch Status -->
+          <div class="timeline-section relative mb-6">
+            <div class="absolute -left-8 top-0 flex items-center">
+              <span class="font-mono text-[10px] text-txt-tertiary">11:00</span>
+            </div>
+            <div class="timeline-node timeline-node-active absolute -left-[29px] top-1 w-3 h-3 rounded-full"></div>
+            <div class="mb-3">
+              <h4 class="font-heading text-base font-semibold mb-1 text-txt-primary">Campaign Launch Status</h4>
+              <p class="text-xs leading-relaxed note-block text-txt-secondary">
+                Sarah outlined the current situation: the Q1 campaign was scheduled to launch Feb 7 but legal flagged a compliance issue with the new privacy regulations in the EU market segment. The creative assets are complete, media buy is locked in, but launch is blocked pending legal review.
+                <span class="inline-flex items-center gap-1 text-accent text-[10px] italic ml-1">
+                  <svg class="w-3 h-3 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                  </svg>
+                  AI: This aligns with Q3 board directive on EU market compliance
+                </span>
+              </p>
+            </div>
+
+            <!-- Inline Decision -->
+            <div class="decision-block px-3 py-2.5 mb-3">
+              <div class="flex items-center gap-2 mb-1">
+                <i data-lucide="git-branch" class="w-3 h-3 text-accent"></i>
+                <span class="text-[10px] font-medium text-accent">Decision</span>
+              </div>
+              <p class="text-xs text-txt-primary">Escalate legal review to General Counsel with 48-hour deadline</p>
+              <p class="text-[10px] mt-1 text-txt-tertiary">Rationale: Normal review cycle is 2 weeks; media buy expires Feb 14</p>
+            </div>
+          </div>
+
+          <!-- 11:10 - Legal Review Scope -->
+          <div class="timeline-section relative mb-6">
+            <div class="absolute -left-8 top-0 flex items-center">
+              <span class="font-mono text-[10px] text-txt-tertiary">11:10</span>
+            </div>
+            <div class="timeline-node absolute -left-[29px] top-1 w-3 h-3 rounded-full"></div>
+            <div class="mb-3">
+              <h4 class="font-heading text-base font-semibold mb-1 text-txt-primary">Legal Review Scope</h4>
+              <p class="text-xs leading-relaxed note-block text-txt-secondary">
+                Marcus walked through the specific compliance concerns. Three areas flagged: cookie consent language on landing pages, data retention disclosure in sign-up flow, and cross-border data transfer notice for EU visitors. The first two are straightforward fixes; the third requires legal opinion on new regulations.
+              </p>
+            </div>
+
+            <!-- Inline Actions -->
+            <div class="action-block px-3 py-2 mb-2">
+              <div class="flex items-center gap-2 mb-1">
+                <i data-lucide="check-square" class="w-3 h-3 text-success"></i>
+                <span class="text-[10px] font-medium text-success">Action</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <p class="text-xs text-txt-primary">Update cookie consent language on all landing pages</p>
+                <div class="flex items-center gap-2">
+                  <span class="text-[10px] text-txt-tertiary">Lisa Park</span>
+                  <span class="font-mono text-[10px] text-warning">Feb 11</span>
+                </div>
+              </div>
+            </div>
+            <div class="action-block px-3 py-2 mb-2">
+              <div class="flex items-center gap-2 mb-1">
+                <i data-lucide="check-square" class="w-3 h-3 text-success"></i>
+                <span class="text-[10px] font-medium text-success">Action</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <p class="text-xs text-txt-primary">Revise data retention disclosure in sign-up flow</p>
+                <div class="flex items-center gap-2">
+                  <span class="text-[10px] text-txt-tertiary">Lisa Park</span>
+                  <span class="font-mono text-[10px] text-warning">Feb 11</span>
+                </div>
+              </div>
+            </div>
+            <div class="action-block px-3 py-2">
+              <div class="flex items-center gap-2 mb-1">
+                <i data-lucide="check-square" class="w-3 h-3 text-success"></i>
+                <span class="text-[10px] font-medium text-success">Action</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <p class="text-xs text-txt-primary">Draft cross-border data transfer notice for GC review</p>
+                <div class="flex items-center gap-2">
+                  <span class="text-[10px] text-txt-tertiary">Marcus Johnson</span>
+                  <span class="font-mono text-[10px] text-danger">Feb 11</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 11:20 - Financial Impact -->
+          <div class="timeline-section relative mb-6">
+            <div class="absolute -left-8 top-0 flex items-center">
+              <span class="font-mono text-[10px] text-txt-tertiary">11:20</span>
+            </div>
+            <div class="timeline-node absolute -left-[29px] top-1 w-3 h-3 rounded-full"></div>
+            <div class="mb-3">
+              <h4 class="font-heading text-base font-semibold mb-1 text-txt-primary">Financial Impact Assessment</h4>
+              <p class="text-xs leading-relaxed note-block text-txt-secondary">
+                David presented the cost analysis. Media buy is $180K committed through Feb 14. Each day of delay costs approximately $12K in unused inventory.
+                <span class="inline-flex items-center gap-1 text-accent text-[10px] italic ml-1">
+                  <svg class="w-3 h-3 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                  </svg>
+                  AI: Similar delay cost Q2 '25 campaign $92K -- pattern flagged
+                </span>
+                If campaign misses the Feb 14 window, renegotiation adds an estimated $45K premium for the next available slot. Total downside risk: $135K if delayed beyond Feb 14.
+              </p>
+            </div>
+
+            <!-- Inline Decision -->
+            <div class="decision-block px-3 py-2.5 mb-3">
+              <div class="flex items-center gap-2 mb-1">
+                <i data-lucide="git-branch" class="w-3 h-3 text-accent"></i>
+                <span class="text-[10px] font-medium text-accent">Decision</span>
+              </div>
+              <p class="text-xs text-txt-primary">Authorize $12K/day media hold while legal review completes; cap at $48K (4 days)</p>
+              <p class="text-[10px] mt-1 text-txt-tertiary">Rationale: Cheaper than rebooking ($45K premium). Sets hard deadline of Feb 14.</p>
+            </div>
+          </div>
+
+          <!-- 11:30 - Contingency Plan -->
+          <div class="timeline-section relative mb-6">
+            <div class="absolute -left-8 top-0 flex items-center">
+              <span class="font-mono text-[10px] text-txt-tertiary">11:30</span>
+            </div>
+            <div class="timeline-node absolute -left-[29px] top-1 w-3 h-3 rounded-full"></div>
+            <div class="mb-3">
+              <h4 class="font-heading text-base font-semibold mb-1 text-txt-primary">Contingency Plan</h4>
+              <p class="text-xs leading-relaxed note-block text-txt-secondary">
+                The team agreed on a Plan B: if legal cannot clear by Feb 13, the campaign launches with EU geo-fencing (excluding EU traffic) while the cross-border issue is resolved separately. This preserves 72% of the audience and all of the media buy.
+                <span class="inline-flex items-center gap-1 text-accent text-[10px] italic ml-1">
+                  <svg class="w-3 h-3 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                  </svg>
+                  AI: EU audience was 28% of Q4 conversions -- monitor revenue impact
+                </span>
+              </p>
+            </div>
+
+            <div class="decision-block px-3 py-2.5 mb-3">
+              <div class="flex items-center gap-2 mb-1">
+                <i data-lucide="git-branch" class="w-3 h-3 text-accent"></i>
+                <span class="text-[10px] font-medium text-accent">Decision</span>
+              </div>
+              <p class="text-xs text-txt-primary">If legal review not complete by Feb 13 5PM, launch with EU geo-fence</p>
+              <p class="text-[10px] mt-1 text-txt-tertiary">Rationale: Preserves 72% audience, full media buy; EU can be added post-clearance</p>
+            </div>
+
+            <div class="action-block px-3 py-2">
+              <div class="flex items-center gap-2 mb-1">
+                <i data-lucide="check-square" class="w-3 h-3 text-success"></i>
+                <span class="text-[10px] font-medium text-success">Action</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <p class="text-xs text-txt-primary">Prepare geo-fenced campaign variant as contingency</p>
+                <div class="flex items-center gap-2">
+                  <span class="text-[10px] text-txt-tertiary">Lisa Park</span>
+                  <span class="font-mono text-[10px] text-warning">Feb 12</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 11:40 - Next Steps & Close -->
+          <div class="timeline-section relative mb-6">
+            <div class="absolute -left-8 top-0 flex items-center">
+              <span class="font-mono text-[10px] text-txt-tertiary">11:40</span>
+            </div>
+            <div class="timeline-node absolute -left-[29px] top-1 w-3 h-3 rounded-full"></div>
+            <div>
+              <h4 class="font-heading text-base font-semibold mb-1 text-txt-primary">Next Steps & Close</h4>
+              <p class="text-xs leading-relaxed note-block text-txt-secondary">
+                Sarah will brief the CEO at the ELT Monthly at 2PM. Daily standups at 9AM until resolved. Marcus owns the legal escalation path. Lisa owns the technical remediation. Reconvene Wednesday if not resolved.
+              </p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL: AI Assistant (~40%), collapsible -->
+    <aside class="ai-panel w-[40%] bg-[#14141A] flex flex-col h-screen flex-shrink-0 stagger stagger-4 transition-all duration-200">
+
+      <!-- AI Panel Header -->
+      <div class="px-4 py-3 border-b border-[#232326] flex items-center gap-2">
+        <button onclick="this.closest('.ai-panel').classList.toggle('ai-panel-collapsed')" class="w-6 h-6 rounded-full bg-accent/20 flex items-center justify-center hover:bg-accent/30 transition-colors flex-shrink-0" title="Toggle AI panel">
+          <i data-lucide="sparkles" class="w-3 h-3 text-accent ai-panel-icon"></i>
+          <i data-lucide="chevron-right" class="w-3 h-3 text-accent ai-panel-chevron hidden"></i>
+        </button>
+        <span class="text-sm font-heading font-medium text-txt-primary ai-panel-label">Workbook AI</span>
+        <span class="font-mono text-[10px] px-2 py-0.5 rounded-full bg-accent/10 text-accent border border-accent/20 ai-panel-label">meeting-prep</span>
+        <span class="font-mono text-[10px] text-success ml-auto ai-panel-label">online</span>
+      </div>
+
+      <!-- Chat Messages -->
+      <div class="flex-1 overflow-y-auto p-3 space-y-3">
+
+        <!-- Quick action: Prep me for this meeting -->
+        <button onclick="this.nextElementSibling.classList.remove('hidden')"
+          class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-accent/20 border border-accent/30 text-accent/80 text-xs hover:bg-accent/30 transition-colors mb-3">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+          </svg>
+          Prep me for this meeting
+        </button>
+        <div class="hidden bg-[#14141A] border border-accent/20 rounded-lg p-3 mb-3 text-xs space-y-2">
+          <div class="text-accent font-medium">Meeting Prep Summary</div>
+          <div class="text-txt-secondary">EU privacy compliance blocks campaign launch. $180K media buy at risk. 3 decisions pending your review. Total downside risk $135K if delayed past Feb 14 window.</div>
+          <div class="flex gap-2 mt-2">
+            <span class="px-2 py-0.5 rounded bg-danger/20 text-danger text-[10px]">1 blocker</span>
+            <span class="px-2 py-0.5 rounded bg-warning/20 text-warning text-[10px]">$135K risk</span>
+            <span class="px-2 py-0.5 rounded bg-success/20 text-success text-[10px]">4 actions tracked</span>
+          </div>
+        </div>
+
+        <!-- AI: Context Analysis -->
+        <div class="space-y-2">
+          <div class="flex items-start gap-2">
+            <div class="w-5 h-5 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <i data-lucide="sparkles" class="w-2.5 h-2.5 text-accent"></i>
+            </div>
+            <div class="bg-[#161618] border border-[#232326] rounded-md p-2.5 text-xs text-txt-primary leading-relaxed max-w-full">
+              <p class="mb-2">I've analyzed this meeting's context across the MKT workspace. Key concerns:</p>
+              <ol class="space-y-1.5 text-[11px]">
+                <li class="flex gap-2"><span class="font-mono text-danger">1.</span> EU privacy compliance blocks Q1 campaign launch (<span class="font-mono text-danger">$180K</span> media buy committed)</li>
+                <li class="flex gap-2"><span class="font-mono text-warning">2.</span> Each day of delay costs <span class="font-mono text-danger">$12K</span> in unused inventory</li>
+                <li class="flex gap-2"><span class="font-mono text-warning">3.</span> Total downside risk: <span class="font-mono text-danger">$135K</span> if delayed beyond Feb 14</li>
+              </ol>
+            </div>
+          </div>
+
+          <!-- Tool use indicators -->
+          <div class="ml-7 flex flex-wrap gap-1.5">
+            <div class="flex items-center gap-1 px-2 py-0.5 rounded bg-[#161618] border border-[#232326]">
+              <i data-lucide="database" class="w-2.5 h-2.5 text-accent"></i>
+              <span class="font-mono text-[10px] text-txt-tertiary">Queried MKT workspace</span>
+              <i data-lucide="check" class="w-2.5 h-2.5 text-success"></i>
+            </div>
+            <div class="flex items-center gap-1 px-2 py-0.5 rounded bg-[#161618] border border-[#232326]">
+              <i data-lucide="database" class="w-2.5 h-2.5 text-accent"></i>
+              <span class="font-mono text-[10px] text-txt-tertiary">Queried Legal decisions</span>
+              <i data-lucide="check" class="w-2.5 h-2.5 text-success"></i>
+            </div>
+            <div class="flex items-center gap-1 px-2 py-0.5 rounded bg-[#161618] border border-[#232326]">
+              <i data-lucide="database" class="w-2.5 h-2.5 text-accent"></i>
+              <span class="font-mono text-[10px] text-txt-tertiary">Queried Finance data</span>
+              <i data-lucide="check" class="w-2.5 h-2.5 text-success"></i>
+            </div>
+          </div>
+        </div>
+
+        <!-- User question -->
+        <div class="flex justify-end">
+          <div class="bg-accent/10 border border-accent/20 rounded-md p-2.5 text-xs text-txt-primary max-w-[85%]">
+            What's the impact on Q1 delivery if we miss the Feb 14 window?
+          </div>
+        </div>
+
+        <!-- AI: Impact analysis -->
+        <div class="space-y-2">
+          <div class="flex items-start gap-2">
+            <div class="w-5 h-5 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <i data-lucide="sparkles" class="w-2.5 h-2.5 text-accent"></i>
+            </div>
+            <div class="bg-[#161618] border border-[#232326] rounded-md p-2.5 text-xs text-txt-primary leading-relaxed max-w-full">
+              <p class="mb-2">Based on current blockers, Q1 delivery risk is <span class="font-mono px-1 py-0.5 rounded bg-danger/10 text-danger">HIGH</span>. Missing the Feb 14 window triggers cascading costs:</p>
+              <div class="bg-[#0C0C0E] rounded p-2 space-y-1.5 my-2">
+                <div class="flex justify-between text-[10px]">
+                  <span class="text-txt-tertiary">Media buy waste (4 days)</span>
+                  <span class="font-mono text-danger">$48K</span>
+                </div>
+                <div class="flex justify-between text-[10px]">
+                  <span class="text-txt-tertiary">Rebooking premium</span>
+                  <span class="font-mono text-danger">$45K</span>
+                </div>
+                <div class="flex justify-between text-[10px]">
+                  <span class="text-txt-tertiary">Pipeline delay impact</span>
+                  <span class="font-mono text-danger">$42K est.</span>
+                </div>
+                <div class="flex justify-between text-[10px] pt-1 border-t border-[#232326]">
+                  <span class="text-txt-secondary font-medium">Total downside</span>
+                  <span class="font-mono text-danger font-medium">$135K</span>
+                </div>
+              </div>
+              <p class="text-[11px]"><span class="font-medium">Recommend:</span> Authorize the $48K media hold cap. The contingency geo-fence plan preserves 72% of audience if legal review runs long.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- AI Proposal Card -->
+        <div class="ml-7">
+          <div class="bg-[#161618] border border-accent/30 rounded-md overflow-hidden">
+            <div class="px-3 py-2 bg-accent/5 border-b border-accent/10 flex items-center gap-2">
+              <i data-lucide="plus-circle" class="w-3 h-3 text-accent"></i>
+              <span class="font-mono text-[10px] text-accent font-medium">Proposed Action</span>
+            </div>
+            <div class="p-3 space-y-2">
+              <div class="text-xs text-txt-primary">
+                <span class="font-medium">Create action:</span> Approve $48K media hold authorization
+              </div>
+              <div class="flex gap-2 text-[10px] font-mono text-txt-tertiary">
+                <span>Owner: David Hayes</span>
+                <span class="text-[#232326]">|</span>
+                <span>Due: Feb 11</span>
+                <span class="text-[#232326]">|</span>
+                <span class="text-danger">Priority: Critical</span>
+              </div>
+              <div class="flex gap-2 mt-1">
+                <button class="flex-1 px-3 py-1.5 rounded bg-success hover:bg-success/80 text-white text-xs font-medium transition-colors flex items-center justify-center gap-1">
+                  <i data-lucide="check" class="w-3 h-3"></i> Approve
+                </button>
+                <button class="flex-1 px-3 py-1.5 rounded bg-danger/10 hover:bg-danger/20 text-danger text-xs font-medium transition-colors flex items-center justify-center gap-1">
+                  <i data-lucide="x" class="w-3 h-3"></i> Reject
+                </button>
+                <button class="px-3 py-1.5 rounded bg-[#232326] hover:bg-[#2E2E33] text-txt-secondary text-xs transition-colors flex items-center justify-center gap-1">
+                  <i data-lucide="pencil" class="w-3 h-3"></i> Edit
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- User follow-up -->
+        <div class="flex justify-end">
+          <div class="bg-accent/10 border border-accent/20 rounded-md p-2.5 text-xs text-txt-primary max-w-[85%]">
+            Can you draft the CEO brief for the 2PM ELT Monthly?
+          </div>
+        </div>
+
+        <!-- AI typing -->
+        <div class="flex items-start gap-2">
+          <div class="w-5 h-5 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+            <i data-lucide="sparkles" class="w-2.5 h-2.5 text-accent"></i>
+          </div>
+          <div class="bg-[#161618] border border-[#232326] rounded-md px-3 py-2 flex gap-1">
+            <div class="w-1.5 h-1.5 rounded-full bg-accent typing-dot"></div>
+            <div class="w-1.5 h-1.5 rounded-full bg-accent typing-dot"></div>
+            <div class="w-1.5 h-1.5 rounded-full bg-accent typing-dot"></div>
+          </div>
+        </div>
+
+        <!-- AI Chat Panel Integration -->
+        <div id="ai-chat-panel" style="background: var(--surface-ai); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; margin-top: 16px;">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+            <div style="width: 24px; height: 24px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center;">
+              <span style="color: white; font-size: 12px;">AI</span>
+            </div>
+            <span style="color: var(--txt-primary); font-size: 14px; font-weight: 600;">Meeting Assistant</span>
+          </div>
+          <div id="ai-chat-messages" style="min-height: 200px; max-height: 400px; overflow-y: auto;">
+            <!-- Messages render here -->
+          </div>
+          <div style="display: flex; gap: 8px; margin-top: 12px;">
+            <button onclick="document.getElementById('ai-chat-panel').dispatchEvent(new CustomEvent('prep-me'))"
+                    style="padding: 6px 12px; background: var(--accent); color: white; border: none; border-radius: var(--radius-md); font-size: 12px; cursor: pointer;">
+              Prep Me
+            </button>
+            <button style="padding: 6px 12px; background: var(--surface-elevated); color: var(--txt-secondary); border: 1px solid var(--border); border-radius: var(--radius-md); font-size: 12px; cursor: pointer;">
+              Research Mode
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chat Input -->
+      <div class="ai-panel-input p-3 border-t border-[#232326]">
+        <!-- Agent mode selector -->
+        <div class="flex items-center gap-1.5 mb-2">
+          <span class="font-mono text-[10px] text-txt-tertiary/60 uppercase tracking-wider">Mode:</span>
+          <button class="font-mono text-[10px] px-2 py-0.5 rounded-full bg-accent/10 text-accent border border-accent/20">meeting-prep</button>
+          <button class="font-mono text-[10px] px-2 py-0.5 rounded-full bg-[#232326] text-txt-tertiary hover:text-white transition-colors">action-tracker</button>
+          <button class="font-mono text-[10px] px-2 py-0.5 rounded-full bg-[#232326] text-txt-tertiary hover:text-white transition-colors">research</button>
+        </div>
+        <div class="flex items-center gap-2 bg-[#161618] border border-[#232326] rounded-md px-3 py-2 cmd-bar">
+          <input type="text" placeholder="Ask about this meeting..." class="bg-transparent border-none outline-none text-xs text-txt-primary placeholder-txt-tertiary/50 flex-1 font-body">
+          <button class="w-6 h-6 rounded bg-accent hover:bg-accent-hover flex items-center justify-center transition-colors">
+            <i data-lucide="arrow-up" class="w-3 h-3 text-white"></i>
+          </button>
+        </div>
+        <div class="flex items-center gap-2 mt-1.5">
+          <span class="font-mono text-[9px] text-txt-tertiary/40">Cmd+Enter to send</span>
+          <span class="font-mono text-[9px] text-txt-tertiary/40 ml-auto">Tab to switch mode</span>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        document.getElementById('cmdInput').focus();
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === '1') {
+        e.preventDefault();
+        window.location.href = 'dashboard.html';
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === '2') {
+        e.preventDefault();
+        window.location.href = 'meetings.html';
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === '3') {
+        e.preventDefault();
+        window.location.href = 'actions.html';
+      }
+    });
+  </script>
+
+  <script type="module">
+    import { initState } from './components/state.js';
+    import { createSidebar, setActivePage } from './components/sidebar.js';
+    import { initCommandBar } from './components/command-bar.js';
+    import { initAiChat } from './components/ai-chat.js';
+
+    initState();
+
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar) { createSidebar(sidebar); setActivePage('meetings'); }
+
+    initCommandBar();
+
+    // Initialize AI chat panel
+    const chatPanel = document.getElementById('ai-chat-panel');
+    if (chatPanel) {
+      initAiChat(chatPanel);
+    }
+  </script>
+  <script type="module" src="demo/init.js"></script>
+  <script src="components/page-transitions.js"></script>
+</body>
+</html>

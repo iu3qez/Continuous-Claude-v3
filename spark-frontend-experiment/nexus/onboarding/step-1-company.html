@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Onboarding - Company Profile | Nexus Workbook</title>
+
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="../styles/nexus-tokens.css">
+    <link rel="stylesheet" href="../styles/interactions.css">
+    <link rel="stylesheet" href="../styles/animations.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0C0C0E;
+            color: #E5E5E5;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .onboarding-container {
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        .progress-indicator {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .progress-label {
+            font-size: 0.875rem;
+            color: #9CA3AF;
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .progress-dots {
+            display: flex;
+            gap: 0.75rem;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .progress-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #232326;
+            transition: all 0.3s ease;
+        }
+
+        .progress-dot.active {
+            background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue));
+            box-shadow: 0 0 12px rgba(139, 92, 246, 0.4);
+        }
+
+        .main-card {
+            background: linear-gradient(135deg, rgba(20, 20, 26, 0.95), rgba(18, 18, 24, 0.95));
+            border: 1px solid #232326;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .card-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            min-height: 600px;
+        }
+
+        .form-column {
+            padding: 3rem;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 2rem;
+            font-weight: 600;
+            margin-bottom: 2rem;
+            background: linear-gradient(135deg, #FFFFFF, #B4B4B4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .form-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .form-label {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #9CA3AF;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .form-input {
+            background-color: rgba(35, 35, 38, 0.5);
+            border: 1px solid #232326;
+            border-radius: 8px;
+            padding: 0.875rem 1rem;
+            font-size: 1rem;
+            color: #E5E5E5;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.3s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--accent-purple);
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+            background-color: rgba(35, 35, 38, 0.8);
+        }
+
+        .form-select {
+            background-color: rgba(35, 35, 38, 0.5);
+            border: 1px solid #232326;
+            border-radius: 8px;
+            padding: 0.875rem 1rem;
+            font-size: 1rem;
+            color: #E5E5E5;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239CA3AF'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 1rem center;
+            background-size: 1.5rem;
+            padding-right: 3rem;
+        }
+
+        .form-select:focus {
+            outline: none;
+            border-color: var(--accent-purple);
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+            background-color: rgba(35, 35, 38, 0.8);
+        }
+
+        .form-select option {
+            background-color: #14141A;
+            color: #E5E5E5;
+        }
+
+        .radio-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .radio-option {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.875rem 1rem;
+            background-color: rgba(35, 35, 38, 0.5);
+            border: 1px solid #232326;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .radio-option:hover {
+            border-color: var(--accent-purple);
+            background-color: rgba(35, 35, 38, 0.8);
+        }
+
+        .radio-option input[type="radio"] {
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #232326;
+            border-radius: 50%;
+            background-color: transparent;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .radio-option input[type="radio"]:checked {
+            border-color: var(--accent-purple);
+        }
+
+        .radio-option input[type="radio"]:checked::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue));
+        }
+
+        .radio-option label {
+            cursor: pointer;
+            font-size: 0.9375rem;
+            color: #E5E5E5;
+        }
+
+        .next-button {
+            background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue));
+            border: none;
+            border-radius: 8px;
+            padding: 1rem 2rem;
+            font-size: 1rem;
+            font-weight: 600;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+            margin-top: auto;
+        }
+
+        .next-button:hover {
+            box-shadow: 0 6px 20px rgba(139, 92, 246, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .next-button:active {
+            transform: translateY(0);
+        }
+
+        .ai-column {
+            background-color: #14141A;
+            border-left: 1px solid #232326;
+            padding: 3rem;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .ai-avatar {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            box-shadow: 0 8px 24px rgba(139, 92, 246, 0.3);
+        }
+
+        .ai-narration {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .ai-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #6B7280;
+            font-weight: 600;
+        }
+
+        .ai-text {
+            font-size: 1rem;
+            line-height: 1.7;
+            color: #D1D5DB;
+            min-height: 200px;
+        }
+
+        .typing-cursor {
+            display: inline-block;
+            width: 2px;
+            height: 1.2em;
+            background-color: var(--accent-purple);
+            margin-left: 2px;
+            animation: blink 1s infinite;
+            vertical-align: text-bottom;
+        }
+
+        @keyframes blink {
+            0%, 49% { opacity: 1; }
+            50%, 100% { opacity: 0; }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="onboarding-container">
+        <!-- Progress Indicator -->
+        <div class="progress-indicator">
+            <div class="progress-label">Step 1 of 6</div>
+            <div class="progress-dots">
+                <div class="progress-dot active"></div>
+                <div class="progress-dot"></div>
+                <div class="progress-dot"></div>
+                <div class="progress-dot"></div>
+                <div class="progress-dot"></div>
+                <div class="progress-dot"></div>
+            </div>
+        </div>
+
+        <!-- Main Card -->
+        <div class="main-card">
+            <div class="card-layout">
+                <!-- Form Column -->
+                <div class="form-column">
+                    <h1 class="form-title">Tell us about your company</h1>
+
+                    <div class="form-content">
+                        <div class="form-group">
+                            <label class="form-label" for="company-name">Company Name</label>
+                            <input
+                                type="text"
+                                id="company-name"
+                                class="form-input"
+                                placeholder="Enter your company name"
+                            >
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="industry">Industry</label>
+                            <select id="industry" class="form-select">
+                                <option value="">Select your industry</option>
+                                <option value="professional-services">Professional Services</option>
+                                <option value="technology-saas">Technology/SaaS</option>
+                                <option value="hospitality-restaurant">Hospitality/Restaurant</option>
+                                <option value="healthcare">Healthcare</option>
+                                <option value="retail-ecommerce">Retail/eCommerce</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Company Size</label>
+                            <div class="radio-group">
+                                <div class="radio-option">
+                                    <input type="radio" id="size-1-10" name="company-size" value="1-10">
+                                    <label for="size-1-10">1-10 employees</label>
+                                </div>
+                                <div class="radio-option">
+                                    <input type="radio" id="size-11-50" name="company-size" value="11-50">
+                                    <label for="size-11-50">11-50 employees</label>
+                                </div>
+                                <div class="radio-option">
+                                    <input type="radio" id="size-51-200" name="company-size" value="51-200">
+                                    <label for="size-51-200">51-200 employees</label>
+                                </div>
+                                <div class="radio-option">
+                                    <input type="radio" id="size-200-plus" name="company-size" value="200+">
+                                    <label for="size-200-plus">200+ employees</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button class="next-button" id="next-button">Next</button>
+                    </div>
+                </div>
+
+                <!-- AI Narration Column -->
+                <div class="ai-column">
+                    <div class="ai-avatar">🤖</div>
+
+                    <div class="ai-narration">
+                        <div class="ai-label">AI Assistant</div>
+                        <div class="ai-text" id="ai-text">
+                            Welcome! I'm here to help you set up your Workbook platform. Let's start by learning about your company so I can tailor the experience to your needs.<span class="typing-cursor"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // AI narration responses for different industries
+        const industryNarrations = {
+            'professional-services': "Great choice! I've worked with hundreds of professional services firms. I'll help you set up workbooks that track client projects, billable hours, and team utilization. This will give you real-time visibility into your operations.",
+            'technology-saas': "Excellent! For tech companies, I'll configure workbooks to track sprints, feature releases, customer metrics, and team velocity. You'll get dashboards that help you move fast and stay aligned.",
+            'hospitality-restaurant': "Perfect! I'll set up workbooks to track reservations, inventory, staff schedules, and guest satisfaction. You'll have the operational clarity you need to deliver exceptional experiences.",
+            'healthcare': "Wonderful! I'll help you create workbooks for patient flow, appointment scheduling, resource allocation, and compliance tracking. Privacy and accuracy are my top priorities.",
+            'retail-ecommerce': "Fantastic! I'll configure workbooks to track inventory, sales performance, customer behavior, and fulfillment metrics. You'll get the insights you need to optimize your operations.",
+            'other': "No problem! I'll help you create custom workbooks tailored to your specific needs. Just tell me what matters most to your business, and I'll build the perfect solution."
+        };
+
+        // Elements
+        const industrySelect = document.getElementById('industry');
+        const aiText = document.getElementById('ai-text');
+        const nextButton = document.getElementById('next-button');
+
+        // Typing animation function
+        function typeText(text, element) {
+            element.innerHTML = '';
+            let index = 0;
+
+            const cursor = document.createElement('span');
+            cursor.className = 'typing-cursor';
+
+            const interval = setInterval(() => {
+                if (index < text.length) {
+                    element.textContent = text.slice(0, index + 1);
+                    element.appendChild(cursor);
+                    index++;
+                } else {
+                    clearInterval(interval);
+                }
+            }, 30);
+        }
+
+        // Industry change handler
+        industrySelect.addEventListener('change', (e) => {
+            const selectedIndustry = e.target.value;
+            if (selectedIndustry && industryNarrations[selectedIndustry]) {
+                aiText.classList.add('fade-in');
+                typeText(industryNarrations[selectedIndustry], aiText);
+
+                setTimeout(() => {
+                    aiText.classList.remove('fade-in');
+                }, 500);
+            }
+        });
+
+        // Next button handler
+        nextButton.addEventListener('click', () => {
+            // Validate form
+            const companyName = document.getElementById('company-name').value;
+            const industry = document.getElementById('industry').value;
+            const companySize = document.querySelector('input[name="company-size"]:checked');
+
+            if (!companyName || !industry || !companySize) {
+                alert('Please complete all fields before continuing.');
+                return;
+            }
+
+            // Store data (in real app, would save to backend)
+            sessionStorage.setItem('onboarding-company-name', companyName);
+            sessionStorage.setItem('onboarding-industry', industry);
+            sessionStorage.setItem('onboarding-company-size', companySize.value);
+
+            // Navigate to next step
+            window.location.href = 'step-2-departments.html';
+        });
+
+        // Enable form navigation with Enter key
+        document.querySelectorAll('.form-input, .form-select').forEach(input => {
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    nextButton.click();
+                }
+            });
+        });
+    </script>
+
+    <script type="module" src="../demo/init.js"></script>
+</body>
+</html>

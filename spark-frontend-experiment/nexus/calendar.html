@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calendar | Workbook</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="styles/nexus-tokens.css">
+  <link rel="stylesheet" href="styles/interactions.css">
+  <link rel="stylesheet" href="styles/animations.css">
+  <link rel="stylesheet" href="styles/skeleton.css">
+  <link rel="stylesheet" href="styles/transitions.css">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            heading: ['Playfair Display', 'Georgia', 'serif'],
+            body: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            surface: { DEFAULT: '#161618', dark: '#0C0C0E', ai: '#14141A' },
+            border: { DEFAULT: '#232326' },
+            txt: { primary: '#EDEDEF', secondary: '#8F8F94', tertiary: '#6B6B70' },
+            accent: { DEFAULT: '#4F46E5', hover: '#6366F1' },
+            danger: { DEFAULT: '#DC2626' },
+            warning: { DEFAULT: '#D97706' },
+            success: { DEFAULT: '#059669' },
+            gold: { DEFAULT: '#B45309' },
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    h1, h2, h3, h4, h5, h6 { font-family: 'Playfair Display', Georgia, serif; }
+    .font-data, [data-mono] { font-family: 'JetBrains Mono', monospace; }
+
+    /* Stagger animation */
+    @keyframes staggerIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .stagger { animation: staggerIn 0.3s ease-out forwards; opacity: 0; }
+    .stagger-1 { animation-delay: 0.05s; }
+    .stagger-2 { animation-delay: 0.1s; }
+    .stagger-3 { animation-delay: 0.15s; }
+    .stagger-4 { animation-delay: 0.2s; }
+
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: #0C0C0E; }
+    ::-webkit-scrollbar-thumb { background: #232326; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #3a3a3f; }
+
+    /* Card base */
+    .card { background: #161618; border: 1px solid #232326; border-radius: 4px; }
+
+    /* Sidebar nav */
+    .nav-item { border-radius: 6px; transition: background-color 0.15s ease; }
+    .nav-item:hover { background: rgba(255,255,255,0.04); }
+    .nav-active { background: rgba(79,70,229,0.1); }
+
+    /* Calendar grid */
+    .cal-grid { display: grid; grid-template-columns: 60px repeat(7, 1fr); }
+    .cal-hour-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--txt-tertiary);
+      text-align: right;
+      padding-right: 8px;
+      padding-top: 2px;
+    }
+    .cal-cell {
+      border-left: 1px solid #232326;
+      border-bottom: 1px solid #232326;
+      min-height: 60px;
+      position: relative;
+    }
+    .cal-day-header {
+      border-left: 1px solid #232326;
+      border-bottom: 1px solid #232326;
+      padding: 8px 6px;
+      text-align: center;
+    }
+    .cal-today { background: var(--accent-subtle); }
+
+    /* Meeting block */
+    .meeting-block {
+      position: absolute;
+      left: 4px;
+      right: 4px;
+      border-radius: 4px;
+      padding: 4px 6px;
+      cursor: pointer;
+      transition: all 150ms ease;
+      overflow: hidden;
+      z-index: 10;
+    }
+    .meeting-block:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+      transform: translateY(-1px);
+      filter: brightness(1.1);
+    }
+
+    /* AI badge */
+    .ai-badge {
+      position: absolute;
+      top: -4px;
+      right: -2px;
+      font-size: 9px;
+      font-weight: 600;
+      padding: 1px 5px;
+      border-radius: 9999px;
+      z-index: 20;
+      white-space: nowrap;
+    }
+
+    /* Action deadline diamond */
+    .deadline-diamond {
+      width: 8px;
+      height: 8px;
+      background: var(--warning);
+      transform: rotate(45deg);
+      display: inline-block;
+      margin-left: 4px;
+      position: relative;
+    }
+    .deadline-tooltip {
+      display: none;
+      position: absolute;
+      bottom: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #232326;
+      color: var(--txt-secondary);
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      white-space: nowrap;
+      z-index: 30;
+    }
+    .deadline-diamond:hover .deadline-tooltip { display: block; }
+
+    /* Toggle button */
+    .view-toggle { transition: all 150ms ease; }
+    .view-toggle:hover:not(.view-toggle-active) {
+      background: rgba(255, 255, 255, 0.05);
+    }
+    .view-toggle-active { background: rgba(79, 70, 229, 0.15); color: #4F46E5; }
+
+    /* Month grid */
+    .month-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: #232326; }
+    .month-day-header {
+      background: #0C0C0E;
+      padding: 8px;
+      text-align: center;
+      color: #6B6B70;
+      font-size: 12px;
+    }
+    .month-cell {
+      background: #161618;
+      min-height: 90px;
+      padding: 8px;
+      cursor: pointer;
+      transition: border-color 150ms ease, background-color 0.15s ease;
+      border: 1px solid transparent;
+    }
+    .month-cell:hover {
+      background: #1C1C1F;
+      border-color: #3F3F46;
+    }
+    .month-cell.other-month { opacity: 0.35; }
+    .month-cell.today-cell { background: rgba(79, 70, 229, 0.08); }
+    .month-cell .day-number {
+      font-size: 13px;
+      font-weight: 500;
+      color: #EDEDEF;
+      margin-bottom: 6px;
+    }
+    .month-cell.today-cell .day-number { color: #4F46E5; font-weight: 700; }
+    .meeting-dots { display: flex; gap: 3px; flex-wrap: wrap; }
+    .meeting-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+
+    /* Command bar */
+    .cmd-bar { transition: box-shadow 0.2s ease, border-color 0.2s ease; }
+    .cmd-bar:focus-within {
+      border-color: #4F46E5;
+      box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+    }
+
+    /* Light mode overrides */
+    html:not(.dark) body { background: #F8F8FA; color: #1a1a1e; }
+    html:not(.dark) .bg-surface-dark { background: #FFFFFF; }
+    html:not(.dark) .bg-surface { background: #F4F4F5; }
+    html:not(.dark) .card { background: #FFFFFF; border-color: #E5E5E8; }
+    html:not(.dark) .cal-cell { border-color: #E5E5E8; }
+    html:not(.dark) .cal-day-header { border-color: #E5E5E8; }
+    html:not(.dark) .sidebar-bg { background: #FFFFFF; border-color: #E5E5E8; }
+    html:not(.dark) .cmd-bar-bg { background: #FFFFFF; border-color: #E5E5E8; }
+  </style>
+</head>
+<body class="bg-[#0C0C0E] text-[#EDEDEF] font-body min-h-screen" data-page-id="calendar">
+  <div class="flex h-screen overflow-hidden">
+    <!-- Sidebar - 240px full-width -->
+    <aside id="sidebar" class="sidebar-bg w-60 bg-[#0C0C0E] border-r border-[#232326] flex flex-col py-4 px-3 gap-0.5 h-screen overflow-y-auto flex-shrink-0">
+      <div class="flex items-center gap-2.5 px-2 mb-4">
+        <div class="w-8 h-8 rounded-lg bg-[#4F46E5] flex items-center justify-center flex-shrink-0"><i data-lucide="book-open" class="w-4 h-4 text-white"></i></div>
+        <span class="font-heading text-base font-semibold text-[#EDEDEF] tracking-tight">Workbook</span>
+      </div>
+      <button onclick="document.getElementById('cmdInput')?.focus()" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md mb-3 group w-full text-left" title="Search (Cmd+K)">
+        <i data-lucide="search" class="w-4 h-4 text-[#8F8F94] group-hover:text-[#EDEDEF] flex-shrink-0"></i>
+        <span class="text-sm text-[#6B6B70]">Search</span>
+        <span class="ml-auto font-mono text-[10px] text-[#6B6B70]/60 bg-[#232326] px-1.5 py-0.5 rounded">Cmd+K</span>
+      </button>
+      <div class="mb-1">
+        <div class="px-2 py-1 text-[10px] font-mono font-semibold text-[#6B6B70] uppercase tracking-widest">Workspace</div>
+        <a href="dashboard.html" data-nav-page="dashboard" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="layout-dashboard" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Dashboard</span></a>
+        <a href="calendar.html" data-nav-page="calendar" class="nav-active nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#4F46E5]"><i data-lucide="calendar" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Calendar</span></a>
+        <a href="meetings.html" data-nav-page="meetings" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="users" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Meetings</span></a>
+        <a href="actions.html" data-nav-page="actions" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="check-square" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Actions</span></a>
+        <a href="decisions.html" data-nav-page="decisions" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="git-branch" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Decisions</span></a>
+        <a href="proposals.html" data-nav-page="proposals" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="sparkles" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Proposals</span></a>
+        <a href="my-work.html" data-nav-page="my-work" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="user" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">My Work</span></a>
+        <a href="workspaces.html" data-nav-page="workspaces" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]" title="Workspaces">
+          <i data-lucide="layers" class="w-4 h-4 flex-shrink-0"></i>
+          <span class="text-sm">Workspaces</span>
+        </a>
+      </div>
+      <div class="mb-1">
+        <div class="px-2 py-1 text-[10px] font-mono font-semibold text-[#6B6B70] uppercase tracking-widest">AI</div>
+        <a href="agents.html" data-nav-page="agents" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="bot" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Agent Dashboard</span></a>
+        <a href="marketplace.html" data-nav-page="marketplace" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="store" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Marketplace</span></a>
+        <a href="elt-rollup.html" data-nav-page="elt-rollup" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="bar-chart-3" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">ELT Rollup</span></a>
+      </div>
+      <div class="mb-1">
+        <div class="px-2 py-1 text-[10px] font-mono font-semibold text-[#6B6B70] uppercase tracking-widest">Admin</div>
+        <a href="connections.html" data-nav-page="connections" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="plug" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Connections</span></a>
+        <a href="settings.html" data-nav-page="settings" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF]"><i data-lucide="settings" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Settings</span></a>
+      </div>
+      <div class="flex-1"></div>
+      <div class="flex items-center gap-2.5 px-2 py-1.5">
+        <i data-lucide="bot" class="w-4 h-4 text-[#6B6B70]"></i>
+        <span class="text-xs text-[#6B6B70]">AI Agent</span>
+        <span class="ml-auto flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-[#059669]"></span><span class="text-[10px] text-[#059669] font-mono">Online</span></span>
+      </div>
+      <button onclick="document.documentElement.classList.toggle('dark')" class="nav-item flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[#8F8F94] hover:text-[#EDEDEF] w-full text-left">
+        <i data-lucide="sun-moon" class="w-4 h-4 flex-shrink-0"></i><span class="text-sm">Toggle Theme</span>
+      </button>
+      <div class="flex items-center gap-2.5 px-2 py-1.5 mt-1">
+        <div class="w-7 h-7 rounded-full bg-[#232326] flex items-center justify-center flex-shrink-0"><span class="font-mono text-[10px] text-[#8F8F94] font-medium">DH</span></div>
+        <span class="text-sm text-[#8F8F94]">David Hayes</span>
+      </div>
+    </aside>
+
+    <!-- Main content -->
+    <main id="main-content" class="flex-1 p-6 overflow-y-auto stagger stagger-2">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-6">
+      <div class="flex items-center gap-4">
+        <h1 class="text-2xl font-heading text-[#EDEDEF]">Calendar</h1>
+
+        <!-- Week / Month toggle -->
+        <div class="flex items-center bg-[#161618] border border-[#232326] rounded-md overflow-hidden">
+          <button data-view="week" class="view-toggle view-toggle-active px-3 py-1.5 text-xs font-medium">Week</button>
+          <button data-view="month" class="view-toggle px-3 py-1.5 text-xs font-medium text-[#8F8F94] hover:text-[#EDEDEF]">Month</button>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <!-- Today button -->
+        <button id="cal-today" class="px-3 py-1.5 text-xs font-medium border border-[#232326] rounded-md text-[#8F8F94] hover:text-[#EDEDEF] hover:border-[#2E2E32] transition-colors">Today</button>
+
+        <!-- Navigation -->
+        <div class="flex items-center gap-2">
+          <button id="cal-prev" class="w-7 h-7 flex items-center justify-center rounded-md border border-[#232326] text-[#8F8F94] hover:text-[#EDEDEF] hover:border-[#2E2E32] transition-colors">
+            <i data-lucide="chevron-left" class="w-3.5 h-3.5"></i>
+          </button>
+          <span id="cal-date-label" class="text-sm font-medium text-[#EDEDEF] min-w-[180px] text-center">Feb 10 &ndash; Feb 16, 2026</span>
+          <button id="cal-next" class="w-7 h-7 flex items-center justify-center rounded-md border border-[#232326] text-[#8F8F94] hover:text-[#EDEDEF] hover:border-[#2E2E32] transition-colors">
+            <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Week grid card -->
+    <div data-week-view class="card overflow-hidden stagger stagger-3">
+
+      <!-- Day headers -->
+      <div class="cal-grid">
+        <!-- Empty corner -->
+        <div class="border-b border-[#232326] p-2"></div>
+
+        <!-- Mon -->
+        <div class="cal-day-header">
+          <div class="text-[11px] uppercase tracking-wider text-[#6B6B70] mb-0.5">Mon</div>
+          <div class="text-sm font-medium text-[#EDEDEF]">10</div>
+        </div>
+        <!-- Tue -->
+        <div class="cal-day-header">
+          <div class="text-[11px] uppercase tracking-wider text-[#6B6B70] mb-0.5">Tue</div>
+          <div class="text-sm font-medium text-[#EDEDEF]">11</div>
+        </div>
+        <!-- Wed -->
+        <div class="cal-day-header">
+          <div class="text-[11px] uppercase tracking-wider text-[#6B6B70] mb-0.5">Wed</div>
+          <div class="text-sm font-medium text-[#EDEDEF]">
+            12
+            <span class="deadline-diamond" title="2 actions due">
+              <span class="deadline-tooltip">2 actions due</span>
+            </span>
+          </div>
+        </div>
+        <!-- Thu -->
+        <div class="cal-day-header">
+          <div class="text-[11px] uppercase tracking-wider text-[#6B6B70] mb-0.5">Thu</div>
+          <div class="text-sm font-medium text-[#EDEDEF]">13</div>
+        </div>
+        <!-- Fri -->
+        <div class="cal-day-header">
+          <div class="text-[11px] uppercase tracking-wider text-[#6B6B70] mb-0.5">Fri</div>
+          <div class="text-sm font-medium text-[#EDEDEF]">
+            14
+            <span class="deadline-diamond" title="1 action due">
+              <span class="deadline-tooltip">1 action due</span>
+            </span>
+          </div>
+        </div>
+        <!-- Sat -->
+        <div class="cal-day-header cal-today">
+          <div class="text-[11px] uppercase tracking-wider text-[#4F46E5] mb-0.5">Sat</div>
+          <div class="text-sm font-medium text-[#4F46E5]">15</div>
+        </div>
+        <!-- Sun -->
+        <div class="cal-day-header">
+          <div class="text-[11px] uppercase tracking-wider text-[#6B6B70] mb-0.5">Sun</div>
+          <div class="text-sm font-medium text-[#EDEDEF]">16</div>
+        </div>
+      </div>
+
+      <!-- Hourly rows: 8 AM - 6 PM (10 rows) -->
+      <!-- Row: 8 AM -->
+      <div class="cal-grid">
+        <div class="cal-hour-label border-b border-[#232326] flex items-start justify-end pt-1">8 AM</div>
+        <div class="cal-cell"></div>
+        <div class="cal-cell"></div>
+        <div class="cal-cell"></div>
+        <div class="cal-cell"></div>
+        <div class="cal-cell"></div>
+        <div class="cal-cell cal-today"></div>
+        <div class="cal-cell"></div>
+      </div>
+
+      <!-- Row: 9 AM -->
+      <div class="cal-grid">
+        <div class="cal-hour-label border-b border-[#232326] flex items-start justify-end pt-1">9 AM</div>
+        <!-- Mon: Weekly Ops Standup 9:00-10:00 -->
+        <div class="cal-cell">
+          <div class="meeting-block bg-[#161618]" style="top: 0; height: 60px; border-left: 4px solid var(--ws-ops);">
+            <div class="text-[13px] text-[#EDEDEF] truncate leading-tight">Weekly Ops Standup</div>
+            <div class="text-[11px] text-[#6B6B70]">9:00 - 10:00</div>
+          </div>
+        </div>
+        <div class="cal-cell"></div>
+        <!-- Wed: ELT Meeting 9:30-10:30 -->
+        <div class="cal-cell">
+          <div class="meeting-block bg-[#161618]" style="top: 30px; height: 60px; border-left: 4px solid var(--ws-ops);">
+            <!-- AI: Prep ready badge -->
+            <span class="ai-badge bg-[#059669] text-white">Prep ready</span>
+            <div class="text-[13px] text-[#EDEDEF] truncate leading-tight">ELT Meeting</div>
+            <div class="text-[11px] text-[#6B6B70]">9:30 - 10:30</div>
+          </div>
+        </div>
+        <div class="cal-cell"></div>
+        <!-- Fri: Weekly Ops Standup 9:00-10:00 -->
+        <div class="cal-cell">
+          <div class="meeting-block bg-[#161618]" style="top: 0; height: 60px; border-left: 4px solid var(--ws-ops);">
+            <div class="text-[13px] text-[#EDEDEF] truncate leading-tight">Weekly Ops Standup</div>
+            <div class="text-[11px] text-[#6B6B70]">9:00 - 10:00</div>
+          </div>
+        </div>
+        <div class="cal-cell cal-today"></div>
+        <div class="cal-cell"></div>
+      </div>
+
+      <!-- Row: 10 AM -->
+      <div class="cal-grid">
+        <div class="cal-hour-label border-b border-[#232326] flex items-start justify-end pt-1">10 AM</div>
+        <div class="cal-cell"></div>
+        <!-- Tue: Sprint Planning 10:00-11:00 -->
+        <div class="cal-cell">
+          <div class="meeting-block bg-[#161618]" style="top: 0; height: 60px; border-left: 4px solid var(--ws-eng);">
+            <div class="text-[13px] text-[#EDEDEF] truncate leading-tight">Sprint Planning</div>
+            <div class="text-[11px] text-[#6B6B70]">10:00 - 11:00</div>
+          </div>
+        </div>
+        <div class="cal-cell"></div>
+        <div class="cal-cell"></div>
+        <div class="cal-cell"></div>
+        <div class="cal-cell cal-today"></div>
+        <div class="cal-cell"></div>
+      </div>
+
+      <!-- Row: 11 AM -->
+      <div class="cal-grid">
+        <div class="cal-hour-label border-b border-[#232326] flex items-start justify-end pt-1">11 AM</div>
+        <div class="cal-cell"></div>
+        <div class="cal-cell"></div>
+        <div class="cal-cell"></div>
+        <!-- Thu: 1:1 with Sarah 11:00-12:00 -->
+        <div class="cal-cell">
+          <div class="meeting-block bg-[#161618]" style="top: 0; height: 60px; border-left: 4px solid var(--ws-ops);">
+            <div class="text-[13px] text-[#EDEDEF] truncate leading-tight">1:1 with Sarah</div>
+            <div class="text-[11px] text-[#6B6B70]">11:00 - 12:00</div>
+          </div>
+        </div>
+        <div class="cal-cell"></div>
+        <div class="cal-cell cal-today"></div>
+        <div class="cal-cell"></div>
+      </div>
+
+      <!-- Row: 12 PM -->
+      <div class="cal-grid">
+        <div class="cal-hour-label border-b border-[#232326] flex items-start justify-end pt-1">12 PM</div>
+        <div class="cal-cell"></div>
+        <div class="cal-cell"></div>
+        <div class="cal-cell"></div>
+        <div class="cal-cell"></div>
+        <div class="cal-cell"></div>
+        <div class="cal-cell cal-today"></div>
+        <div class="cal-cell"></div>
+      </div>
+
+      <!-- Row: 1 PM -->
+      <div class="cal-grid">
+        <div class="cal-hour-label border-b border-[#232326] flex items-start justify-end pt-1">1 PM</div>
+        <div class="cal-cell"></div>
+        <div class="cal-cell"></div>
+        <div class="cal-cell"></div>
+        <div class="cal-cell"></div>
+        <div class="cal-cell"></div>
+        <div class="cal-cell cal-today"></div>
+        <div class="cal-cell"></div>
+      </div>
+
+      <!-- Row: 2 PM -->
+      <div class="cal-grid">
+        <div class="cal-hour-label border-b border-[#232326] flex items-start justify-end pt-1">2 PM</div>
+        <!-- Mon: Client Review - Acme 14:00-15:30 -->
+        <div class="cal-cell">
+          <div class="meeting-block bg-[#161618]" style="top: 0; height: 90px; border-left: 4px solid var(--ws-sales);">
+            <!-- AI: 3 unresolved badge -->
+            <span class="ai-badge bg-[#DC2626] text-white">3 unresolved</span>
+            <div class="text-[13px] text-[#EDEDEF] truncate leading-tight">Client Review - Acme</div>
+            <div class="text-[11px] text-[#6B6B70]">2:00 - 3:30 PM</div>
+          </div>
+        </div>
+        <div class="cal-cell"></div>
+        <div class="cal-cell"></div>
+        <div class="cal-cell"></div>
+        <!-- Fri: Team Retrospective 14:00-15:00 -->
+        <div class="cal-cell">
+          <div class="meeting-block bg-[#161618]" style="top: 0; height: 60px; border-left: 4px solid var(--ws-eng);">
+            <div class="text-[13px] text-[#EDEDEF] truncate leading-tight">Team Retrospective</div>
+            <div class="text-[11px] text-[#6B6B70]">2:00 - 3:00 PM</div>
+          </div>
+        </div>
+        <div class="cal-cell cal-today"></div>
+        <div class="cal-cell"></div>
+      </div>
+
+      <!-- Row: 3 PM -->
+      <div class="cal-grid">
+        <div class="cal-hour-label border-b border-[#232326] flex items-start justify-end pt-1">3 PM</div>
+        <div class="cal-cell"></div>
+        <div class="cal-cell"></div>
+        <!-- Wed: Budget Review 15:00-16:00 -->
+        <div class="cal-cell">
+          <div class="meeting-block bg-[#161618]" style="top: 0; height: 60px; border-left: 4px solid var(--ws-finance);">
+            <div class="text-[13px] text-[#EDEDEF] truncate leading-tight">Budget Review</div>
+            <div class="text-[11px] text-[#6B6B70]">3:00 - 4:00 PM</div>
+          </div>
+        </div>
+        <div class="cal-cell"></div>
+        <div class="cal-cell"></div>
+        <div class="cal-cell cal-today"></div>
+        <div class="cal-cell"></div>
+      </div>
+
+      <!-- Row: 4 PM -->
+      <div class="cal-grid">
+        <div class="cal-hour-label border-b border-[#232326] flex items-start justify-end pt-1">4 PM</div>
+        <div class="cal-cell"></div>
+        <div class="cal-cell"></div>
+        <div class="cal-cell"></div>
+        <div class="cal-cell"></div>
+        <div class="cal-cell"></div>
+        <div class="cal-cell cal-today"></div>
+        <div class="cal-cell"></div>
+      </div>
+
+      <!-- Row: 5 PM -->
+      <div class="cal-grid">
+        <div class="cal-hour-label border-b border-[#232326] flex items-start justify-end pt-1">5 PM</div>
+        <div class="cal-cell"></div>
+        <div class="cal-cell"></div>
+        <div class="cal-cell"></div>
+        <div class="cal-cell"></div>
+        <div class="cal-cell"></div>
+        <div class="cal-cell cal-today"></div>
+        <div class="cal-cell"></div>
+      </div>
+
+      <!-- Row: 6 PM (last) -->
+      <div class="cal-grid">
+        <div class="cal-hour-label flex items-start justify-end pt-1">6 PM</div>
+        <div class="cal-cell border-b-0"></div>
+        <div class="cal-cell border-b-0"></div>
+        <div class="cal-cell border-b-0"></div>
+        <div class="cal-cell border-b-0"></div>
+        <div class="cal-cell border-b-0"></div>
+        <div class="cal-cell border-b-0 cal-today"></div>
+        <div class="cal-cell border-b-0"></div>
+      </div>
+
+    </div><!-- end week card -->
+
+    <!-- Month View (hidden by default) -->
+    <div id="month-view" data-month-view style="display: none;">
+      <div class="card overflow-hidden">
+        <div id="month-grid" class="month-grid">
+          <!-- Day headers -->
+          <div class="month-day-header">Mon</div>
+          <div class="month-day-header">Tue</div>
+          <div class="month-day-header">Wed</div>
+          <div class="month-day-header">Thu</div>
+          <div class="month-day-header">Fri</div>
+          <div class="month-day-header">Sat</div>
+          <div class="month-day-header">Sun</div>
+          <!-- Cells populated by JS -->
+        </div>
+      </div>
+
+      <!-- AI Scheduling Suggestions -->
+      <div style="margin-top: 24px; background: #14141A; border: 1px solid #232326; border-radius: 4px; padding: 16px;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+          <span style="color: #4F46E5; font-weight: 600; font-size: 12px;">AI</span>
+          <span style="color: #EDEDEF; font-size: 14px; font-weight: 600;">Scheduling Suggestions</span>
+        </div>
+        <ul style="list-style: none; padding: 0; margin: 0;">
+          <li style="color: #8F8F94; font-size: 13px; padding: 6px 0;">Consider moving the Budget Review to Thursday - less meeting density</li>
+          <li style="color: #8F8F94; font-size: 13px; padding: 6px 0;">Block 9-11 AM on Wednesday for focused work (your most productive hours)</li>
+          <li style="color: #8F8F94; font-size: 13px; padding: 6px 0;">3 meetings next week could be async - shall I suggest alternatives?</li>
+        </ul>
+      </div>
+    </div>
+
+    </main>
+  </div>
+
+  <!-- Initialize Lucide icons -->
+  <script>lucide.createIcons();</script>
+
+  <!-- Keyboard shortcuts -->
+  <script>
+    document.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        const cmdInput = document.getElementById('cmdInput');
+        if (cmdInput) cmdInput.focus();
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === '1') {
+        e.preventDefault();
+        window.location.href = 'dashboard.html';
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === '2') {
+        e.preventDefault();
+        window.location.href = 'meetings.html';
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === '3') {
+        e.preventDefault();
+        window.location.href = 'actions.html';
+      }
+    });
+  </script>
+
+  <!-- Month view toggle and grid population -->
+  <script type="module">
+    import { buildMonthGrid } from './components/calendar-month.js';
+
+    var weekView = document.querySelector('[data-week-view]');
+    var monthView = document.querySelector('[data-month-view]');
+    var weekBtn = document.querySelector('[data-view="week"]');
+    var monthBtn = document.querySelector('[data-view="month"]');
+    var monthGridContainer = document.getElementById('month-grid');
+
+    // Populate month grid on first toggle
+    var monthGridBuilt = false;
+    function ensureMonthGrid() {
+      if (monthGridBuilt) return;
+      if (monthGridContainer) {
+        var grid = buildMonthGrid(2026, 1); // Feb 2026
+        monthGridContainer.parentNode.replaceChild(grid, monthGridContainer);
+        grid.id = 'month-grid';
+        monthGridBuilt = true;
+      }
+    }
+
+    if (monthBtn) {
+      monthBtn.addEventListener('click', function() {
+        ensureMonthGrid();
+        if (weekView) weekView.style.display = 'none';
+        if (monthView) monthView.style.display = '';
+        monthBtn.classList.add('view-toggle-active');
+        monthBtn.classList.remove('text-[#8F8F94]');
+        if (weekBtn) {
+          weekBtn.classList.remove('view-toggle-active');
+          weekBtn.classList.add('text-[#8F8F94]');
+        }
+      });
+    }
+
+    if (weekBtn) {
+      weekBtn.addEventListener('click', function() {
+        if (weekView) weekView.style.display = '';
+        if (monthView) monthView.style.display = 'none';
+        weekBtn.classList.add('view-toggle-active');
+        weekBtn.classList.remove('text-[#8F8F94]');
+        if (monthBtn) {
+          monthBtn.classList.remove('view-toggle-active');
+          monthBtn.classList.add('text-[#8F8F94]');
+        }
+      });
+    }
+  </script>
+
+  <script type="module">
+    import { buildMonthGrid, getMonthMeetings, navigateMonth } from './components/calendar-month.js';
+
+    // Month view state
+    let currentYear = 2026;
+    let currentMonth = 1; // February (0-indexed)
+
+    // Toggle logic
+    const toggleBtns = document.querySelectorAll('.view-toggle');
+    const weekCard = document.querySelector('.card.overflow-hidden.stagger.stagger-3');
+    const monthView = document.getElementById('month-view');
+
+    // Function to render the month grid
+    function renderMonthGrid() {
+      const monthGridContainer = document.getElementById('month-grid');
+      if (!monthGridContainer) return;
+
+      // Build new grid with module function
+      const meetings = getMonthMeetings(currentYear, currentMonth);
+      const newGrid = buildMonthGrid(currentYear, currentMonth, meetings);
+
+      // Replace the old grid with the new one
+      monthGridContainer.parentNode.replaceChild(newGrid, monthGridContainer);
+    }
+
+    toggleBtns.forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        const isMonth = btn.textContent.trim() === 'Month';
+
+        // Update active states
+        toggleBtns.forEach(function(b) {
+          b.classList.remove('view-toggle-active');
+          b.style.color = '#8F8F94';
+        });
+        btn.classList.add('view-toggle-active');
+        btn.style.color = '';
+
+        if (isMonth) {
+          if (weekCard) weekCard.style.display = 'none';
+          if (monthView) monthView.style.display = 'block';
+          renderMonthGrid();
+        } else {
+          if (weekCard) weekCard.style.display = '';
+          if (monthView) monthView.style.display = 'none';
+        }
+      });
+    });
+
+    import { initState } from './components/state.js';
+    import { createSidebar, setActivePage } from './components/sidebar.js';
+    import { initCommandBar } from './components/command-bar.js';
+
+    initState();
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar) { createSidebar(sidebar); setActivePage('calendar'); }
+    initCommandBar();
+  </script>
+  <script type="module">
+    import WorkbookDemo from './components/state.js';
+
+    let currentDate = new Date(2026, 1, 14); // Feb 14, 2026
+
+    function formatDateRange(date) {
+      const start = new Date(date);
+      start.setDate(start.getDate() - start.getDay() + 1); // Monday
+      const end = new Date(start);
+      end.setDate(end.getDate() + 6);
+      const opts = { month: 'short', day: 'numeric' };
+      const year = start.getFullYear();
+      return start.toLocaleDateString('en-US', opts) + ' - ' + end.toLocaleDateString('en-US', opts) + ', ' + year;
+    }
+
+    function updateLabel() {
+      const label = document.getElementById('cal-date-label');
+      if (label) label.textContent = formatDateRange(currentDate);
+    }
+
+    document.getElementById('cal-today')?.addEventListener('click', function() {
+      currentDate = new Date(2026, 1, 14);
+      updateLabel();
+    });
+
+    document.getElementById('cal-prev')?.addEventListener('click', function() {
+      currentDate.setDate(currentDate.getDate() - 7);
+      updateLabel();
+    });
+
+    document.getElementById('cal-next')?.addEventListener('click', function() {
+      currentDate.setDate(currentDate.getDate() + 7);
+      updateLabel();
+    });
+
+    // Week/Month toggle
+    const viewToggle = document.querySelector('[data-view-toggle]');
+    const weekBtn = document.querySelector('[data-view="week"]');
+    const monthBtn = document.querySelector('[data-view="month"]');
+    const weekView = document.querySelector('.week-view, [data-week-view]');
+    const monthView = document.querySelector('.month-view, [data-month-view]');
+
+    if (weekBtn) weekBtn.addEventListener('click', function() {
+      if (weekView) weekView.style.display = '';
+      if (monthView) monthView.style.display = 'none';
+      weekBtn.classList.add('bg-[#232326]', 'text-[#EDEDEF]');
+      if (monthBtn) monthBtn.classList.remove('bg-[#232326]', 'text-[#EDEDEF]');
+    });
+
+    if (monthBtn) monthBtn.addEventListener('click', function() {
+      if (weekView) weekView.style.display = 'none';
+      if (monthView) monthView.style.display = '';
+      monthBtn.classList.add('bg-[#232326]', 'text-[#EDEDEF]');
+      if (weekBtn) weekBtn.classList.remove('bg-[#232326]', 'text-[#EDEDEF]');
+    });
+  </script>
+  <script type="module" src="components/page-init.js"></script>
+  <script type="module" src="demo/init.js"></script>
+  <script src="components/page-transitions.js"></script>
+</body>
+</html>
