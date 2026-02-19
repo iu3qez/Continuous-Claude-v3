@@ -138,14 +138,14 @@ export interface RalphSessionState {
   active: boolean;
   story_id: string;
   activated_at: string;
-  last_heartbeat: string;
+  last_activity?: number;  // epoch ms from Python
 }
 
 export interface RalphUnifiedState {
   version: string;
   story_id: string;
   session: RalphSessionState;
-  tasks: Record<string, unknown>;
+  tasks: Array<{ id: string; status: string; name?: string; [key: string]: unknown }>;
   retry_queue: unknown[];
   checkpoints: unknown[];
 }

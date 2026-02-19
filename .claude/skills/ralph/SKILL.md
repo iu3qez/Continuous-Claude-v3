@@ -86,11 +86,37 @@ Do NOT use Ralph for:
 
 **Before interviewing user, load context from memory and knowledge systems.**
 
+### 0.0 Project Readiness Check
+
+Before anything else, ensure the project has the infrastructure Ralph needs:
+
+1. **Ralph state:** If `.ralph/state.json` missing, run:
+   ```bash
+   python ~/.claude/scripts/ralph/ralph-state-v2.py init --project ${PROJECT}
+   ```
+   This also auto-copies `.ralph/CLAUDE.md` (TDD enforcement contract).
+
+2. **Knowledge tree:** If `.claude/knowledge-tree.json` missing, generate silently:
+   ```bash
+   cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/knowledge_tree.py --project ${PROJECT} --verbose
+   ```
+
+3. **ROADMAP.md:** If missing, create a minimal template:
+   ```markdown
+   # Project Roadmap
+   ## Current Focus
+   _No current goal set._
+   ## Completed
+   ## Planned
+   ```
+
+Do NOT prompt the user during readiness checks -- auto-generate silently.
+
 ### 0.1 Recall Similar Features
 Query memory for past similar work:
 
 ```bash
-cd ~/.claude && PYTHONPATH=. uv run python scripts/core/recall_learnings.py \
+cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/recall_learnings.py \
   --query "<feature description keywords>" --k 5 --text-only
 ```
 
@@ -161,7 +187,7 @@ Create `/tasks/prd-<feature>.md` following the template structure.
 Before breaking into tasks, recall how similar features were implemented:
 
 ```bash
-cd ~/.claude && PYTHONPATH=. uv run python scripts/core/recall_learnings.py \
+cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/recall_learnings.py \
   --query "<feature type> implementation patterns" --k 3 --text-only
 ```
 
@@ -195,6 +221,16 @@ Create `/tasks/tasks-<feature>.md`
 
 **THIS IS THE CRITICAL CHANGE: Ralph delegates, never implements.**
 
+### TDD Enforcement (defense-in-depth, also in .ralph/CLAUDE.md)
+
+| Phase | Agent | Contract |
+|-------|-------|----------|
+| RED | arbiter | Write failing tests only. No production code. |
+| GREEN | kraken | Minimal code to pass tests. No extras. |
+| VERIFY | arbiter | Full suite + typecheck + lint. No modifications. |
+
+Task atomicity: max 3-5 files, 1 behavior, 1-3 test cases per slice.
+
 ### Iteration Control [C:10]
 
 ```yaml
@@ -225,7 +261,7 @@ Iteration Tracking:
 Before each task, query for recommended agents:
 
 ```bash
-uv run python ~/.claude/scripts/ralph/ralph-skill-query.py \
+python ~/.claude/scripts/ralph/ralph-skill-query.py \
   --task "implement authentication middleware" \
   --files src/auth.ts src/middleware.ts
 ```
@@ -331,7 +367,7 @@ git merge ralph/<worktree>
 **After successful completion, store learnings for future features:**
 
 ```bash
-cd ~/.claude && PYTHONPATH=. uv run python scripts/core/store_learning.py \
+cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/store_learning.py \
   --session-id "ralph-<feature-name>" \
   --type ARCHITECTURAL_DECISION \
   --content "<summary of what worked, patterns used, decisions made>" \
@@ -357,7 +393,7 @@ cd ~/.claude && PYTHONPATH=. uv run python scripts/core/store_learning.py \
 If significant new patterns were added, regenerate knowledge tree:
 
 ```bash
-cd ~/.claude/scripts/core/core && uv run python knowledge_tree.py --project ${PROJECT}
+cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/knowledge_tree.py --project ${PROJECT}
 ```
 
 ---
@@ -567,8 +603,8 @@ Ralph MUST NOT:
 | `~/.claude/scripts/ralph/prepare-agent-context.py` | Pre-spawn context builder |
 | `~/.claude/scripts/ralph/extract-agent-learnings.py` | Post-completion learning extractor |
 | `~/.claude/scripts/ralph/spawn-ralph-docker.sh` | Memory-aware Docker spawn |
-| `~/.claude/scripts/core/recall_learnings.py` | Memory recall (Phase 0, 2) |
-| `~/.claude/scripts/core/store_learning.py` | Learning storage (Phase 4) |
+| `$CLAUDE_OPC_DIR/scripts/core/recall_learnings.py` | Memory recall (Phase 0, 2) |
+| `$CLAUDE_OPC_DIR/scripts/core/store_learning.py` | Learning storage (Phase 4) |
 | `~/.claude/docker/ralph/docker-compose.yml` | Docker configuration |
 | `${PROJECT}/.claude/knowledge-tree.json` | Project navigation (Phase 0) |
 | `${PROJECT}/ROADMAP.md` | Goal tracking (auto-updated by hooks) |

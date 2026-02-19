@@ -47,6 +47,9 @@ const SUCCESS_PATTERNS = [
   /<COMPLETE\s*\/?>/i,
 ];
 
+// Pattern to extract task ID from agent prompt
+const TASK_ID_PATTERN = /(?:Task|task)[- ]?(?:ID|id)?:?\s*(\d+(?:\.\d+)?)/;
+
 // Patterns indicating agent failure
 const FAILURE_PATTERNS = [
   /(?:test|build|compilation)\s+(?:failed|failing|errors?)/i,
@@ -136,23 +139,52 @@ async function main() {
 
   if (listResult.status !== 0) return;
 
-  let tasks: Record<string, any> = {};
+  let allTasks: any[] = [];
   try {
-    tasks = JSON.parse(listResult.stdout);
+    const parsed = JSON.parse(listResult.stdout);
+    allTasks = parsed.tasks || [];
   } catch {
     return;
   }
 
   // Find in-progress tasks (likely the one this agent was working on)
-  const inProgressTasks = Object.entries(tasks)
-    .filter(([, t]) => t.status === 'in_progress');
+  const inProgressTasks = allTasks.filter((t: any) => t.status === 'in_progress');
 
   if (inProgressTasks.length === 0) {
     log.info('No in-progress tasks to update', { agentType });
     return;
   }
 
-  for (const [taskId, task] of inProgressTasks) {
+  // Try to extract task ID from agent prompt for disambiguation
+  const agentPrompt = String(input.tool_input?.prompt || '');
+  const taskIdMatch = agentPrompt.match(TASK_ID_PATTERN);
+  const extractedTaskId = taskIdMatch ? taskIdMatch[1] : null;
+
+  // Determine which tasks to update
+  let tasksToUpdate: any[];
+
+  if (extractedTaskId) {
+    // Task ID found in prompt — update only that task
+    const matched = inProgressTasks.filter((t: any) => String(t.id) === extractedTaskId);
+    if (matched.length > 0) {
+      tasksToUpdate = matched;
+      log.info(`Matched agent to task ${extractedTaskId} via prompt`, { agentType });
+    } else {
+      // ID from prompt doesn't match any in_progress task — skip
+      log.warn(`Task ID ${extractedTaskId} from prompt not found in in_progress tasks`, { agentType });
+      return;
+    }
+  } else if (inProgressTasks.length === 1) {
+    // Only one in_progress task — safe to assume it's this agent's
+    tasksToUpdate = inProgressTasks;
+  } else {
+    // Multiple in_progress tasks and no ID — ambiguous, skip to avoid corruption
+    log.warn(`Ambiguous: ${inProgressTasks.length} in_progress tasks, no task ID in prompt. Skipping update.`, { agentType });
+    return;
+  }
+
+  for (const task of tasksToUpdate) {
+    const taskId = String(task.id);
     if (outcome.success) {
       log.info(`Agent completed task ${taskId}`, { agentType, taskName: task.name });
       spawnSync('python', [
@@ -175,7 +207,8 @@ async function main() {
     '─'.repeat(40),
   ];
 
-  for (const [taskId] of inProgressTasks) {
+  for (const task of tasksToUpdate) {
+    const taskId = String(task.id);
     if (outcome.success) {
       statusLines.push(`  ✓ Task ${taskId} marked complete`);
     } else {

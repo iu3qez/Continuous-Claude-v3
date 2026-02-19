@@ -102,6 +102,7 @@ async function main() {
     return;
   }
   const status = isInitialized(projectDir);
+  let treeGenFailed = false;
   if (!status.tree || isTreeStale(projectDir)) {
     if (hasCodeFiles(projectDir)) {
       console.error("\u{1F4CA} Generating knowledge tree...");
@@ -111,10 +112,11 @@ async function main() {
         status.tree = true;
       } else {
         console.error("\u26A0 Failed to generate knowledge tree");
+        treeGenFailed = true;
       }
     }
   }
-  if (status.tree && status.roadmap) {
+  if (status.tree && status.roadmap && !treeGenFailed) {
     console.log(JSON.stringify({ result: "continue" }));
     return;
   }
@@ -124,6 +126,7 @@ async function main() {
   }
   const missing = [];
   if (!status.roadmap) missing.push("ROADMAP.md");
+  if (treeGenFailed) missing.push("knowledge-tree.json (generation failed - agents will lack project context)");
   if (missing.length === 0) {
     console.log(JSON.stringify({ result: "continue" }));
     return;

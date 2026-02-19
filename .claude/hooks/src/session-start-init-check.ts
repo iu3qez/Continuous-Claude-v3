@@ -130,6 +130,7 @@ async function main() {
   }
 
   const status = isInitialized(projectDir);
+  let treeGenFailed = false;
 
   // Generate tree lazily if missing or stale
   if (!status.tree || isTreeStale(projectDir)) {
@@ -141,12 +142,13 @@ async function main() {
         status.tree = true;
       } else {
         console.error('⚠ Failed to generate knowledge tree');
+        treeGenFailed = true;
       }
     }
   }
 
-  // If fully initialized, continue silently
-  if (status.tree && status.roadmap) {
+  // If fully initialized and no failures, continue silently
+  if (status.tree && status.roadmap && !treeGenFailed) {
     console.log(JSON.stringify({ result: 'continue' }));
     return;
   }
@@ -156,9 +158,10 @@ async function main() {
     return;
   }
 
-  // Only suggest init if ROADMAP is missing (tree is generated automatically now)
+  // Collect missing/failed items
   const missing: string[] = [];
   if (!status.roadmap) missing.push('ROADMAP.md');
+  if (treeGenFailed) missing.push('knowledge-tree.json (generation failed - agents will lack project context)');
 
   if (missing.length === 0) {
     console.log(JSON.stringify({ result: 'continue' }));

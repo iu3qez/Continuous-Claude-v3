@@ -86,7 +86,7 @@ async function main() {
   const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
   const unified = readRalphUnifiedState(projectDir);
   if (unified?.session?.active) {
-    const lastHeartbeat = new Date(unified.session.last_heartbeat).getTime();
+    const lastHeartbeat = unified.session.last_activity || 0;
     const elapsed = Date.now() - lastHeartbeat;
     if (elapsed >= STALE_THRESHOLD_MS) {
       const minutes = Math.round(elapsed / 60000);

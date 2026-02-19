@@ -220,26 +220,62 @@ Can't check all boxes? You skipped TDD. Start over.
 
 # Workflow Execution
 
-## Workflow Overview
+## Vertical Slicing (Not Horizontal)
+
+**Anti-pattern:** Write ALL tests first → implement ALL code → validate everything.
+This loses context between writing and implementing, creates false confidence, and misses integration gaps.
+
+**Correct pattern:** Slice by behavior. One behavior at a time: test it, implement it, verify it.
 
 ```
-┌────────────┐    ┌──────────┐    ┌──────────┐    ┌───────────┐
-│   plan-    │───▶│ arbiter  │───▶│  kraken  │───▶│ arbiter  │
-│   agent    │    │          │    │          │    │           │
-└────────────┘    └──────────┘    └──────────┘    └───────────┘
-   Design          Write           Implement        Verify
-   approach        failing         minimal          all tests
-                   tests           code             pass
+┌────────────┐
+│ plan-agent │  Design behavior slices (1 per feature aspect)
+└─────┬──────┘
+      │
+      ▼
+┌─────────────────────────────────────────┐
+│  LOOP per behavior slice (1-3 tests):   │
+│                                         │
+│  ┌──────────┐  ┌──────────┐  ┌───────┐ │
+│  │ arbiter  │─▶│  kraken  │─▶│verify │ │
+│  │ RED      │  │ GREEN    │  │ green │ │
+│  └──────────┘  └──────────┘  └───────┘ │
+│                                         │
+│  Repeat for next slice                  │
+└─────────────────────────────────────────┘
+      │
+      ▼
+┌──────────┐
+│ arbiter  │  Final: full suite regression
+└──────────┘
 ```
+
+### Why 1-3 Tests Per Slice (Not Strict 1:1)
+
+Amortizes agent launch overhead while keeping context tight. Group by **behavior**, not by file:
+- "Create action with valid input" → 1-2 tests (happy path + response shape)
+- "Create action with missing fields" → 1-2 tests (validation errors)
+- "Create action workspace isolation" → 1 test (can't see other workspace's data)
+
+### Why Not All Tests First
+
+| Problem | Consequence |
+|---------|-------------|
+| Context loss | By test #15, you've forgotten test #3's intent |
+| False confidence | "All tests written!" — but they don't integrate |
+| Scope creep | Tests imagine features beyond actual requirements |
+| Debugging pain | 20 failures at once vs 2 at a time |
 
 ## Agent Sequence
 
 | # | Agent | Role | Output |
 |---|-------|------|--------|
-| 1 | **plan-agent** | Design test cases and implementation approach | Test plan |
-| 2 | **arbiter** | Write failing tests (RED phase) | Test files |
-| 3 | **kraken** | Implement minimal code to pass (GREEN phase) | Implementation |
-| 4 | **arbiter** | Run all tests, verify nothing broken | Test report |
+| 1 | **plan-agent** | Decompose feature into behavior slices | Ordered slice list |
+| 2 | **arbiter** | Write 1-3 failing tests for ONE slice (RED) | Test file additions |
+| 3 | **kraken** | Implement JUST enough to pass those tests (GREEN) | Implementation |
+| 4 | **arbiter** | Verify green + no regressions | Pass/fail |
+| — | Repeat 2-4 | For each remaining slice | — |
+| 5 | **arbiter** | Final full suite regression | Test report |
 
 ## Core Principle
 
@@ -250,83 +286,107 @@ NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
 Each agent follows the TDD contract:
 - arbiter writes tests that MUST fail initially
 - kraken writes MINIMAL code to make tests pass
-- arbiter confirms the full suite passes
+- arbiter confirms green after each slice (not just at the end)
 
 ## Execution
 
-### Phase 1: Plan Test Cases
+### Phase 1: Decompose Into Behavior Slices
 
 ```
 Task(
   subagent_type="plan-agent",
   prompt="""
-  Design TDD approach for: [FEATURE_NAME]
+  Decompose into vertical behavior slices for TDD: [FEATURE_NAME]
 
-  Define:
-  1. What behaviors need to be tested
-  2. Edge cases to cover
-  3. Expected test structure
+  For each slice, define:
+  1. The specific behavior (one sentence)
+  2. 1-3 test cases for that behavior
+  3. Expected implementation scope
+
+  Order slices from core behavior → edge cases → error handling.
+  Each slice should be independently testable and implementable.
 
   DO NOT write any implementation code.
-  Output: Test plan document
+  Output: Ordered list of behavior slices with test cases.
   """
 )
 ```
 
-### Phase 2: Write Failing Tests (RED)
+### Phase 2-4: Vertical Loop (Per Slice)
 
+For EACH behavior slice from the plan:
+
+**RED — arbiter writes 1-3 tests:**
 ```
 Task(
   subagent_type="arbiter",
   prompt="""
-  Write failing tests for: [FEATURE_NAME]
+  Write failing tests for behavior slice: [SLICE_DESCRIPTION]
 
-  Test plan: [from phase 1]
+  Context: [what was implemented in previous slices, if any]
+  Test file: [path]
 
   Requirements:
-  - Write tests FIRST
+  - Write 1-3 tests for THIS behavior only
   - Run tests to confirm they FAIL
   - Tests must fail because feature is missing (not syntax errors)
-  - Create clear test names describing expected behavior
+  - Test through public interface, not internal state
 
   DO NOT write any implementation code.
   """
 )
 ```
 
-### Phase 3: Implement (GREEN)
-
+**GREEN — kraken implements just enough:**
 ```
 Task(
   subagent_type="kraken",
   prompt="""
-  Implement MINIMAL code to pass tests: [FEATURE_NAME]
+  Implement MINIMAL code to pass the new failing tests: [SLICE_DESCRIPTION]
 
   Tests location: [test file path]
+  Previously passing tests: [count] — these MUST stay green
 
   Requirements:
-  - Write ONLY enough code to make tests pass
+  - Write ONLY enough code to make the new tests pass
+  - Do not break any previously passing tests
   - No additional features beyond what tests require
-  - No "improvements" or "enhancements"
-  - Run tests after each change
+  - Run tests after implementation
 
   Follow Red-Green-Refactor strictly.
   """
 )
 ```
 
-### Phase 4: Validate
+**VERIFY — arbiter confirms green:**
+```
+Task(
+  subagent_type="arbiter",
+  prompt="""
+  Verify slice implementation: [SLICE_DESCRIPTION]
+
+  - Run full test suite (not just new tests)
+  - Confirm new tests pass
+  - Confirm no regressions in existing tests
+  - Report: [N new passing] / [M total passing] / [0 failing]
+  """
+)
+```
+
+Repeat for each remaining slice.
+
+### Phase 5: Final Regression
 
 ```
 Task(
   subagent_type="arbiter",
   prompt="""
-  Validate TDD implementation: [FEATURE_NAME]
+  Final TDD validation: [FEATURE_NAME]
 
-  - Run full test suite
+  - Run complete test suite
   - Verify all new tests pass
   - Verify no existing tests broke
-  - Check test coverage if available
+  - Summary: total tests, new tests, pass/fail counts
   """
 )
 ```
@@ -336,7 +396,9 @@ Task(
 1. **arbiter** cannot write implementation code
 2. **kraken** cannot add untested features
 3. Tests must fail before implementation
-4. Tests must pass after implementation
+4. Tests must pass after EACH slice (not just at the end)
+5. Test through public interface — see [deep-modules.md](deep-modules.md)
+6. Mock at boundaries only — see [mocking-boundaries.md](mocking-boundaries.md)
 
 ## Example
 
@@ -345,32 +407,43 @@ User: /tdd Add email validation to the signup form
 
 Claude: Starting /tdd workflow for email validation...
 
-Phase 1: Planning test cases...
+Phase 1: Decomposing into behavior slices...
 [Spawns plan-agent]
-Test plan:
-- Valid email formats
-- Invalid email formats
-- Empty email rejection
-- Edge cases (unicode, long emails)
+Slices:
+1. Valid email formats accepted
+2. Invalid email formats rejected
+3. Empty/missing email rejected
+4. Edge cases (unicode, max length)
 
-Phase 2: Writing failing tests (RED)...
-[Spawns arbiter]
-✅ 8 tests written, all failing as expected
+Slice 1: Valid email formats
+[arbiter] RED — 2 tests written, both failing ✓
+[kraken] GREEN — basic validator, 2 tests pass ✓
+[arbiter] VERIFY — 249 total, 0 failing ✓
 
-Phase 3: Implementing minimal code (GREEN)...
-[Spawns kraken]
-✅ All 8 tests now passing
+Slice 2: Invalid email formats rejected
+[arbiter] RED — 3 tests written, all failing ✓
+[kraken] GREEN — added rejection logic, 3 tests pass ✓
+[arbiter] VERIFY — 252 total, 0 failing ✓
 
-Phase 4: Validating...
-[Spawns arbiter]
-✅ 247 tests passing (8 new), 0 failing
+Slice 3: Empty/missing email rejected
+[arbiter] RED — 1 test written, failing ✓
+[kraken] GREEN — added empty check, 1 test passes ✓
+[arbiter] VERIFY — 253 total, 0 failing ✓
+
+Slice 4: Edge cases
+[arbiter] RED — 2 tests written, both failing ✓
+[kraken] GREEN — unicode + length handling, 2 tests pass ✓
+[arbiter] VERIFY — 255 total, 0 failing ✓
+
+Phase 5: Final regression...
+[arbiter] ✅ 255 tests passing (8 new), 0 failing
 
 TDD workflow complete!
 ```
 
 ## Refactor Phase (Optional)
 
-After GREEN, you can add a refactor phase:
+After all slices are green, you can add a refactor phase:
 
 ```
 Task(
@@ -387,3 +460,44 @@ Task(
   """
 )
 ```
+
+## Transition Strategy
+
+- **New features:** Vertical slicing from day one
+- **Existing tests (543+):** Don't rewrite. Apply vertical approach only when touching those files.
+- **Existing Drizzle chain mocks:** Keep. New tests prefer interface-level verification.
+
+---
+
+# Mocking Doctrine
+
+Mock at **system boundaries** — where your code meets the outside world. Don't mock your own internals.
+
+| Mock This | Don't Mock This |
+|-----------|-----------------|
+| Network calls (fetch, HTTP) | Internal functions |
+| External services (Anthropic SDK) | Drizzle query chains (new tests) |
+| Filesystem, time | Utility helpers |
+| Environment variables | Type transformations |
+
+**Key question:** If you changed the implementation without changing the behavior, would the test break? If yes, you mocked too deep.
+
+**Grandfather clause:** Existing Drizzle chain mocks stay. New tests prefer testing response shape over query internals.
+
+See [mocking-boundaries.md](mocking-boundaries.md) for the full decision table and Workbook-specific guidance.
+
+---
+
+# Deep Modules
+
+Design modules with a **small interface** hiding **complex implementation**. Test through the interface.
+
+| Layer | Interface | Implementation |
+|-------|-----------|----------------|
+| MCP Tools | Zod schema (name + params) | DB queries, scoping, formatting |
+| API Routes | HTTP request/response | Auth, validation, DB ops |
+| Agent SDK | messages + config → SSE events | MCP server, streaming, cost tracking |
+
+**Testing implication:** Test what goes in and what comes out. Don't test the plumbing between.
+
+See [deep-modules.md](deep-modules.md) for examples and the shallow module smell guide.

@@ -140,7 +140,7 @@ function storeLearning(
   }
 
   // Build content for the learning
-  const content = `Agent '${agentType}' failed when given task: "${prompt.substring(0, 200)}${prompt.length > 200 ? '...' : ''}". Error context: ${errorContext}`;
+  const content = `Agent '${agentType}' error: ${errorContext}`;
 
   // Build tags
   const tags = [
@@ -203,10 +203,12 @@ async function main() {
     const hasError = hasErrorPattern(responseStr);
     const hasFailure = hasFailureIndicator(responseStr);
 
-    if (hasError || hasFailure) {
+    if (hasError) {
+      // Only store on actual error patterns (TypeError, ENOENT, etc.)
+      // Soft failure language ("could not", "unable to") is not worth storing
       const errorContext = extractErrorContext(responseStr);
 
-      console.error(`[AgentErrorCapture] Detected ${hasError ? 'error' : 'failure'} in ${agentType} agent response`);
+      console.error(`[AgentErrorCapture] Detected error in ${agentType} agent response`);
 
       // Store the learning
       storeLearning(

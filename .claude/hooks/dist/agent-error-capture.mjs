@@ -86,7 +86,7 @@ function storeLearning(sessionId, agentType, prompt, errorContext) {
     console.error("[AgentErrorCapture] store_learning.py not found");
     return;
   }
-  const content = `Agent '${agentType}' failed when given task: "${prompt.substring(0, 200)}${prompt.length > 200 ? "..." : ""}". Error context: ${errorContext}`;
+  const content = `Agent '${agentType}' error: ${errorContext}`;
   const tags = [
     "auto_captured",
     "agent_failure",
@@ -129,9 +129,9 @@ async function main() {
     const responseStr = responseToString(input.tool_response);
     const hasError = hasErrorPattern(responseStr);
     const hasFailure = hasFailureIndicator(responseStr);
-    if (hasError || hasFailure) {
+    if (hasError) {
       const errorContext = extractErrorContext(responseStr);
-      console.error(`[AgentErrorCapture] Detected ${hasError ? "error" : "failure"} in ${agentType} agent response`);
+      console.error(`[AgentErrorCapture] Detected error in ${agentType} agent response`);
       storeLearning(
         input.session_id,
         agentType,

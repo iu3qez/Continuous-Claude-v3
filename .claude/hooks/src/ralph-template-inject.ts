@@ -24,10 +24,11 @@ interface HookInput {
 }
 
 interface HookOutput {
-    decision: 'allow' | 'block' | 'modify';
-    reason?: string;
-    modified_params?: {
-        prompt?: string;
+    result: 'allow' | 'block';
+    hookSpecificOutput?: {
+        hookEventName: string;
+        modifiedInput?: Record<string, unknown>;
+        additionalContext?: string;
     };
 }
 
@@ -126,8 +127,7 @@ function main() {
 
         // Only process PreToolUse for Task tool
         if (data.event !== 'PreToolUse' || data.tool_name !== 'Task') {
-            const output: HookOutput = { decision: 'allow' };
-            console.log(JSON.stringify(output));
+            console.log(JSON.stringify({ result: 'allow' }));
             return;
         }
 
@@ -136,8 +136,7 @@ function main() {
 
         // Check if we should inject templates
         if (!shouldInjectTemplates(prompt, subagentType)) {
-            const output: HookOutput = { decision: 'allow' };
-            console.log(JSON.stringify(output));
+            console.log(JSON.stringify({ result: 'allow' }));
             return;
         }
 
@@ -145,18 +144,18 @@ function main() {
         const modifiedPrompt = buildInjectedPrompt(prompt);
 
         const output: HookOutput = {
-            decision: 'modify',
-            reason: 'Injected Ralph workflow templates into Maestro prompt',
-            modified_params: {
-                prompt: modifiedPrompt
+            result: 'allow',
+            hookSpecificOutput: {
+                hookEventName: 'PreToolUse',
+                modifiedInput: { prompt: modifiedPrompt },
+                additionalContext: 'Ralph workflow templates injected into Maestro prompt'
             }
         };
         console.log(JSON.stringify(output));
 
     } catch (error) {
         // On error, allow without modification (fail open)
-        const output: HookOutput = { decision: 'allow' };
-        console.log(JSON.stringify(output));
+        console.log(JSON.stringify({ result: 'allow' }));
     }
 }
 

@@ -123,6 +123,8 @@ async def search_learnings_text_only_postgres(query: str, k: int = 5) -> list[di
                 'ARCHITECTURAL_DECISION', 'CODEBASE_PATTERN', 'FAILED_APPROACH',
                 'USER_PREFERENCE', 'OPEN_THREAD'))
                 AND to_tsvector('english', content) @@ to_tsquery('english', $1)
+                AND LENGTH(content) >= 50
+                AND content NOT LIKE 'Agent ''%'' failed when given task:%'
             ORDER BY similarity DESC, created_at DESC
             LIMIT $2
             """,
@@ -149,6 +151,8 @@ async def search_learnings_text_only_postgres(query: str, k: int = 5) -> list[di
                     'ARCHITECTURAL_DECISION', 'CODEBASE_PATTERN', 'FAILED_APPROACH',
                     'USER_PREFERENCE', 'OPEN_THREAD'))
                     AND content ILIKE '%' || $1 || '%'
+                    AND LENGTH(content) >= 50
+                    AND content NOT LIKE 'Agent ''%'' failed when given task:%'
                 ORDER BY created_at DESC
                 LIMIT $2
                 """,
@@ -305,6 +309,8 @@ async def search_learnings_hybrid_rrf(
                     'ARCHITECTURAL_DECISION', 'CODEBASE_PATTERN', 'FAILED_APPROACH',
                     'USER_PREFERENCE', 'OPEN_THREAD'))
                 AND to_tsvector('english', content) @@ plainto_tsquery('english', $1)
+                AND LENGTH(content) >= 50
+                AND content NOT LIKE 'Agent ''%'' failed when given task:%'
             ),
             vector_ranked AS (
                 SELECT
@@ -316,6 +322,8 @@ async def search_learnings_hybrid_rrf(
                     'ARCHITECTURAL_DECISION', 'CODEBASE_PATTERN', 'FAILED_APPROACH',
                     'USER_PREFERENCE', 'OPEN_THREAD'))
                 AND embedding IS NOT NULL
+                AND LENGTH(content) >= 50
+                AND content NOT LIKE 'Agent ''%'' failed when given task:%'
             ),
             combined AS (
                 SELECT
@@ -447,6 +455,8 @@ async def search_learnings_postgres(
                             'ARCHITECTURAL_DECISION', 'CODEBASE_PATTERN', 'FAILED_APPROACH',
                             'USER_PREFERENCE', 'OPEN_THREAD'))
                             AND embedding IS NOT NULL
+                            AND LENGTH(content) >= 50
+                            AND content NOT LIKE 'Agent ''%'' failed when given task:%'
                     )
                     SELECT
                         id, session_id, content, metadata, created_at, similarity, recency,
@@ -475,6 +485,8 @@ async def search_learnings_postgres(
                         'ARCHITECTURAL_DECISION', 'CODEBASE_PATTERN', 'FAILED_APPROACH',
                         'USER_PREFERENCE', 'OPEN_THREAD'))
                         AND embedding IS NOT NULL
+                        AND LENGTH(content) >= 50
+                        AND content NOT LIKE 'Agent ''%'' failed when given task:%'
                     ORDER BY embedding <=> $1::vector
                     LIMIT $2
                     """,
@@ -499,6 +511,8 @@ async def search_learnings_postgres(
                     'ARCHITECTURAL_DECISION', 'CODEBASE_PATTERN', 'FAILED_APPROACH',
                     'USER_PREFERENCE', 'OPEN_THREAD'))
                     AND content ILIKE '%' || $1 || '%'
+                    AND LENGTH(content) >= 50
+                    AND content NOT LIKE 'Agent ''%'' failed when given task:%'
                 ORDER BY created_at DESC
                 LIMIT $2
                 """,

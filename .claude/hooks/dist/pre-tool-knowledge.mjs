@@ -61,6 +61,66 @@ function loadKnowledgeTree(projectDir) {
     return null;
   }
 }
+function buildFallbackContext(projectDir) {
+  const lines = ["## Project Context (no knowledge tree)"];
+  lines.push("");
+  lines.push("**Note:** No knowledge-tree.json found. Generate one with:");
+  lines.push("```");
+  lines.push("cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/knowledge_tree.py --project . --verbose");
+  lines.push("```");
+  lines.push("");
+  const pkgPath = path.join(projectDir, "package.json");
+  if (fs.existsSync(pkgPath)) {
+    try {
+      const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
+      lines.push(`**Project:** ${pkg.name || "unknown"}`);
+      if (pkg.description) lines.push(`**Description:** ${pkg.description}`);
+      const deps = Object.keys(pkg.dependencies || {}).slice(0, 8);
+      const devDeps = Object.keys(pkg.devDependencies || {}).slice(0, 5);
+      if (deps.length > 0) lines.push(`**Dependencies:** ${deps.join(", ")}`);
+      if (devDeps.length > 0) lines.push(`**Dev deps:** ${devDeps.join(", ")}`);
+    } catch {
+    }
+  }
+  const pyprojectPath = path.join(projectDir, "pyproject.toml");
+  if (fs.existsSync(pyprojectPath)) {
+    try {
+      const content = fs.readFileSync(pyprojectPath, "utf-8");
+      const nameMatch = content.match(/^name\s*=\s*"([^"]+)"/m);
+      if (nameMatch) lines.push(`**Project:** ${nameMatch[1]}`);
+      const descMatch = content.match(/^description\s*=\s*"([^"]+)"/m);
+      if (descMatch) lines.push(`**Description:** ${descMatch[1]}`);
+    } catch {
+    }
+  }
+  try {
+    const entries = fs.readdirSync(projectDir, { withFileTypes: true }).filter((e) => !e.name.startsWith(".") && !e.name.startsWith("node_modules")).slice(0, 15);
+    const dirs = entries.filter((e) => e.isDirectory()).map((e) => e.name);
+    const files = entries.filter((e) => e.isFile()).map((e) => e.name);
+    if (dirs.length > 0) {
+      lines.push("");
+      lines.push(`**Directories:** ${dirs.join(", ")}`);
+    }
+    if (files.length > 0) {
+      lines.push(`**Root files:** ${files.join(", ")}`);
+    }
+  } catch {
+  }
+  const readmePath = path.join(projectDir, "README.md");
+  if (fs.existsSync(readmePath)) {
+    try {
+      const readme = fs.readFileSync(readmePath, "utf-8");
+      const firstLines = readme.split("\n").slice(0, 5).join("\n").trim();
+      if (firstLines) {
+        lines.push("");
+        lines.push("**README excerpt:**");
+        lines.push(firstLines);
+      }
+    } catch {
+    }
+  }
+  return lines.join("\n");
+}
 function buildContextForTask(tree, taskType) {
   const lines = ["## Project Knowledge Tree Context"];
   lines.push("");
@@ -130,7 +190,16 @@ async function main() {
   const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
   const tree = loadKnowledgeTree(projectDir);
   if (!tree) {
-    console.log(JSON.stringify({ result: "continue" }));
+    console.error("\u26A0 Knowledge tree missing \u2014 injecting fallback context");
+    const fallback = buildFallbackContext(projectDir);
+    const output2 = {
+      result: "continue",
+      hookSpecificOutput: {
+        hookEventName: "PreToolUse",
+        additionalContext: fallback
+      }
+    };
+    console.log(JSON.stringify(output2));
     return;
   }
   const prompt = String(data.tool_input?.prompt || "");

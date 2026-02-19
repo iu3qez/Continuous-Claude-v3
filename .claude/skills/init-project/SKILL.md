@@ -42,7 +42,7 @@ Set up a new project with the full Continuous Claude infrastructure: knowledge t
 ### Step 1: Generate Knowledge Tree
 
 ```bash
-uv run python ~/.claude/scripts/core/core/knowledge_tree.py --project .
+cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/knowledge_tree.py --project .
 ```
 
 Creates `.claude/knowledge-tree.json` with:
@@ -77,7 +77,7 @@ _Planning sessions will be recorded here automatically._
 ### Step 3: Start Daemon (Optional)
 
 ```bash
-uv run python ~/.claude/scripts/core/core/tree_daemon.py --project . --background
+cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/tree_daemon.py --project . --background
 ```
 
 Continuously updates knowledge tree when files change.
@@ -141,17 +141,17 @@ ls -la .claude/knowledge-tree.json
 cat ROADMAP.md
 
 # Query goals
-uv run python ~/.claude/scripts/core/core/query_tree.py --project . --goals
+cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/query_tree.py --project . --goals
 
 # Check daemon (if started)
-uv run python ~/.claude/scripts/core/core/tree_daemon.py --project . --status
+cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/tree_daemon.py --project . --status
 ```
 
 ## Troubleshooting
 
 | Issue | Solution |
 |-------|----------|
-| "No knowledge tree" | Run `uv run python ~/.claude/scripts/core/core/knowledge_tree.py --project .` |
+| "No knowledge tree" | Run `cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/knowledge_tree.py --project .` |
 | "watchdog not installed" | Run `uv pip install watchdog` |
 | "Daemon won't start" | Check `.claude/tree-daemon.log` |
 | Goals not showing | Regenerate tree after creating ROADMAP.md |
