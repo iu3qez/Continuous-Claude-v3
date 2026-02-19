@@ -145,6 +145,85 @@ def classify_scope(
     return "PROJECT"
 
 
+# --- Quality gate: reject noise before expensive embedding ---
+
+# Minimum content length by type (chars)
+MIN_CONTENT_LENGTH = {
+    "FAILED_APPROACH": 100,
+    "WORKING_SOLUTION": 50,
+    "ERROR_FIX": 50,
+    "USER_PREFERENCE": 20,
+    "CODEBASE_PATTERN": 50,
+    "ARCHITECTURAL_DECISION": 50,
+    "OPEN_THREAD": 30,
+    None: 80,  # untyped default
+}
+
+# Noise patterns -- content starting with these is ephemeral thinking, not a learning
+NOISE_PREFIXES = [
+    "Agent '",           # agent failure dumps
+    "Now I have",        # thinking fragment
+    "Let me ",           # planning fragment
+    "The user wants",    # intent narration
+    "I need to",         # planning fragment
+    "Looking at",        # observation, not insight
+    "I notice the",      # observation without conclusion
+    "The user sent",     # message narration
+]
+
+# Quality signals -- content containing these is more likely a real learning
+QUALITY_SIGNALS = [
+    "because",
+    "fix:",
+    "solution:",
+    "pattern:",
+    "the root cause",
+    "works because",
+    "didn't work because",
+    "always ",
+    "never ",
+    "must ",
+    "requires ",
+    "workaround:",
+]
+
+
+def validate_learning_quality(
+    content: str,
+    learning_type: str | None = None,
+) -> dict:
+    """Gate: reject noise, accept quality learnings.
+
+    Returns:
+        {"passes": True} or {"passes": False, "reason": "..."}
+    """
+    stripped = content.strip()
+
+    # 1. Minimum length by type
+    min_len = MIN_CONTENT_LENGTH.get(learning_type, MIN_CONTENT_LENGTH[None])
+    if len(stripped) < min_len:
+        return {"passes": False, "reason": f"too_short ({len(stripped)}<{min_len})"}
+
+    # 2. Reject noise prefixes
+    for prefix in NOISE_PREFIXES:
+        if stripped.startswith(prefix):
+            return {"passes": False, "reason": f"noise_prefix: {prefix}"}
+
+    # 3. Reject if high newline ratio (code/log dumps)
+    newline_ratio = stripped.count("\n") / max(len(stripped), 1)
+    if newline_ratio > 0.15 and len(stripped) > 500:
+        return {"passes": False, "reason": "high_newline_ratio (likely code dump)"}
+
+    # 4. Boost: if content has quality signals, always pass
+    content_lower = stripped.lower()
+    signal_count = sum(1 for s in QUALITY_SIGNALS if s in content_lower)
+    if signal_count >= 2:
+        return {"passes": True, "boost": True, "signals": signal_count}
+
+    # 5. Default: pass (don't over-filter)
+    return {"passes": True}
+
+
 async def store_learning_v2(
     session_id: str,
     content: str,
@@ -181,6 +260,11 @@ async def store_learning_v2(
 
     if not content or not content.strip():
         return {"success": False, "error": "No content provided"}
+
+    # Quality gate -- reject noise before expensive embedding
+    quality = validate_learning_quality(content, learning_type)
+    if not quality["passes"]:
+        return {"success": True, "skipped": True, "reason": quality["reason"]}
 
     # Get backend - prefer postgres if DATABASE_URL is set
     if os.environ.get("DATABASE_URL"):
