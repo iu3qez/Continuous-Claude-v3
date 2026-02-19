@@ -107,6 +107,74 @@ function loadKnowledgeTree(projectDir: string): KnowledgeTree | null {
   }
 }
 
+function buildFallbackContext(projectDir: string): string {
+  const lines: string[] = ['## Project Context (no knowledge tree)'];
+  lines.push('');
+  lines.push('**Note:** No knowledge-tree.json found. Generate one with:');
+  lines.push('```');
+  lines.push('cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/knowledge_tree.py --project . --verbose');
+  lines.push('```');
+  lines.push('');
+
+  // Try package.json
+  const pkgPath = path.join(projectDir, 'package.json');
+  if (fs.existsSync(pkgPath)) {
+    try {
+      const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+      lines.push(`**Project:** ${pkg.name || 'unknown'}`);
+      if (pkg.description) lines.push(`**Description:** ${pkg.description}`);
+      const deps = Object.keys(pkg.dependencies || {}).slice(0, 8);
+      const devDeps = Object.keys(pkg.devDependencies || {}).slice(0, 5);
+      if (deps.length > 0) lines.push(`**Dependencies:** ${deps.join(', ')}`);
+      if (devDeps.length > 0) lines.push(`**Dev deps:** ${devDeps.join(', ')}`);
+    } catch { /* ignore parse errors */ }
+  }
+
+  // Try pyproject.toml
+  const pyprojectPath = path.join(projectDir, 'pyproject.toml');
+  if (fs.existsSync(pyprojectPath)) {
+    try {
+      const content = fs.readFileSync(pyprojectPath, 'utf-8');
+      const nameMatch = content.match(/^name\s*=\s*"([^"]+)"/m);
+      if (nameMatch) lines.push(`**Project:** ${nameMatch[1]}`);
+      const descMatch = content.match(/^description\s*=\s*"([^"]+)"/m);
+      if (descMatch) lines.push(`**Description:** ${descMatch[1]}`);
+    } catch { /* ignore */ }
+  }
+
+  // Directory listing (non-hidden, top-level)
+  try {
+    const entries = fs.readdirSync(projectDir, { withFileTypes: true })
+      .filter(e => !e.name.startsWith('.') && !e.name.startsWith('node_modules'))
+      .slice(0, 15);
+    const dirs = entries.filter(e => e.isDirectory()).map(e => e.name);
+    const files = entries.filter(e => e.isFile()).map(e => e.name);
+    if (dirs.length > 0) {
+      lines.push('');
+      lines.push(`**Directories:** ${dirs.join(', ')}`);
+    }
+    if (files.length > 0) {
+      lines.push(`**Root files:** ${files.join(', ')}`);
+    }
+  } catch { /* ignore */ }
+
+  // README excerpt
+  const readmePath = path.join(projectDir, 'README.md');
+  if (fs.existsSync(readmePath)) {
+    try {
+      const readme = fs.readFileSync(readmePath, 'utf-8');
+      const firstLines = readme.split('\n').slice(0, 5).join('\n').trim();
+      if (firstLines) {
+        lines.push('');
+        lines.push('**README excerpt:**');
+        lines.push(firstLines);
+      }
+    } catch { /* ignore */ }
+  }
+
+  return lines.join('\n');
+}
+
 function buildContextForTask(tree: KnowledgeTree, taskType: string | null): string {
   const lines: string[] = ['## Project Knowledge Tree Context'];
 
@@ -189,7 +257,17 @@ async function main() {
   const tree = loadKnowledgeTree(projectDir);
 
   if (!tree) {
-    console.log(JSON.stringify({ result: 'continue' }));
+    // No knowledge tree — provide fallback context instead of nothing
+    console.error('⚠ Knowledge tree missing — injecting fallback context');
+    const fallback = buildFallbackContext(projectDir);
+    const output = {
+      result: 'continue',
+      hookSpecificOutput: {
+        hookEventName: 'PreToolUse',
+        additionalContext: fallback
+      }
+    };
+    console.log(JSON.stringify(output));
     return;
   }
 

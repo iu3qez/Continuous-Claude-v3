@@ -83,29 +83,27 @@ function main() {
     const input = readFileSync(0, "utf-8");
     const data = JSON.parse(input);
     if (data.event !== "PreToolUse" || data.tool_name !== "Task") {
-      const output2 = { decision: "allow" };
-      console.log(JSON.stringify(output2));
+      console.log(JSON.stringify({ result: "allow" }));
       return;
     }
     const prompt = data.tool_input?.prompt || "";
     const subagentType = data.tool_input?.subagent_type || "";
     if (!shouldInjectTemplates(prompt, subagentType)) {
-      const output2 = { decision: "allow" };
-      console.log(JSON.stringify(output2));
+      console.log(JSON.stringify({ result: "allow" }));
       return;
     }
     const modifiedPrompt = buildInjectedPrompt(prompt);
     const output = {
-      decision: "modify",
-      reason: "Injected Ralph workflow templates into Maestro prompt",
-      modified_params: {
-        prompt: modifiedPrompt
+      result: "allow",
+      hookSpecificOutput: {
+        hookEventName: "PreToolUse",
+        modifiedInput: { prompt: modifiedPrompt },
+        additionalContext: "Ralph workflow templates injected into Maestro prompt"
       }
     };
     console.log(JSON.stringify(output));
   } catch (error) {
-    const output = { decision: "allow" };
-    console.log(JSON.stringify(output));
+    console.log(JSON.stringify({ result: "allow" }));
   }
 }
 main();

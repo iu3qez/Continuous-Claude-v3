@@ -29,11 +29,21 @@ import os
 import sys
 from pathlib import Path
 
-# Add scripts/core/core to path for import
-scripts_path = Path(__file__).parent.parent / "core" / "core"
+# Add scripts/core to path for import
+scripts_path = Path(__file__).parent.parent / "core"
 sys.path.insert(0, str(scripts_path))
 
-from skill_router import route, RouterOutput
+# Fallback: try $CLAUDE_OPC_DIR/scripts/core/ if local path doesn't have skill_router
+opc_dir = os.environ.get("CLAUDE_OPC_DIR", "")
+if opc_dir:
+    opc_core = Path(opc_dir) / "scripts" / "core"
+    sys.path.insert(0, str(opc_core))
+
+try:
+    from skill_router import route, RouterOutput
+except ImportError:
+    route = None
+    RouterOutput = None
 
 
 def format_for_ralph(result: RouterOutput) -> dict:
@@ -146,6 +156,10 @@ def main():
         sys.exit(1)
 
     # Route
+    if route is None:
+        print(json.dumps({"success": False, "error": "skill_router not available (not in path)"}))
+        sys.exit(1)
+
     result = route(
         task=task,
         context=context,

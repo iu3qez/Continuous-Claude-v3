@@ -109,6 +109,7 @@ var SUCCESS_PATTERNS = [
   /<TASK_COMPLETE\s*\/?>/i,
   /<COMPLETE\s*\/?>/i
 ];
+var TASK_ID_PATTERN = /(?:Task|task)[- ]?(?:ID|id)?:?\s*(\d+(?:\.\d+)?)/;
 var FAILURE_PATTERNS = [
   /(?:test|build|compilation)\s+(?:failed|failing|errors?)/i,
   /could\s+not\s+(?:complete|fix|resolve)/i,
@@ -172,18 +173,39 @@ async function main() {
     "task-list"
   ], { encoding: "utf-8", timeout: 5e3 });
   if (listResult.status !== 0) return;
-  let tasks = {};
+  let allTasks = [];
   try {
-    tasks = JSON.parse(listResult.stdout);
+    const parsed = JSON.parse(listResult.stdout);
+    allTasks = parsed.tasks || [];
   } catch {
     return;
   }
-  const inProgressTasks = Object.entries(tasks).filter(([, t]) => t.status === "in_progress");
+  const inProgressTasks = allTasks.filter((t) => t.status === "in_progress");
   if (inProgressTasks.length === 0) {
     log2.info("No in-progress tasks to update", { agentType });
     return;
   }
-  for (const [taskId, task] of inProgressTasks) {
+  const agentPrompt = String(input.tool_input?.prompt || "");
+  const taskIdMatch = agentPrompt.match(TASK_ID_PATTERN);
+  const extractedTaskId = taskIdMatch ? taskIdMatch[1] : null;
+  let tasksToUpdate;
+  if (extractedTaskId) {
+    const matched = inProgressTasks.filter((t) => String(t.id) === extractedTaskId);
+    if (matched.length > 0) {
+      tasksToUpdate = matched;
+      log2.info(`Matched agent to task ${extractedTaskId} via prompt`, { agentType });
+    } else {
+      log2.warn(`Task ID ${extractedTaskId} from prompt not found in in_progress tasks`, { agentType });
+      return;
+    }
+  } else if (inProgressTasks.length === 1) {
+    tasksToUpdate = inProgressTasks;
+  } else {
+    log2.warn(`Ambiguous: ${inProgressTasks.length} in_progress tasks, no task ID in prompt. Skipping update.`, { agentType });
+    return;
+  }
+  for (const task of tasksToUpdate) {
+    const taskId = String(task.id);
     if (outcome.success) {
       log2.info(`Agent completed task ${taskId}`, { agentType, taskName: task.name });
       spawnSync("python", [
@@ -214,7 +236,8 @@ async function main() {
     `\u{1F4CB} RALPH TASK MONITOR: ${agentType} agent ${outcome.success ? "completed" : "failed"}`,
     "\u2500".repeat(40)
   ];
-  for (const [taskId] of inProgressTasks) {
+  for (const task of tasksToUpdate) {
+    const taskId = String(task.id);
     if (outcome.success) {
       statusLines.push(`  \u2713 Task ${taskId} marked complete`);
     } else {

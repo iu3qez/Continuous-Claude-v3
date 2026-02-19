@@ -169,9 +169,9 @@ async function main() {
   const unified = readRalphUnifiedState(projectDir);
   let unifiedRecoveryInfo = "";
   if (unified?.session?.active) {
-    const tasks = unified.tasks || {};
-    const totalTasks = Object.keys(tasks).length;
-    const completedTasks = Object.values(tasks).filter((t) => t.status === "completed").length;
+    const tasks = Array.isArray(unified.tasks) ? unified.tasks : Object.values(unified.tasks || {});
+    const totalTasks = tasks.length;
+    const completedTasks = tasks.filter((t) => t.status === "complete" || t.status === "completed").length;
     const checkpoints = unified.checkpoints || [];
     const lastCheckpoint = checkpoints.length > 0 ? checkpoints[checkpoints.length - 1] : null;
     if (totalTasks > 0) {

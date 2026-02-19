@@ -50,19 +50,19 @@ function updateRalphState(signals, projectDir) {
         ], { encoding: "utf-8", timeout: 5e3 });
         if (result.status === 0) {
           try {
-            const tasks = JSON.parse(result.stdout);
-            for (const [taskId, task] of Object.entries(tasks)) {
-              if (task.status === "in_progress") {
-                spawnSync("python", [
-                  v2Script,
-                  "-p",
-                  projectDir,
-                  "task-complete",
-                  "--id",
-                  taskId
-                ], { encoding: "utf-8", timeout: 5e3 });
-                updated = true;
-              }
+            const parsed = JSON.parse(result.stdout);
+            const tasks = parsed.tasks || [];
+            const inProgress = tasks.filter((t) => t.status === "in_progress");
+            for (const task of inProgress) {
+              spawnSync("python", [
+                v2Script,
+                "-p",
+                projectDir,
+                "task-complete",
+                "--id",
+                String(task.id)
+              ], { encoding: "utf-8", timeout: 5e3 });
+              updated = true;
             }
           } catch {
           }
@@ -76,21 +76,21 @@ function updateRalphState(signals, projectDir) {
         ], { encoding: "utf-8", timeout: 5e3 });
         if (result.status === 0) {
           try {
-            const tasks = JSON.parse(result.stdout);
-            for (const [taskId, task] of Object.entries(tasks)) {
-              if (task.status === "in_progress") {
-                spawnSync("python", [
-                  v2Script,
-                  "-p",
-                  projectDir,
-                  "task-fail",
-                  "--id",
-                  taskId,
-                  "--error",
-                  signal.reason || signal.type
-                ], { encoding: "utf-8", timeout: 5e3 });
-                updated = true;
-              }
+            const parsed = JSON.parse(result.stdout);
+            const tasks = parsed.tasks || [];
+            const inProgress = tasks.filter((t) => t.status === "in_progress");
+            for (const task of inProgress) {
+              spawnSync("python", [
+                v2Script,
+                "-p",
+                projectDir,
+                "task-fail",
+                "--id",
+                String(task.id),
+                "--error",
+                signal.reason || signal.type
+              ], { encoding: "utf-8", timeout: 5e3 });
+              updated = true;
             }
           } catch {
           }
@@ -190,7 +190,11 @@ function generateStatusOutput(signals) {
     output += "\nRECOMMENDED ACTION:\n";
     output += "  1. Review changes: git diff main...HEAD\n";
     output += "  2. Run tests: npm test / pytest\n";
-    output += "  3. Usage stats: python ~/.claude/scripts/tldr_stats.py\n";
+    output += "  3. Store learnings:\n";
+    output += "     cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/store_learning.py \\\n";
+    output += '       --session-id "ralph-<feature>" --type WORKING_SOLUTION \\\n';
+    output += '       --content "<what worked>" --context "<feature>" \\\n';
+    output += '       --tags "ralph,feature" --confidence high\n';
     output += "  4. Merge if passing: git checkout main && git merge <branch>\n";
   } else if (hasBlocked || hasError) {
     output += "\nRECOMMENDED ACTION:\n";

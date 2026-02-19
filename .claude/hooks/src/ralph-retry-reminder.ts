@@ -82,7 +82,7 @@ async function main() {
   for (const entry of retryQueue as any[]) {
     const taskId = entry.task_id || '?';
     const taskName = entry.task_name || '';
-    const retries = entry.retry_count || 0;
+    const retries = entry.attempt || 0;
     const lastError = entry.last_error || 'unknown';
     const escalationAgent = getEscalationAgent(retries, entry.original_agent);
 

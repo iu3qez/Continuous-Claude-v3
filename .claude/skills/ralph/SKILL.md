@@ -92,7 +92,7 @@ Before anything else, ensure the project has the infrastructure Ralph needs:
 
 1. **Ralph state:** If `.ralph/state.json` missing, run:
    ```bash
-   cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/ralph/ralph-state-v2.py init --project ${PROJECT}
+   python ~/.claude/scripts/ralph/ralph-state-v2.py init --project ${PROJECT}
    ```
    This also auto-copies `.ralph/CLAUDE.md` (TDD enforcement contract).
 
@@ -116,7 +116,7 @@ Do NOT prompt the user during readiness checks -- auto-generate silently.
 Query memory for past similar work:
 
 ```bash
-cd ~/.claude && PYTHONPATH=. uv run python scripts/core/recall_learnings.py \
+cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/recall_learnings.py \
   --query "<feature description keywords>" --k 5 --text-only
 ```
 
@@ -187,7 +187,7 @@ Create `/tasks/prd-<feature>.md` following the template structure.
 Before breaking into tasks, recall how similar features were implemented:
 
 ```bash
-cd ~/.claude && PYTHONPATH=. uv run python scripts/core/recall_learnings.py \
+cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/recall_learnings.py \
   --query "<feature type> implementation patterns" --k 3 --text-only
 ```
 
@@ -261,7 +261,7 @@ Iteration Tracking:
 Before each task, query for recommended agents:
 
 ```bash
-uv run python ~/.claude/scripts/ralph/ralph-skill-query.py \
+python ~/.claude/scripts/ralph/ralph-skill-query.py \
   --task "implement authentication middleware" \
   --files src/auth.ts src/middleware.ts
 ```
@@ -367,7 +367,7 @@ git merge ralph/<worktree>
 **After successful completion, store learnings for future features:**
 
 ```bash
-cd ~/.claude && PYTHONPATH=. uv run python scripts/core/store_learning.py \
+cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/store_learning.py \
   --session-id "ralph-<feature-name>" \
   --type ARCHITECTURAL_DECISION \
   --content "<summary of what worked, patterns used, decisions made>" \
@@ -603,8 +603,8 @@ Ralph MUST NOT:
 | `~/.claude/scripts/ralph/prepare-agent-context.py` | Pre-spawn context builder |
 | `~/.claude/scripts/ralph/extract-agent-learnings.py` | Post-completion learning extractor |
 | `~/.claude/scripts/ralph/spawn-ralph-docker.sh` | Memory-aware Docker spawn |
-| `~/.claude/scripts/core/recall_learnings.py` | Memory recall (Phase 0, 2) |
-| `~/.claude/scripts/core/store_learning.py` | Learning storage (Phase 4) |
+| `$CLAUDE_OPC_DIR/scripts/core/recall_learnings.py` | Memory recall (Phase 0, 2) |
+| `$CLAUDE_OPC_DIR/scripts/core/store_learning.py` | Learning storage (Phase 4) |
 | `~/.claude/docker/ralph/docker-compose.yml` | Docker configuration |
 | `${PROJECT}/.claude/knowledge-tree.json` | Project navigation (Phase 0) |
 | `${PROJECT}/ROADMAP.md` | Goal tracking (auto-updated by hooks) |
