@@ -51,6 +51,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import sys
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
@@ -409,6 +410,16 @@ def cmd_init(args) -> int:
         max_iterations=args.max_iterations or 30,
     )
     save_state(state)
+
+    # Auto-copy TDD enforcement contract (.ralph/CLAUDE.md)
+    claude_md_source = Path.home() / '.claude' / 'ralph-templates' / 'CLAUDE.md'
+    if not claude_md_source.exists():
+        claude_md_source = Path.home() / 'continuous-claude' / '.ralph' / 'CLAUDE.md'
+    claude_md_dest = Path(project_path) / '.ralph' / 'CLAUDE.md'
+    if claude_md_source.exists() and not claude_md_dest.exists():
+        shutil.copy2(str(claude_md_source), str(claude_md_dest))
+        print(json.dumps({"info": "Copied TDD contract", "dest": str(claude_md_dest)}))
+
     print(json.dumps({"success": True, "state_path": str(get_state_path(project_path))}))
     return 0
 

@@ -21,22 +21,22 @@ Navigate and query the project's knowledge tree - a persistent map of what the p
 
 ```bash
 # Generate or update the knowledge tree
-uv run python ~/.claude/scripts/core/core/knowledge_tree.py --project .
+uv run python $CLAUDE_OPC_DIR/scripts/core/knowledge_tree.py --project .
 
 # Query the tree
-uv run python ~/.claude/scripts/core/core/query_tree.py --project . --query "where to add tests"
+uv run python $CLAUDE_OPC_DIR/scripts/core/query_tree.py --project . --query "where to add tests"
 
 # Show current goals
-uv run python ~/.claude/scripts/core/core/query_tree.py --project . --goals
+uv run python $CLAUDE_OPC_DIR/scripts/core/query_tree.py --project . --goals
 
 # Show project description
-uv run python ~/.claude/scripts/core/core/query_tree.py --project . --describe
+uv run python $CLAUDE_OPC_DIR/scripts/core/query_tree.py --project . --describe
 
 # Show structure
-uv run python ~/.claude/scripts/core/core/query_tree.py --project . --structure
+uv run python $CLAUDE_OPC_DIR/scripts/core/query_tree.py --project . --structure
 
 # JSON output for processing
-uv run python ~/.claude/scripts/core/core/query_tree.py --project . --query "auth" --json
+uv run python $CLAUDE_OPC_DIR/scripts/core/query_tree.py --project . --query "auth" --json
 ```
 
 ## Tree Location
@@ -61,13 +61,13 @@ The tree daemon continuously updates the knowledge tree when files change:
 
 ```bash
 # Start daemon in background
-uv run python ~/.claude/scripts/core/core/tree_daemon.py --project . --background
+uv run python $CLAUDE_OPC_DIR/scripts/core/tree_daemon.py --project . --background
 
 # Check daemon status
-uv run python ~/.claude/scripts/core/core/tree_daemon.py --project . --status
+uv run python $CLAUDE_OPC_DIR/scripts/core/tree_daemon.py --project . --status
 
 # Stop daemon
-uv run python ~/.claude/scripts/core/core/tree_daemon.py --project . --stop
+uv run python $CLAUDE_OPC_DIR/scripts/core/tree_daemon.py --project . --stop
 ```
 
 ## ROADMAP.md Format

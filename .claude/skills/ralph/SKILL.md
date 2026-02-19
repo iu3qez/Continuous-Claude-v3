@@ -86,6 +86,32 @@ Do NOT use Ralph for:
 
 **Before interviewing user, load context from memory and knowledge systems.**
 
+### 0.0 Project Readiness Check
+
+Before anything else, ensure the project has the infrastructure Ralph needs:
+
+1. **Ralph state:** If `.ralph/state.json` missing, run:
+   ```bash
+   cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/ralph/ralph-state-v2.py init --project ${PROJECT}
+   ```
+   This also auto-copies `.ralph/CLAUDE.md` (TDD enforcement contract).
+
+2. **Knowledge tree:** If `.claude/knowledge-tree.json` missing, generate silently:
+   ```bash
+   cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/knowledge_tree.py --project ${PROJECT} --verbose
+   ```
+
+3. **ROADMAP.md:** If missing, create a minimal template:
+   ```markdown
+   # Project Roadmap
+   ## Current Focus
+   _No current goal set._
+   ## Completed
+   ## Planned
+   ```
+
+Do NOT prompt the user during readiness checks -- auto-generate silently.
+
 ### 0.1 Recall Similar Features
 Query memory for past similar work:
 
@@ -194,6 +220,16 @@ Create `/tasks/tasks-<feature>.md`
 ## Phase 3: Delegation Loop [C:10]
 
 **THIS IS THE CRITICAL CHANGE: Ralph delegates, never implements.**
+
+### TDD Enforcement (defense-in-depth, also in .ralph/CLAUDE.md)
+
+| Phase | Agent | Contract |
+|-------|-------|----------|
+| RED | arbiter | Write failing tests only. No production code. |
+| GREEN | kraken | Minimal code to pass tests. No extras. |
+| VERIFY | arbiter | Full suite + typecheck + lint. No modifications. |
+
+Task atomicity: max 3-5 files, 1 behavior, 1-3 test cases per slice.
 
 ### Iteration Control [C:10]
 
@@ -357,7 +393,7 @@ cd ~/.claude && PYTHONPATH=. uv run python scripts/core/store_learning.py \
 If significant new patterns were added, regenerate knowledge tree:
 
 ```bash
-cd ~/.claude/scripts/core/core && uv run python knowledge_tree.py --project ${PROJECT}
+cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/knowledge_tree.py --project ${PROJECT}
 ```
 
 ---
