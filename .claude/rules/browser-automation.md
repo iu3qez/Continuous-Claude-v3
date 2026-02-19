@@ -51,34 +51,5 @@ After any sidebar/menu click that changes route:
 ## Console Debugging [M:6]
 Call `read_console_messages` BEFORE triggering action to capture logs.
 
-## Database Isolation [H:9]
-
-When a project uses PostgreSQL alongside other projects on the same host:
-- ALWAYS pass `DATABASE_URL` explicitly: `DATABASE_URL="..." npx command`
-- In Playwright config, use `webServer.env` to pin the correct `DATABASE_URL`
-- Never rely on `.env.local` being loaded — `drizzle-kit` and other tools may not load it
-- Shell env `DATABASE_URL` overrides `.env.local` — if another project (e.g., continuous-claude on port 5432) set it, your commands connect to the wrong database
-
-**Pattern for Playwright config:**
-```typescript
-webServer: {
-  command: 'npm run dev',
-  url: 'http://localhost:3000',
-  reuseExistingServer: true,
-  env: {
-    DATABASE_URL: 'postgresql://user:pass@localhost:5433/mydb',  // pin explicitly
-  },
-},
-```
-
-## Playwright Config Defaults for DB-Backed Apps [H:8]
-
-- `workers: process.env.CI ? 1 : 4` — limit local parallelism; 8 workers exhaust DB connection pools
-- `retries: process.env.CI ? 2 : 1` — 1 retry locally catches transient DB flakes
-- Always use `reuseExistingServer: true` in webServer config
-- Auth pattern: `storageState` per role (`admin.json`, `member.json`, `viewer.json`)
-- Use setup projects with `dependencies` for auth state generation
-- Add `/e2e/` to Jest `testPathIgnorePatterns` so Jest doesn't pick up Playwright specs
-
 ---
-*Generated from stress tests 2026-01-13, updated with E2E patterns 2026-02-08*
+*Generated from stress tests 2026-01-13*

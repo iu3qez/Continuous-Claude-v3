@@ -36,7 +36,6 @@ All implementation MUST go through the Task tool to spawn appropriate agents:
 | Quick fixes (<20 lines) | spark | Task |
 | Unit/integration tests | arbiter | Task |
 | E2E tests | atlas | Task |
-| TDD behavior slices | arbiter (RED) then kraken (GREEN) then arbiter (VERIFY) | Task |
 | Code research | scout | Task |
 | External research | oracle | Task |
 | Debugging | debug-agent | Task |
@@ -148,15 +147,6 @@ Standard questions:
 - Out of scope?
 - Technical constraints?
 
-**Mandatory TDD question:**
-- "Should this feature use TDD?"
-  - A. Full TDD with behavior slices (recommended for all implementation)
-  - B. Partial TDD for core logic only
-  - C. Tests after (pure UI/styling only)
-  - D. N/A (pure config/infrastructure)
-
-If user selects A or B, task generation MUST use TDD behavior slice format with `{RED: arbiter, GREEN: kraken}` annotations.
-
 ### 1.3 Generate PRD (Include Context)
 Create `/tasks/prd-<feature>.md` following the template structure.
 
@@ -196,21 +186,7 @@ Present 5-7 high-level tasks. Wait for "Go" confirmation.
 ### 2.4 Generate Sub-Tasks
 Break each parent into atomic sub-tasks (1.0 → 1.1, 1.2, etc.)
 
-### 2.5 Validate Task Atomicity [C:9]
-
-Before saving, validate EVERY sub-task against atomicity constraints:
-
-| Constraint | Limit | Action if Violated |
-|------------|-------|--------------------|
-| Source files | Max 3-5 per task | Split into smaller behavior slices |
-| Behavior | 1 observable per task | Decompose into separate tasks |
-| Description | Under 2000 words | Trim to essentials |
-| Test cases | 1-3 per behavior | Merge or split test groups |
-| File references | Max 5 | Split task if touching too many files |
-
-**If any task violates:** Split it into smaller behavior slices before presenting to user.
-
-### 2.6 Save Tasks
+### 2.5 Save Tasks
 Create `/tasks/tasks-<feature>.md`
 
 **Note:** The `prd-roadmap-sync` hook will automatically update ROADMAP.md when tasks file is created.
@@ -254,77 +230,19 @@ uv run python ~/.claude/scripts/ralph/ralph-skill-query.py \
   --files src/auth.ts src/middleware.ts
 ```
 
-### 3.2 Spawn Agent (TDD-Aware Dispatch) [C:10]
-
-**Check the task annotation to determine dispatch pattern:**
-
-#### If task has `{RED: arbiter, GREEN: kraken}` annotation — TDD 3-phase:
-
-**Phase RED:**
-```
-Task tool:
-  subagent_type: arbiter
-  prompt: |
-    Story: STORY-001
-    Phase: RED (write failing tests)
-    Behavior: [one-sentence behavior from task]
-    Test cases: [1-3 test descriptions from task]
-    Files: [test file paths]
-    Constraint: Write ONLY test code. Do NOT write production code.
-    Output required: test file path, test names, confirmation tests FAIL (RED)
-```
-Wait for arbiter to return. Confirm RED state (tests fail).
-
-**Phase GREEN:**
-```
-Task tool:
-  subagent_type: kraken
-  prompt: |
-    Story: STORY-001
-    Phase: GREEN (make tests pass)
-    Failing tests: [test file path + test names from RED phase]
-    Previously passing tests: [count from RED phase output]
-    Files: [source file paths from task]
-    Constraint: Write MINIMUM code to make failing tests pass.
-      Do NOT add features beyond what tests require. Do NOT refactor.
-    Output required: files modified, confirmation ALL tests pass (GREEN)
-```
-Wait for kraken to return. Confirm GREEN state (all tests pass).
-
-**Phase VERIFY:**
-```
-Task tool:
-  subagent_type: arbiter
-  prompt: |
-    Story: STORY-001
-    Phase: VERIFY (full suite + quality checks)
-    Run: full test suite + typecheck + lint
-    Constraint: Do NOT modify any code or tests. Read-only verification.
-    Output required: total pass/fail counts, typecheck result, lint result, verdict
-```
-Wait for arbiter to return. If VERIFY passes, mark task complete.
-
-**If VERIFY fails:** Retry kraken with error context (max 3 retries per `.ralph/CLAUDE.md` retry discipline).
-
-#### If task has NO TDD annotation — single-agent dispatch:
+### 3.2 Spawn Agent
+Use Task tool to delegate:
 
 ```
 Task tool:
-  subagent_type: spark  # for config/setup tasks
+  subagent_type: kraken  # or spark, arbiter, etc.
   prompt: |
     Story: STORY-001
-    Task: [description]
-    Files: [file list]
+    Task: Implement user authentication
+    Files: src/auth.ts, src/middleware.ts
     Requirements: [from PRD]
+    Tests: Write unit tests for auth flow
 ```
-
-| Annotation | Dispatch |
-|------------|----------|
-| `{RED: arbiter, GREEN: kraken}` | 3-phase TDD (arbiter, kraken, arbiter) |
-| `{TEST: arbiter}` | Single arbiter (write + run tests) |
-| `{SETUP: spark}` | Single spark (config/setup) |
-| `{RESEARCH: scout}` | Single scout (investigation) |
-| No annotation | Default to spark for simple, kraken for complex |
 
 ### 3.3 Wait for Completion
 Agent executes and returns result.
@@ -656,7 +574,6 @@ Ralph MUST NOT:
 | `${PROJECT}/ROADMAP.md` | Goal tracking (auto-updated by hooks) |
 | `/tasks/prd-*.md` | Human-readable PRD |
 | `/tasks/tasks-*.md` | Task breakdown |
-| `.ralph/CLAUDE.md` | TDD enforcement contract (auto-loads into agents) |
 | `.ralph/IMPLEMENTATION_PLAN.md` | Implementation checklist |
 | `.ralph/agent-output.json` | Agent task results |
 | `.ralph/orchestration.json` | Iteration and status tracking |
@@ -795,42 +712,25 @@ Session 3+: Future agents see both patterns
 
 ---
 
-## Example Session (TDD Vertical Slices)
+## Example Session
 
 ```
 User: Build a contact form with email validation
 
 Ralph (Maestro's dev mode):
 1. "Let me gather requirements..." [AskUserQuestion]
-2. [Asks 5 questions including: "Should this use TDD?" -> User picks A: Full TDD]
+2. [Asks clarifying questions]
 3. "Generating PRD to /tasks/prd-contact-form.md..." [Write PRD]
-4. "Breaking into TDD behavior slices..." [Write tasks with {RED: arbiter, GREEN: kraken}]
-5. "Validating task atomicity... all 4 tasks pass constraints."
-6. "Starting TDD delegation loop..."
-
-   --- Task 3.1: Form renders with required fields ---
-7. "RED: Spawning arbiter to write failing tests..." [Task(arbiter)]
-   -> arbiter returns: contact-form.test.tsx, 3 tests FAIL (RED confirmed)
-8. "GREEN: Spawning kraken to make tests pass..." [Task(kraken)]
-   -> kraken returns: ContactForm.tsx created, 3 tests PASS (GREEN confirmed)
-9. "VERIFY: Spawning arbiter for full suite..." [Task(arbiter)]
-   -> arbiter returns: 3/3 pass, typecheck clean, lint clean (VERIFIED)
-10. "Task 3.1 complete. Moving to 3.2..."
-
-   --- Task 3.2: Email validation rejects invalid formats ---
-11. "RED: Spawning arbiter..." [Task(arbiter)]
-    -> 2 tests FAIL (RED)
-12. "GREEN: Spawning kraken..." [Task(kraken)]
-    -> validation logic added, 5/5 tests PASS (GREEN)
-13. "VERIFY: Full suite..." [Task(arbiter)]
-    -> 5/5 pass, clean (VERIFIED)
-
-14. [Continues RED-GREEN-VERIFY for remaining slices...]
-15. "All 4 behavior slices verified. Merging to main."
+4. "Breaking into tasks..." [Write tasks]
+5. "Starting delegation loop..."
+6. "Spawning kraken for form component..." [Task(kraken)]
+7. "Spawning kraken for validation logic..." [Task(kraken)] # parallel
+8. [Waits for completion]
+9. "Spawning arbiter for tests..." [Task(arbiter)]
+10. "All tests pass. Merging to main."
 ```
 
-Note: Each behavior slice follows RED -> GREEN -> VERIFY. Tests are written FIRST, not after.
-Ralph NEVER called Edit/Write for implementation - all went through Task tool.
+Note: Ralph NEVER called Edit/Write for implementation - all went through Task tool.
 
 ---
 
@@ -877,5 +777,5 @@ Future Enhancement:
 
 ---
 
-*Ralph Skill v3.3 - TDD Integration with Atomic Task Sizing*
+*Ralph Skill v3.2 - Docker Isolation with Memory Integration*
 *Maestro's Autonomous Development Agent with Cross-Session Learning*
