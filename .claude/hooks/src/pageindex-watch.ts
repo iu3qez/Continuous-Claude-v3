@@ -171,7 +171,10 @@ async function main() {
     if (!pending.files.includes(filePath)) {
       pending.files.push(filePath);
     }
-    pending.timestamp = now;
+    // Only set timestamp for NEW batches — don't reset on subsequent additions
+    if (!pending.files || pending.files.length === 0) {
+      pending.timestamp = now;
+    }
   } else {
     // Create new pending state
     pending = {
@@ -185,7 +188,7 @@ async function main() {
   savePending(pending);
 
   // Check if we should trigger reindex (debounce elapsed)
-  const elapsed = now - (pending.timestamp - DEBOUNCE_MS);
+  const elapsed = now - pending.timestamp;
   if (elapsed >= DEBOUNCE_MS) {
     // Enough time has passed, trigger reindex
     triggerReindex(projectDir, pending.files);

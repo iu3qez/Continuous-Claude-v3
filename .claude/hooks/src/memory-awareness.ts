@@ -42,18 +42,6 @@ function readStdin(): string {
 }
 
 /**
- * Check if we're running in ~/.claude (infrastructure directory).
- * Skip all DB operations in this directory to prevent hangs.
- */
-function isInfrastructureDir(projectDir: string): boolean {
-  const homeDir = process.env.HOME || process.env.USERPROFILE || '';
-  if (!homeDir) return false;
-  const claudeDir = homeDir.replace(/\\/g, '/') + '/.claude';
-  const normalizedProject = (projectDir || '').replace(/\\/g, '/');
-  return normalizedProject === claudeDir || normalizedProject.endsWith('/.claude');
-}
-
-/**
  * Detect git operations and expand query for better memory matching.
  * E.g., "push" → "git push remote fork origin" to catch repo-specific preferences.
  */
@@ -286,12 +274,6 @@ function checkMemoryRelevance(intent: string, projectDir: string): MemoryMatch |
 async function main() {
   const input: UserPromptSubmitInput = JSON.parse(readStdin());
   const projectDir = process.env.CLAUDE_PROJECT_DIR || input.cwd;
-
-  // Guard: Skip in ~/.claude (infrastructure directory) to prevent DB hangs
-  if (isInfrastructureDir(projectDir)) {
-    outputContinue();
-    return;
-  }
 
   // Skip for subagents - they don't need memory recall (saves tokens)
   if (process.env.CLAUDE_AGENT_ID) {

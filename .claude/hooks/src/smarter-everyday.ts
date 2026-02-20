@@ -233,6 +233,16 @@ function processTransition(
   // Handle Edit/Write - file modifications
   if (toolName === 'Edit' || toolName === 'Write') {
     const filePath = (toolInput.file_path as string) || '';
+
+    // Skip tracking our own state files and internal Claude cache
+    if (filePath && (
+      filePath.includes('smarter-everyday-state') ||
+      filePath.includes('.claude/cache/') ||
+      (filePath.endsWith('.json') && filePath.includes('.claude/'))
+    )) {
+      return { newState: state, message: null };
+    }
+
     const normalizedPath = path.basename(filePath);
 
     if (newState.state === 'IDLE') {

@@ -132,15 +132,7 @@ async function main() {
   const sessionId = data.session_id;
   const transcriptPath = data.transcript_path;
 
-  // Only extract on auto-compact (not manual - user might want to control that)
-  if (data.trigger !== 'auto') {
-    const output: HookOutput = {
-      continue: true,
-      systemMessage: '[PreCompact] Manual compact - skipping auto-extraction'
-    };
-    console.log(JSON.stringify(output));
-    return;
-  }
+  // Extraction fires on ALL compact events regardless of trigger type
 
   // Need transcript path for extraction
   if (!transcriptPath || !fs.existsSync(transcriptPath)) {

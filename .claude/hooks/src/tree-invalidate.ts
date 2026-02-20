@@ -85,10 +85,19 @@ function invalidateTree(projectDir: string): boolean {
 
   if (fs.existsSync(treePath)) {
     try {
-      fs.unlinkSync(treePath);
+      // Instead of deleting, mark stale so tree stays available until regenerated
+      const existing = JSON.parse(fs.readFileSync(treePath, 'utf-8'));
+      const staleMarker = { ...existing, _stale: true, _invalidated_at: new Date().toISOString() };
+      fs.writeFileSync(treePath, JSON.stringify(staleMarker, null, 2));
       return true;
     } catch {
-      return false;
+      // If we can't read existing tree, write minimal stale marker
+      try {
+        fs.writeFileSync(treePath, JSON.stringify({ _stale: true, _invalidated_at: new Date().toISOString() }, null, 2));
+        return true;
+      } catch {
+        return false;
+      }
     }
   }
 

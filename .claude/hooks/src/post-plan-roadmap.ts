@@ -11,7 +11,8 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { execSync } from 'child_process';
+import { execSync, spawn } from 'child_process';
+import * as os from 'os';
 
 interface PostToolUseInput {
   tool_name: string;
@@ -464,9 +465,25 @@ function storePlanningLearnings(planInfo: PlanInfo, projectDir: string): void {
     `--scope GLOBAL`
   ].join(' ');
 
-  // Memory storage is slow (~60s for embeddings) - skip it from the hook
-  // The ROADMAP update is the primary value; learnings can be extracted via memory daemon
-  console.error(`ℹ Skipping memory storage (slow) - ${decisions.length} decisions recorded in ROADMAP`);
+  // Store plan learning in background (detached so hook doesn't block)
+  try {
+    const child = spawn('uv', ['run', 'python', 'scripts/core/store_learning.py',
+      '--session-id', sessionId,
+      '--type', 'ARCHITECTURAL_DECISION',
+      '--content', content,
+      '--context', `planning: ${planInfo.title}`,
+      '--tags', 'planning,decisions,architecture',
+      '--confidence', 'high',
+    ], {
+      cwd: opcDir,
+      detached: true,
+      stdio: 'ignore',
+      env: { ...process.env, PYTHONPATH: '.' },
+    });
+    child.unref();
+  } catch {
+    // Background storage failure is non-blocking
+  }
 }
 
 async function main() {

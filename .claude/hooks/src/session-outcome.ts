@@ -20,6 +20,76 @@ async function readStdin(): Promise<string> {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Exported helpers (testable)
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns true if the given outcome string indicates partial completion,
+ * meaning a handoff document should be created.
+ */
+export function needsHandoffReminder(outcome: string | undefined | null): boolean {
+  if (!outcome || typeof outcome !== 'string') return false;
+  return outcome === 'PARTIAL_PLUS' || outcome === 'PARTIAL_MINUS';
+}
+
+/**
+ * Build the session outcome message with optional handoff reminder.
+ *
+ * @param sessionName - The session identifier
+ * @param handoffName - The latest handoff file name
+ * @param outcome - Optional outcome string (SUCCEEDED, PARTIAL_PLUS, PARTIAL_MINUS, FAILED)
+ * @returns The formatted message string
+ */
+export function buildOutcomeMessage(sessionName: string, handoffName: string, outcome?: string): string {
+  let msg = `
+
+─────────────────────────────────────────────────
+Session ended: ${sessionName}
+Latest handoff: ${handoffName}
+
+To mark outcome and improve future sessions:
+
+  cd ~/.claude && uv run python scripts/core/artifact_mark.py \\
+    --handoff <handoff-id> \\
+    --outcome SUCCEEDED|PARTIAL_PLUS|PARTIAL_MINUS|FAILED
+
+To find handoff ID, query the database:
+
+  sqlite3 .claude/cache/artifact-index/context.db \\
+    "SELECT id, file_path FROM handoffs WHERE session_name='${sessionName}' ORDER BY indexed_at DESC LIMIT 1"
+
+Outcome meanings:
+  SUCCEEDED      - Task completed successfully
+  PARTIAL_PLUS   - Mostly done, minor issues remain
+  PARTIAL_MINUS  - Some progress, major issues remain
+  FAILED         - Task abandoned or blocked
+─────────────────────────────────────────────────
+`;
+
+  if (needsHandoffReminder(outcome)) {
+    msg += `
+HANDOFF REMINDER: This session has a partial outcome (${outcome}).
+Create a handoff document to preserve context for the next session:
+
+  Use /create_handoff to generate a structured handoff with:
+  - What was completed
+  - What remains
+  - Blockers encountered
+  - Resumption instructions
+
+Location: thoughts/shared/handoffs/${sessionName}/
+─────────────────────────────────────────────────
+`;
+  }
+
+  return msg;
+}
+
+// ---------------------------------------------------------------------------
+// main()
+// ---------------------------------------------------------------------------
+
 async function main() {
   const input: SessionEndInput = JSON.parse(await readStdin());
   const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
@@ -89,33 +159,13 @@ async function main() {
 
   const output: HookOutput = {
     result: "continue",
-    message: `
-
-─────────────────────────────────────────────────
-Session ended: ${sessionName}
-Latest handoff: ${handoffName}
-
-To mark outcome and improve future sessions:
-
-  cd ~/.claude && uv run python scripts/core/artifact_mark.py \\
-    --handoff <handoff-id> \\
-    --outcome SUCCEEDED|PARTIAL_PLUS|PARTIAL_MINUS|FAILED
-
-To find handoff ID, query the database:
-
-  sqlite3 .claude/cache/artifact-index/context.db \\
-    "SELECT id, file_path FROM handoffs WHERE session_name='${sessionName}' ORDER BY indexed_at DESC LIMIT 1"
-
-Outcome meanings:
-  SUCCEEDED      - Task completed successfully
-  PARTIAL_PLUS   - Mostly done, minor issues remain
-  PARTIAL_MINUS  - Some progress, major issues remain
-  FAILED         - Task abandoned or blocked
-─────────────────────────────────────────────────
-`
+    message: buildOutcomeMessage(sessionName, handoffName)
   };
 
   console.log(JSON.stringify(output));
 }
 
-main().catch(console.error);
+// Guard: don't run main() when imported by vitest
+if (!process.env.VITEST) {
+  main().catch(console.error);
+}
