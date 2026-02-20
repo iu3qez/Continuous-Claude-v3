@@ -248,6 +248,11 @@
             "type": "command",
             "command": "python C:/Users/david.hayes/.claude/hooks/braintrust_hooks.py session_end",
             "timeout": 10000
+          },
+          {
+            "type": "command",
+            "command": "python C:/Users/david.hayes/.claude/hooks/braintrust_hooks.py stop",
+            "timeout": 15000
           }
         ]
       }
@@ -483,8 +488,10 @@
     },
     "pageindex": {
       "type": "stdio",
-      "command": "npx",
+      "command": "cmd",
       "args": [
+        "/c",
+        "npx",
         "-y",
         "@pageindex/mcp"
       ]

@@ -16,6 +16,7 @@ import * as path from 'path';
 import { spawnSync } from 'child_process';
 import { getOpcDir } from './shared/opc-path.js';
 import { outputContinue } from './shared/output.js';
+import { logHook } from './shared/session-activity.js';
 
 interface UserPromptSubmitInput {
   session_id: string;
@@ -326,6 +327,9 @@ async function main() {
   const match = checkMemoryRelevance(intent, projectDir);
 
   if (match) {
+    // Log that this hook fired (only when it actually finds memories)
+    try { logHook(input.session_id, 'memory-awareness'); } catch { /* never break */ }
+
     // Build structured context for Claude
     const resultLines = match.results.map((r, i) =>
       `${i + 1}. [${r.type}] ${r.content} (id: ${r.id})`

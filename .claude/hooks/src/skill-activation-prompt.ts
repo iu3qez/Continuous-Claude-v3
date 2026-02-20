@@ -7,6 +7,7 @@ import { tmpdir } from 'os';
 // Import shared resource reader (Phase 4 module)
 import { readResourceState, ResourceState } from './shared/resource-reader.js';
 import { outputContinue, outputWithMessage } from './shared/output.js';
+import { logHook, logSkill } from './shared/session-activity.js';
 
 // Import validation module for false-positive reduction
 import {
@@ -344,6 +345,9 @@ async function main() {
             process.exit(0);
         }
         const rules: SkillRules = JSON.parse(readFileSync(rulesPath, 'utf-8'));
+
+        // Log this hook activation
+        try { logHook(data.session_id, 'skill-activation-prompt'); } catch { /* never break */ }
 
         // Phase 2: Check for high-confidence workflow triggers FIRST
         // Output message directly - UserPromptSubmit hooks inject context, they don't truly block

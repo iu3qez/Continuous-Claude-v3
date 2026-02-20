@@ -13,6 +13,7 @@ import { existsSync, mkdirSync, writeFileSync, readFileSync } from 'fs';
 import { execSync } from 'child_process';
 import { join } from 'path';
 import { queryDaemonSync, DaemonResponse, trackHookActivitySync } from './daemon-client.js';
+import { logHook } from './shared/session-activity.js';
 
 interface GrepInput {
   pattern: string;
@@ -446,6 +447,9 @@ async function main() {
   const pattern = input.tool_input.pattern;
   const queryType = classifyQuery(pattern);
   const sessionId = input.session_id || 'default';
+
+  // Log hook activation (fires whenever a Grep is intercepted for routing)
+  try { logHook(sessionId, 'smart-search-router'); } catch { /* never break */ }
 
   // Extract target and store context for downstream hooks (tldr-read-enforcer)
   const { target, targetType } = extractTarget(pattern);

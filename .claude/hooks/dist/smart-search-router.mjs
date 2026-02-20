@@ -1,7 +1,7 @@
 // src/smart-search-router.ts
-import { existsSync as existsSync2, mkdirSync, writeFileSync as writeFileSync2 } from "fs";
+import { existsSync as existsSync3, mkdirSync as mkdirSync2, writeFileSync as writeFileSync3 } from "fs";
 import { execSync as execSync2 } from "child_process";
-import { join as join2 } from "path";
+import { join as join3 } from "path";
 
 // src/daemon-client.ts
 import { existsSync, readFileSync, writeFileSync, unlinkSync } from "fs";
@@ -258,14 +258,74 @@ function trackHookActivitySync(hookName, projectDir, success = true, metrics = {
   }
 }
 
+// src/shared/session-activity.ts
+import { existsSync as existsSync2, mkdirSync, readFileSync as readFileSync2, writeFileSync as writeFileSync2 } from "fs";
+import { join as join2 } from "path";
+function getHomeDir() {
+  return process.env.HOME || process.env.USERPROFILE || "/tmp";
+}
+function getActivityPath(sessionId) {
+  const dir = join2(getHomeDir(), ".claude", "cache", "session-activity");
+  try {
+    mkdirSync(dir, { recursive: true });
+  } catch {
+  }
+  return join2(dir, `${sessionId}.json`);
+}
+function readActivity(sessionId) {
+  const filePath = getActivityPath(sessionId);
+  try {
+    if (!existsSync2(filePath)) {
+      return null;
+    }
+    const raw = readFileSync2(filePath, "utf-8");
+    if (!raw.trim()) {
+      return null;
+    }
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+function loadOrCreate(sessionId) {
+  const existing = readActivity(sessionId);
+  if (existing) {
+    return existing;
+  }
+  return {
+    session_id: sessionId,
+    started_at: (/* @__PURE__ */ new Date()).toISOString(),
+    skills: [],
+    hooks: []
+  };
+}
+function upsertEntry(entries, name) {
+  const existing = entries.find((e) => e.name === name);
+  if (existing) {
+    existing.count++;
+  } else {
+    entries.push({
+      name,
+      first_seen: (/* @__PURE__ */ new Date()).toISOString(),
+      count: 1
+    });
+  }
+}
+function logHook(sessionId, hookName) {
+  const activity = loadOrCreate(sessionId);
+  upsertEntry(activity.hooks, hookName);
+  const filePath = getActivityPath(sessionId);
+  writeFileSync2(filePath, JSON.stringify(activity), { encoding: "utf-8" });
+}
+
 // src/smart-search-router.ts
 var CONTEXT_DIR = "/tmp/claude-search-context";
 function storeSearchContext(sessionId, context) {
   try {
-    if (!existsSync2(CONTEXT_DIR)) {
-      mkdirSync(CONTEXT_DIR, { recursive: true });
+    if (!existsSync3(CONTEXT_DIR)) {
+      mkdirSync2(CONTEXT_DIR, { recursive: true });
     }
-    writeFileSync2(
+    writeFileSync3(
       `${CONTEXT_DIR}/${sessionId}.json`,
       JSON.stringify(context, null, 2)
     );
@@ -305,8 +365,8 @@ function ripgrepFallback(pattern, projectDir) {
   }
 }
 function checkSemanticIndexExists(projectDir) {
-  const indexPath = join2(projectDir, ".tldr", "cache", "semantic", "index.faiss");
-  return existsSync2(indexPath);
+  const indexPath = join3(projectDir, ".tldr", "cache", "semantic", "index.faiss");
+  return existsSync3(indexPath);
 }
 function tldrSemantic(query, projectDir = ".") {
   if (!checkSemanticIndexExists(projectDir)) {
@@ -526,6 +586,10 @@ async function main() {
   const pattern = input.tool_input.pattern;
   const queryType = classifyQuery(pattern);
   const sessionId = input.session_id || "default";
+  try {
+    logHook(sessionId, "smart-search-router");
+  } catch {
+  }
   const { target, targetType } = extractTarget(pattern);
   const layers = suggestLayers(targetType, queryType);
   const symbolInfo = target ? lookupSymbol(target) : null;

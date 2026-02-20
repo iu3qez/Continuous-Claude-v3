@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { readFileSync, appendFileSync, existsSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
+import { logSkill } from './shared/session-activity.js';
 
 interface HookInput {
     session_id: string;
@@ -65,6 +66,7 @@ async function main() {
             };
 
             logEvent(event);
+            try { logSkill(data.session_id, skillName); } catch { /* never break */ }
         } else if (data.tool_name === 'Task') {
             const agentType = data.tool_input?.subagent_type as string || 'unknown';
             const success = data.tool_response?.status !== 'error';

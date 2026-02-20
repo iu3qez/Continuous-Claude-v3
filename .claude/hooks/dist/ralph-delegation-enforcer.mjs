@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 // src/ralph-delegation-enforcer.ts
-import { readFileSync as readFileSync3, existsSync as existsSync5 } from "fs";
-import { join as join5 } from "path";
+import { readFileSync as readFileSync4, existsSync as existsSync6 } from "fs";
+import { join as join6 } from "path";
 import { spawnSync } from "child_process";
 
 // src/shared/session-isolation.ts
@@ -310,6 +310,66 @@ function isRalphActive(projectDir, sessionId) {
   return { active: false, storyId: "", source: "none" };
 }
 
+// src/shared/session-activity.ts
+import { existsSync as existsSync5, mkdirSync as mkdirSync2, readFileSync as readFileSync3, writeFileSync as writeFileSync2 } from "fs";
+import { join as join5 } from "path";
+function getHomeDir() {
+  return process.env.HOME || process.env.USERPROFILE || "/tmp";
+}
+function getActivityPath(sessionId) {
+  const dir = join5(getHomeDir(), ".claude", "cache", "session-activity");
+  try {
+    mkdirSync2(dir, { recursive: true });
+  } catch {
+  }
+  return join5(dir, `${sessionId}.json`);
+}
+function readActivity(sessionId) {
+  const filePath = getActivityPath(sessionId);
+  try {
+    if (!existsSync5(filePath)) {
+      return null;
+    }
+    const raw = readFileSync3(filePath, "utf-8");
+    if (!raw.trim()) {
+      return null;
+    }
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+function loadOrCreate(sessionId) {
+  const existing = readActivity(sessionId);
+  if (existing) {
+    return existing;
+  }
+  return {
+    session_id: sessionId,
+    started_at: (/* @__PURE__ */ new Date()).toISOString(),
+    skills: [],
+    hooks: []
+  };
+}
+function upsertEntry(entries, name) {
+  const existing = entries.find((e) => e.name === name);
+  if (existing) {
+    existing.count++;
+  } else {
+    entries.push({
+      name,
+      first_seen: (/* @__PURE__ */ new Date()).toISOString(),
+      count: 1
+    });
+  }
+}
+function logHook(sessionId, hookName) {
+  const activity = loadOrCreate(sessionId);
+  upsertEntry(activity.hooks, hookName);
+  const filePath = getActivityPath(sessionId);
+  writeFileSync2(filePath, JSON.stringify(activity), { encoding: "utf-8" });
+}
+
 // src/ralph-delegation-enforcer.ts
 var log3 = createLogger("ralph-delegation-enforcer");
 var STATE_BASE_NAME = "ralph-state";
@@ -319,7 +379,7 @@ function getRalphStateFile(sessionId) {
 }
 function updateHeartbeat(sessionId) {
   const stateFile = getRalphStateFile(sessionId);
-  if (!existsSync5(stateFile)) return;
+  if (!existsSync6(stateFile)) return;
   try {
     const content = readStateWithLock(stateFile);
     if (!content) return;
@@ -331,7 +391,7 @@ function updateHeartbeat(sessionId) {
   }
 }
 function readStdin() {
-  return readFileSync3(0, "utf-8");
+  return readFileSync4(0, "utf-8");
 }
 function makeBlockOutput(reason) {
   const output = {
@@ -438,8 +498,8 @@ async function main() {
     if (ralphStatus.source === "unified") {
       try {
         const homeDir = process.env.HOME || process.env.USERPROFILE || "";
-        const v2Script = join5(homeDir, ".claude", "scripts", "ralph", "ralph-state-v2.py");
-        if (existsSync5(v2Script)) {
+        const v2Script = join6(homeDir, ".claude", "scripts", "ralph", "ralph-state-v2.py");
+        if (existsSync6(v2Script)) {
           spawnSync("python", [v2Script, "-p", projectDir, "session-heartbeat"], {
             encoding: "utf-8",
             timeout: 3e3
@@ -451,6 +511,10 @@ async function main() {
       updateHeartbeat(sessionId);
     }
     log3.info(`Enforcing delegation: tool=${input.tool_name}`, { storyId, sessionId, source: ralphStatus.source });
+    try {
+      logHook(sessionId || "", "ralph-delegation-enforcer");
+    } catch {
+    }
     if (input.tool_name === "Edit") {
       const filePath = input.tool_input.file_path || "";
       if (isAllowedConfigFile(filePath)) {

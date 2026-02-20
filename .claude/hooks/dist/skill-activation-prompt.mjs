@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 // src/skill-activation-prompt.ts
-import { readFileSync as readFileSync2, existsSync as existsSync2 } from "fs";
-import { join as join2 } from "path";
+import { readFileSync as readFileSync3, existsSync as existsSync3 } from "fs";
+import { join as join3 } from "path";
 import { spawnSync } from "child_process";
 import { tmpdir as tmpdir2 } from "os";
 
@@ -48,6 +48,66 @@ function outputContinue() {
 }
 function outputWithMessage(message) {
   console.log(JSON.stringify({ result: "continue", message }));
+}
+
+// src/shared/session-activity.ts
+import { existsSync as existsSync2, mkdirSync, readFileSync as readFileSync2, writeFileSync } from "fs";
+import { join as join2 } from "path";
+function getHomeDir() {
+  return process.env.HOME || process.env.USERPROFILE || "/tmp";
+}
+function getActivityPath(sessionId) {
+  const dir = join2(getHomeDir(), ".claude", "cache", "session-activity");
+  try {
+    mkdirSync(dir, { recursive: true });
+  } catch {
+  }
+  return join2(dir, `${sessionId}.json`);
+}
+function readActivity(sessionId) {
+  const filePath = getActivityPath(sessionId);
+  try {
+    if (!existsSync2(filePath)) {
+      return null;
+    }
+    const raw = readFileSync2(filePath, "utf-8");
+    if (!raw.trim()) {
+      return null;
+    }
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+function loadOrCreate(sessionId) {
+  const existing = readActivity(sessionId);
+  if (existing) {
+    return existing;
+  }
+  return {
+    session_id: sessionId,
+    started_at: (/* @__PURE__ */ new Date()).toISOString(),
+    skills: [],
+    hooks: []
+  };
+}
+function upsertEntry(entries, name) {
+  const existing = entries.find((e) => e.name === name);
+  if (existing) {
+    existing.count++;
+  } else {
+    entries.push({
+      name,
+      first_seen: (/* @__PURE__ */ new Date()).toISOString(),
+      count: 1
+    });
+  }
+}
+function logHook(sessionId, hookName) {
+  const activity = loadOrCreate(sessionId);
+  upsertEntry(activity.hooks, hookName);
+  const filePath = getActivityPath(sessionId);
+  writeFileSync(filePath, JSON.stringify(activity), { encoding: "utf-8" });
 }
 
 // src/skill-validation-prompt.ts
@@ -224,8 +284,8 @@ function runPatternInference(prompt, projectDir) {
     }
   }
   try {
-    const scriptPath = join2(projectDir, "scripts", "agentica_patterns", "pattern_inference.py");
-    if (!existsSync2(scriptPath)) {
+    const scriptPath = join3(projectDir, "scripts", "agentica_patterns", "pattern_inference.py");
+    if (!existsSync3(scriptPath)) {
       return null;
     }
     const pythonCode = `
@@ -333,7 +393,7 @@ Or use the /explore skill for guided exploration.
 }
 async function main() {
   try {
-    const input = readFileSync2(0, "utf-8");
+    const input = readFileSync3(0, "utf-8");
     let data;
     try {
       data = JSON.parse(input);
@@ -356,18 +416,22 @@ async function main() {
     }
     const prompt = data.prompt.toLowerCase();
     const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
-    const projectRulesPath = join2(projectDir, ".claude", "skills", "skill-rules.json");
-    const globalRulesPath = join2(homeDir, ".claude", "skills", "skill-rules.json");
+    const projectRulesPath = join3(projectDir, ".claude", "skills", "skill-rules.json");
+    const globalRulesPath = join3(homeDir, ".claude", "skills", "skill-rules.json");
     let rulesPath = "";
-    if (existsSync2(projectRulesPath)) {
+    if (existsSync3(projectRulesPath)) {
       rulesPath = projectRulesPath;
-    } else if (existsSync2(globalRulesPath)) {
+    } else if (existsSync3(globalRulesPath)) {
       rulesPath = globalRulesPath;
     } else {
       outputContinue();
       process.exit(0);
     }
-    const rules = JSON.parse(readFileSync2(rulesPath, "utf-8"));
+    const rules = JSON.parse(readFileSync3(rulesPath, "utf-8"));
+    try {
+      logHook(data.session_id, "skill-activation-prompt");
+    } catch {
+    }
     const workflowTrigger = checkWorkflowTriggers(data.prompt);
     if (workflowTrigger && workflowTrigger.confidence >= 0.9) {
       const confidencePct = Math.round(workflowTrigger.confidence * 100);
@@ -595,10 +659,10 @@ Do NOT skip this step. The skill provides:
     }
     const rawSessionId = data.session_id || process.env.CLAUDE_SESSION_ID || process.env.CLAUDE_PPID || "default";
     const sessionId = rawSessionId.slice(0, 8);
-    const contextFile = join2(tmpdir2(), `claude-context-pct-${sessionId}.txt`);
-    if (existsSync2(contextFile)) {
+    const contextFile = join3(tmpdir2(), `claude-context-pct-${sessionId}.txt`);
+    if (existsSync3(contextFile)) {
       try {
-        const pct = parseInt(readFileSync2(contextFile, "utf-8").trim(), 10);
+        const pct = parseInt(readFileSync3(contextFile, "utf-8").trim(), 10);
         if (pct >= 90) {
           messages.push("CONTEXT CRITICAL: " + pct + "%\nRun /create_handoff NOW before auto-compact!");
         } else if (pct >= 80) {

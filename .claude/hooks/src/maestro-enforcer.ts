@@ -17,6 +17,7 @@ import { getStatePathWithMigration } from './shared/session-isolation.js';
 import { createLogger } from './shared/logger.js';
 import { writeStateWithLock, readStateWithLock } from './shared/atomic-write.js';
 import { validateMaestroState } from './shared/state-schema.js';
+import { logHook } from './shared/session-activity.js';
 
 const log = createLogger('maestro-enforcer');
 
@@ -142,7 +143,8 @@ async function main() {
       return;
     }
 
-    // Maestro is active - check workflow phase and agent type
+    // Maestro is active - log hook activation and check workflow phase and agent type
+    try { logHook(sessionId || '', 'maestro-enforcer'); } catch { /* never break */ }
     log.info(`Checking Task tool: phase recon=${state.reconComplete} interview=${state.interviewComplete} plan=${state.planApproved}`, { sessionId });
     const agentType = input.tool_input.subagent_type?.toLowerCase() || 'general-purpose';
     const isScoutAgent = agentType === 'scout' || agentType === 'explore';

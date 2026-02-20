@@ -1,5 +1,5 @@
 // src/session-register.ts
-import { readFileSync as readFileSync2 } from "fs";
+import { readFileSync as readFileSync3 } from "fs";
 
 // src/shared/db-utils-pg.ts
 import { spawnSync } from "child_process";
@@ -223,11 +223,39 @@ function getProject() {
   return process.env.CLAUDE_PROJECT_DIR || process.cwd();
 }
 
+// src/shared/session-activity.ts
+import { existsSync as existsSync2, mkdirSync as mkdirSync2, readFileSync as readFileSync2, writeFileSync as writeFileSync2 } from "fs";
+import { join as join3 } from "path";
+function getHomeDir() {
+  return process.env.HOME || process.env.USERPROFILE || "/tmp";
+}
+function getActivityPath(sessionId) {
+  const dir = join3(getHomeDir(), ".claude", "cache", "session-activity");
+  try {
+    mkdirSync2(dir, { recursive: true });
+  } catch {
+  }
+  return join3(dir, `${sessionId}.json`);
+}
+function initActivity(sessionId) {
+  const filePath = getActivityPath(sessionId);
+  if (existsSync2(filePath)) {
+    return;
+  }
+  const activity = {
+    session_id: sessionId,
+    started_at: (/* @__PURE__ */ new Date()).toISOString(),
+    skills: [],
+    hooks: []
+  };
+  writeFileSync2(filePath, JSON.stringify(activity), { encoding: "utf-8" });
+}
+
 // src/session-register.ts
 function main() {
   let input;
   try {
-    const stdinContent = readFileSync2(0, "utf-8");
+    const stdinContent = readFileSync3(0, "utf-8");
     input = JSON.parse(stdinContent);
   } catch {
     console.log(JSON.stringify({ result: "continue" }));
@@ -239,6 +267,11 @@ function main() {
   process.env.COORDINATION_SESSION_ID = sessionId;
   if (!writeSessionId(sessionId)) {
     console.error(`[session-register] WARNING: Failed to persist session ID ${sessionId} to file`);
+  }
+  try {
+    const activitySessionId = input.session_id || sessionId;
+    initActivity(activitySessionId);
+  } catch {
   }
   const registerResult = registerSession(sessionId, project, "");
   const sessionsResult = getActiveSessions(project);

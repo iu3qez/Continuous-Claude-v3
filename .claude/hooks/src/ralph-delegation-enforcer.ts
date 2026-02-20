@@ -16,6 +16,7 @@ import { getSessionStatePath, getStatePathWithMigration, cleanupOldStateFiles, h
 import { createLogger } from './shared/logger.js';
 import { writeStateWithLock, readStateWithLock } from './shared/atomic-write.js';
 import { validateRalphState, isRalphActive, readRalphUnifiedState } from './shared/state-schema.js';
+import { logHook } from './shared/session-activity.js';
 
 const log = createLogger('ralph-delegation-enforcer');
 
@@ -224,6 +225,7 @@ async function main() {
     }
 
     log.info(`Enforcing delegation: tool=${input.tool_name}`, { storyId, sessionId, source: ralphStatus.source });
+    try { logHook(sessionId || '', 'ralph-delegation-enforcer'); } catch { /* never break */ }
 
     // Ralph is active - enforce delegation
 

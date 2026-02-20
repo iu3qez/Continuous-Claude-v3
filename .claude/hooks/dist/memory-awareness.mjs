@@ -1,5 +1,5 @@
 // src/memory-awareness.ts
-import { readFileSync, existsSync as existsSync2 } from "fs";
+import { readFileSync as readFileSync2, existsSync as existsSync3 } from "fs";
 import * as path from "path";
 import { spawnSync } from "child_process";
 
@@ -32,9 +32,69 @@ function outputContinue() {
   console.log(JSON.stringify({ result: "continue" }));
 }
 
+// src/shared/session-activity.ts
+import { existsSync as existsSync2, mkdirSync, readFileSync, writeFileSync } from "fs";
+import { join as join2 } from "path";
+function getHomeDir() {
+  return process.env.HOME || process.env.USERPROFILE || "/tmp";
+}
+function getActivityPath(sessionId) {
+  const dir = join2(getHomeDir(), ".claude", "cache", "session-activity");
+  try {
+    mkdirSync(dir, { recursive: true });
+  } catch {
+  }
+  return join2(dir, `${sessionId}.json`);
+}
+function readActivity(sessionId) {
+  const filePath = getActivityPath(sessionId);
+  try {
+    if (!existsSync2(filePath)) {
+      return null;
+    }
+    const raw = readFileSync(filePath, "utf-8");
+    if (!raw.trim()) {
+      return null;
+    }
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+function loadOrCreate(sessionId) {
+  const existing = readActivity(sessionId);
+  if (existing) {
+    return existing;
+  }
+  return {
+    session_id: sessionId,
+    started_at: (/* @__PURE__ */ new Date()).toISOString(),
+    skills: [],
+    hooks: []
+  };
+}
+function upsertEntry(entries, name) {
+  const existing = entries.find((e) => e.name === name);
+  if (existing) {
+    existing.count++;
+  } else {
+    entries.push({
+      name,
+      first_seen: (/* @__PURE__ */ new Date()).toISOString(),
+      count: 1
+    });
+  }
+}
+function logHook(sessionId, hookName) {
+  const activity = loadOrCreate(sessionId);
+  upsertEntry(activity.hooks, hookName);
+  const filePath = getActivityPath(sessionId);
+  writeFileSync(filePath, JSON.stringify(activity), { encoding: "utf-8" });
+}
+
 // src/memory-awareness.ts
 function readStdin() {
-  return readFileSync(0, "utf-8");
+  return readFileSync2(0, "utf-8");
 }
 function isInfrastructureDir(projectDir) {
   const homeDir = process.env.HOME || process.env.USERPROFILE || "";
@@ -233,7 +293,7 @@ function extractKeywords(prompt) {
 function checkLocalMemory(intent, projectDir) {
   const homeDir = process.env.HOME || process.env.USERPROFILE || "";
   const projectMemoryScript = path.join(homeDir, ".claude", "scripts", "core", "core", "project_memory.py");
-  if (!existsSync2(projectMemoryScript)) return null;
+  if (!existsSync3(projectMemoryScript)) return null;
   try {
     const result = spawnSync("uv", [
       "run",
@@ -348,6 +408,10 @@ async function main() {
   }
   const match = checkMemoryRelevance(intent, projectDir);
   if (match) {
+    try {
+      logHook(input.session_id, "memory-awareness");
+    } catch {
+    }
     const resultLines = match.results.map(
       (r, i) => `${i + 1}. [${r.type}] ${r.content} (id: ${r.id})`
     ).join("\n");

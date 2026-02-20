@@ -1,15 +1,77 @@
 #!/usr/bin/env node
 
 // src/telemetry-tracker.ts
-import { readFileSync, appendFileSync, existsSync, mkdirSync } from "fs";
+import { readFileSync as readFileSync2, appendFileSync, existsSync as existsSync2, mkdirSync as mkdirSync2 } from "fs";
+import { join as join2 } from "path";
+
+// src/shared/session-activity.ts
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
+function getHomeDir() {
+  return process.env.HOME || process.env.USERPROFILE || "/tmp";
+}
+function getActivityPath(sessionId) {
+  const dir = join(getHomeDir(), ".claude", "cache", "session-activity");
+  try {
+    mkdirSync(dir, { recursive: true });
+  } catch {
+  }
+  return join(dir, `${sessionId}.json`);
+}
+function readActivity(sessionId) {
+  const filePath = getActivityPath(sessionId);
+  try {
+    if (!existsSync(filePath)) {
+      return null;
+    }
+    const raw = readFileSync(filePath, "utf-8");
+    if (!raw.trim()) {
+      return null;
+    }
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+function loadOrCreate(sessionId) {
+  const existing = readActivity(sessionId);
+  if (existing) {
+    return existing;
+  }
+  return {
+    session_id: sessionId,
+    started_at: (/* @__PURE__ */ new Date()).toISOString(),
+    skills: [],
+    hooks: []
+  };
+}
+function upsertEntry(entries, name) {
+  const existing = entries.find((e) => e.name === name);
+  if (existing) {
+    existing.count++;
+  } else {
+    entries.push({
+      name,
+      first_seen: (/* @__PURE__ */ new Date()).toISOString(),
+      count: 1
+    });
+  }
+}
+function logSkill(sessionId, skillName) {
+  const activity = loadOrCreate(sessionId);
+  upsertEntry(activity.skills, skillName);
+  const filePath = getActivityPath(sessionId);
+  writeFileSync(filePath, JSON.stringify(activity), { encoding: "utf-8" });
+}
+
+// src/telemetry-tracker.ts
 function getTelemetryPath() {
   const homeDir = process.env.HOME || process.env.USERPROFILE || "";
-  const telemetryDir = join(homeDir, ".claude", "cache");
-  if (!existsSync(telemetryDir)) {
-    mkdirSync(telemetryDir, { recursive: true });
+  const telemetryDir = join2(homeDir, ".claude", "cache");
+  if (!existsSync2(telemetryDir)) {
+    mkdirSync2(telemetryDir, { recursive: true });
   }
-  return join(telemetryDir, "skill-telemetry.jsonl");
+  return join2(telemetryDir, "skill-telemetry.jsonl");
 }
 function logEvent(event) {
   const telemetryPath = getTelemetryPath();
@@ -25,7 +87,7 @@ function determineSource(toolInput) {
 }
 async function main() {
   try {
-    const input = readFileSync(0, "utf-8");
+    const input = readFileSync2(0, "utf-8");
     const data = JSON.parse(input);
     if (data.tool_name === "Skill") {
       const skillName = data.tool_input?.skill || "unknown";
@@ -39,6 +101,10 @@ async function main() {
         success
       };
       logEvent(event);
+      try {
+        logSkill(data.session_id, skillName);
+      } catch {
+      }
     } else if (data.tool_name === "Task") {
       const agentType = data.tool_input?.subagent_type || "unknown";
       const success = data.tool_response?.status !== "error";

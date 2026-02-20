@@ -12,6 +12,7 @@
 import { readFileSync } from 'fs';
 import { registerSession, getActiveSessions } from './shared/db-utils-pg.js';
 import { generateSessionId, writeSessionId, getProject } from './shared/session-id.js';
+import { initActivity } from './shared/session-activity.js';
 import type { SessionStartInput, HookOutput } from './shared/types.js';
 
 /**
@@ -38,6 +39,14 @@ export function main(): void {
   process.env.COORDINATION_SESSION_ID = sessionId;
   if (!writeSessionId(sessionId)) {
     console.error(`[session-register] WARNING: Failed to persist session ID ${sessionId} to file`);
+  }
+
+  // Initialize session activity tracking (uses Claude Code UUID if available)
+  try {
+    const activitySessionId = input.session_id || sessionId;
+    initActivity(activitySessionId);
+  } catch {
+    // Activity tracking is non-critical -- don't block session start
   }
 
   // Register session in PostgreSQL

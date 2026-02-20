@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 // src/maestro-enforcer.ts
-import { readFileSync as readFileSync2, existsSync as existsSync4, unlinkSync as unlinkSync3 } from "fs";
+import { readFileSync as readFileSync3, existsSync as existsSync5, unlinkSync as unlinkSync3 } from "fs";
 
 // src/shared/session-isolation.ts
 import { tmpdir, hostname } from "os";
@@ -227,6 +227,66 @@ function validateMaestroState(obj, sessionId) {
   return obj;
 }
 
+// src/shared/session-activity.ts
+import { existsSync as existsSync4, mkdirSync as mkdirSync2, readFileSync as readFileSync2, writeFileSync as writeFileSync2 } from "fs";
+import { join as join3 } from "path";
+function getHomeDir() {
+  return process.env.HOME || process.env.USERPROFILE || "/tmp";
+}
+function getActivityPath(sessionId) {
+  const dir = join3(getHomeDir(), ".claude", "cache", "session-activity");
+  try {
+    mkdirSync2(dir, { recursive: true });
+  } catch {
+  }
+  return join3(dir, `${sessionId}.json`);
+}
+function readActivity(sessionId) {
+  const filePath = getActivityPath(sessionId);
+  try {
+    if (!existsSync4(filePath)) {
+      return null;
+    }
+    const raw = readFileSync2(filePath, "utf-8");
+    if (!raw.trim()) {
+      return null;
+    }
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+function loadOrCreate(sessionId) {
+  const existing = readActivity(sessionId);
+  if (existing) {
+    return existing;
+  }
+  return {
+    session_id: sessionId,
+    started_at: (/* @__PURE__ */ new Date()).toISOString(),
+    skills: [],
+    hooks: []
+  };
+}
+function upsertEntry(entries, name) {
+  const existing = entries.find((e) => e.name === name);
+  if (existing) {
+    existing.count++;
+  } else {
+    entries.push({
+      name,
+      first_seen: (/* @__PURE__ */ new Date()).toISOString(),
+      count: 1
+    });
+  }
+}
+function logHook(sessionId, hookName) {
+  const activity = loadOrCreate(sessionId);
+  upsertEntry(activity.hooks, hookName);
+  const filePath = getActivityPath(sessionId);
+  writeFileSync2(filePath, JSON.stringify(activity), { encoding: "utf-8" });
+}
+
 // src/maestro-enforcer.ts
 var log3 = createLogger("maestro-enforcer");
 var STATE_BASE_NAME = "maestro-state";
@@ -236,7 +296,7 @@ function getStateFile(sessionId) {
 }
 function readState(sessionId) {
   const stateFile = getStateFile(sessionId);
-  if (!existsSync4(stateFile)) {
+  if (!existsSync5(stateFile)) {
     return null;
   }
   try {
@@ -256,7 +316,7 @@ function readState(sessionId) {
   }
 }
 function readStdin() {
-  return readFileSync2(0, "utf-8");
+  return readFileSync3(0, "utf-8");
 }
 function makeBlockOutput(reason) {
   const output = {
@@ -294,6 +354,10 @@ async function main() {
     if (!state || !state.active) {
       makeAllowOutput();
       return;
+    }
+    try {
+      logHook(sessionId || "", "maestro-enforcer");
+    } catch {
     }
     log3.info(`Checking Task tool: phase recon=${state.reconComplete} interview=${state.interviewComplete} plan=${state.planApproved}`, { sessionId });
     const agentType = input.tool_input.subagent_type?.toLowerCase() || "general-purpose";
