@@ -67,5 +67,6 @@ if (!process.env.VITEST) {
 }
 export {
   TEST_PATTERNS,
-  getStateFile
+  getStateFile,
+  main
 };

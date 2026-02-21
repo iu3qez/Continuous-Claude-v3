@@ -76,6 +76,88 @@ export interface SkillLookupResult {
 }
 
 // =============================================================================
+// Router API Types
+// =============================================================================
+
+/** Input to the route() API */
+export interface SkillRouterAPIInput {
+  task: string;
+  context?: string;
+  files?: string[];
+  current_pattern?: string;
+  exclude_agents?: string[];
+  cwd?: string;
+}
+
+/** Output from route() API */
+export interface SkillRouterAPIOutput {
+  skills: SkillRouterMatch[];
+  agents: AgentRouterMatch[];
+  complexity_score: number;
+  recommended_pattern: OrchestrationPattern | null;
+  llm_assisted: boolean;
+  greenfield_score: number;
+  suggest_ralph: boolean;
+}
+
+/** A matched skill from prompt/file analysis */
+export interface SkillRouterMatch {
+  name: string;
+  enforcement: string;
+  priority: string;
+  confidence: number;
+  reason: string;
+  match_type: 'keyword' | 'intent' | 'file_type' | 'llm_assist';
+}
+
+/** A matched agent from prompt analysis */
+export interface AgentRouterMatch {
+  name: string;
+  type: string;
+  confidence: number;
+  reason: string;
+}
+
+/** Orchestration pattern type */
+export type OrchestrationPattern =
+  | 'swarm'
+  | 'hierarchical'
+  | 'pipeline'
+  | 'generator_critic'
+  | 'adversarial'
+  | 'map_reduce'
+  | 'jury'
+  | 'blackboard'
+  | 'chain_of_responsibility'
+  | 'event_driven'
+  | 'circuit_breaker';
+
+/** Complexity scoring result */
+export interface ComplexityScore {
+  total: number;
+  prompt_score: number;
+  file_score: number;
+  prompt_signals: PromptSignal[];
+  file_signals: FileSignal[];
+  action: 'proceed' | 'suggest_maestro' | 'force_maestro';
+}
+
+/** Signal detected from prompt analysis */
+export interface PromptSignal {
+  name: string;
+  weight: number;
+  detected: boolean;
+  detail: string;
+}
+
+/** Signal detected from file analysis */
+export interface FileSignal {
+  name: string;
+  weight: number;
+  value: number;
+}
+
+// =============================================================================
 // Error Types
 // =============================================================================
 

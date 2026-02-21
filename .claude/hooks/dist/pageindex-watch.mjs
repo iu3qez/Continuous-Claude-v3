@@ -73,7 +73,7 @@ function triggerReindex(projectDir, files) {
       }
     });
     proc.unref();
-    console.error(`[OK] PageIndex regeneration triggered for: ${files.map((f) => path.basename(f)).join(", ")}`);
+    console.error(`[pageindex-watch] PageIndex regeneration triggered for: ${files.map((f) => path.basename(f)).join(", ")}`);
   } catch (err) {
     console.error(`[WARN] PageIndex regeneration failed: ${err}`);
   }
@@ -116,6 +116,9 @@ async function main() {
       pending.files.push(filePath);
     }
   } else {
+    if (pending && pending.files.length > 0) {
+      triggerReindex(pending.projectDir, pending.files);
+    }
     pending = {
       files: [filePath],
       timestamp: now,

@@ -1,4 +1,5 @@
 {
+  "autoCompact": false,
   "env": {
     "CONTINUOUS_CLAUDE_COORDINATION": "true",
     "ENABLE_TOOL_SEARCH": "auto:5",
@@ -116,6 +117,16 @@
             "timeout": 10000
           }
         ]
+      },
+      {
+        "matcher": "TaskUpdate",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node C:/Users/david.hayes/.claude/hooks/dist/test-before-done.mjs",
+            "timeout": 10000
+          }
+        ]
       }
     ],
     "UserPromptSubmit": [
@@ -216,6 +227,11 @@
             "type": "command",
             "command": "python C:/Users/david.hayes/.claude/hooks/braintrust_hooks.py session_start",
             "timeout": 10000
+          },
+          {
+            "type": "command",
+            "command": "node C:/Users/david.hayes/.claude/hooks/dist/roadmap-reconcile.mjs",
+            "timeout": 10000
           }
         ]
       }
@@ -253,6 +269,11 @@
             "type": "command",
             "command": "python C:/Users/david.hayes/.claude/hooks/braintrust_hooks.py stop",
             "timeout": 15000
+          },
+          {
+            "type": "command",
+            "command": "node C:/Users/david.hayes/.claude/hooks/dist/session-outcome.mjs",
+            "timeout": 10000
           }
         ]
       }
@@ -334,6 +355,11 @@
             "type": "command",
             "command": "node C:/Users/david.hayes/.claude/hooks/dist/ralph-monitor.mjs",
             "timeout": 5000
+          },
+          {
+            "type": "command",
+            "command": "node C:/Users/david.hayes/.claude/hooks/dist/test-run-tracker.mjs",
+            "timeout": 5000
           }
         ]
       },
@@ -374,10 +400,38 @@
             "type": "command",
             "command": "node C:/Users/david.hayes/.claude/hooks/dist/pageindex-watch.mjs",
             "timeout": 5000
+          },
+          {
+            "type": "command",
+            "command": "node C:/Users/david.hayes/.claude/hooks/dist/auto-build.mjs",
+            "timeout": 10000
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node C:/Users/david.hayes/.claude/hooks/dist/import-validator.mjs",
+            "timeout": 10000
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node C:/Users/david.hayes/.claude/hooks/dist/periodic-extract.mjs",
+            "timeout": 2000
           }
         ]
       }
     ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "node C:/Users/david.hayes/.claude/plugins/cache/claude-hud/claude-hud/0.0.7/dist/index.js"
   },
   "enabledPlugins": {
     "frontend-design@claude-plugins-official": true,
@@ -496,5 +550,6 @@
         "@pageindex/mcp"
       ]
     }
-  }
+  },
+  "skipDangerousModePermissionPrompt": true
 }

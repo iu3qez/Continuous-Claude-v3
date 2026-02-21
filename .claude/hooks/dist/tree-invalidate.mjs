@@ -100,7 +100,7 @@ async function main() {
   const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
   const invalidated = invalidateTree(projectDir);
   if (invalidated) {
-    console.error(`[OK] Knowledge tree invalidated (${path.basename(filePath)} changed)`);
+    console.error(`[tree-invalidate] Knowledge tree invalidated (${path.basename(filePath)} changed)`);
   }
   console.log(JSON.stringify({ result: "continue" }));
 }

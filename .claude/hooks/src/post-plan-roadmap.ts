@@ -548,18 +548,18 @@ async function main() {
     };
   }
 
-  // Get path of latest plan file for title fallback
+  // Get path of latest plan file for title fallback (reuse planFiles from above)
   let latestPlanPath: string | undefined;
   if (fs.existsSync(planDir)) {
-    const planFiles = fs.readdirSync(planDir)
+    const latestPlanFiles = fs.readdirSync(planDir)
       .filter(f => f.endsWith('.md'))
       .sort((a, b) => {
         const statA = fs.statSync(path.join(planDir, a));
         const statB = fs.statSync(path.join(planDir, b));
         return statB.mtime.getTime() - statA.mtime.getTime();
       });
-    if (planFiles.length > 0) {
-      latestPlanPath = path.join(planDir, planFiles[0]);
+    if (latestPlanFiles.length > 0) {
+      latestPlanPath = path.join(planDir, latestPlanFiles[0]);
     }
   }
 

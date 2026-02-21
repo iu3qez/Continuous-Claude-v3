@@ -14,7 +14,7 @@
  * State tracked in: .claude/extraction-state.json
  */
 
-import { spawnSync } from 'child_process';
+import { spawn } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -64,52 +64,41 @@ function loadState(stateFile: string): { last_extracted_line: number; recent_has
   }
 }
 
-function runIncrementalExtraction(
+function runBackgroundExtraction(
   transcriptPath: string,
   sessionId: string,
   startLine: number,
   stateFile: string,
   projectDir: string
-): ExtractionResult | null {
+): boolean {
   const opcDir = getOpcDir();
   const extractScript = path.join(opcDir, 'scripts', 'core', 'incremental_extract.py');
 
   if (!fs.existsSync(extractScript)) {
     console.error(`incremental_extract.py not found at ${extractScript}`);
-    return null;
-  }
-
-  const args = [
-    'run', 'python', 'scripts/core/incremental_extract.py',
-    '--transcript', transcriptPath,
-    '--session-id', sessionId,
-    '--start-line', startLine.toString(),
-    '--state-file', stateFile,
-    '--project-dir', projectDir,
-    '--max-learnings', '5',  // Keep extraction quick
-    '--json'
-  ];
-
-  const result = spawnSync('uv', args, {
-    encoding: 'utf-8',
-    cwd: opcDir,
-    env: {
-      ...process.env,
-      PYTHONPATH: opcDir
-    },
-    timeout: 15000  // 15 second timeout
-  });
-
-  if (result.status !== 0) {
-    console.error(`Extraction failed: ${result.stderr}`);
-    return null;
+    return false;
   }
 
   try {
-    return JSON.parse(result.stdout.trim());
+    const child = spawn('uv', [
+      'run', 'python', 'scripts/core/incremental_extract.py',
+      '--transcript', transcriptPath,
+      '--session-id', sessionId,
+      '--start-line', startLine.toString(),
+      '--state-file', stateFile,
+      '--project-dir', projectDir,
+      '--max-learnings', '5',
+      '--json'
+    ], {
+      cwd: opcDir,
+      detached: true,
+      stdio: 'ignore',
+      env: { ...process.env, PYTHONPATH: opcDir },
+    });
+    child.unref();
+    return true;
   } catch {
-    console.error(`Failed to parse extraction result: ${result.stdout}`);
-    return null;
+    return false;
   }
 }
 
@@ -148,8 +137,23 @@ async function main() {
   const stateFile = getStateFilePath(projectDir);
   const state = loadState(stateFile);
 
-  // Run incremental extraction
-  const result = runIncrementalExtraction(
+  // Cooldown: skip if extraction ran recently (within 5 minutes)
+  const COOLDOWN_MS = 5 * 60 * 1000;
+  const stateWithMeta = state as { last_extracted_line: number; recent_hashes: string[]; last_launched?: number };
+  if (stateWithMeta.last_launched && Date.now() - stateWithMeta.last_launched < COOLDOWN_MS) {
+    console.log(JSON.stringify({ continue: true, systemMessage: '[PreCompact:L0] Cooldown active, skipping extraction' }));
+    return;
+  }
+
+  // Update last_launched timestamp
+  try {
+    const stateData = fs.existsSync(stateFile) ? JSON.parse(fs.readFileSync(stateFile, 'utf-8')) : {};
+    stateData.last_launched = Date.now();
+    fs.writeFileSync(stateFile, JSON.stringify(stateData));
+  } catch { /* fail open */ }
+
+  // Run extraction in background (non-blocking)
+  const launched = runBackgroundExtraction(
     transcriptPath,
     sessionId,
     state.last_extracted_line,
@@ -157,30 +161,9 @@ async function main() {
     projectDir
   );
 
-  if (!result) {
-    const output: HookOutput = {
-      continue: true,
-      systemMessage: '[PreCompact] Memory extraction unavailable'
-    };
-    console.log(JSON.stringify(output));
-    return;
-  }
-
-  // Build status message
-  const parts: string[] = [];
-  if (result.learnings_stored > 0) {
-    parts.push(`${result.learnings_stored} learnings captured`);
-  }
-  if (result.learnings_deduped > 0) {
-    parts.push(`${result.learnings_deduped} skipped (duplicate)`);
-  }
-  if (result.errors && result.errors.length > 0) {
-    parts.push(`${result.errors.length} errors`);
-  }
-
-  const message = parts.length > 0
-    ? `[PreCompact:L0] Memory extraction: ${parts.join(', ')}`
-    : '[PreCompact:L0] No new learnings to extract';
+  const message = launched
+    ? '[PreCompact:L0] Memory extraction launched (background)'
+    : '[PreCompact:L0] Memory extraction unavailable';
 
   const output: HookOutput = {
     continue: true,

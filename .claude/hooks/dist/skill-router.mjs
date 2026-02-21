@@ -3,6 +3,17 @@
 // src/skill-router.ts
 import { readFileSync, existsSync, readdirSync, statSync } from "fs";
 import { join } from "path";
+
+// src/shared/skill-router-types.ts
+var CircularDependencyError = class extends Error {
+  constructor(cyclePath) {
+    super(`Circular dependency detected: ${cyclePath.join(" -> ")}`);
+    this.cyclePath = cyclePath;
+    this.name = "CircularDependencyError";
+  }
+};
+
+// src/skill-router.ts
 var PROMPT_WEIGHTS = {
   multiple_files: 0.2,
   task_conjunctions: 0.15,
@@ -52,6 +63,149 @@ function loadSkillRules() {
   } catch {
     return { skills: {}, agents: {} };
   }
+}
+function detectCircularDependency(skillName, rules) {
+  const visited = /* @__PURE__ */ new Set();
+  function dfs(current, path, pathSet) {
+    if (pathSet.has(current)) {
+      const cycleStart = path.indexOf(current);
+      return path.slice(cycleStart).concat(current);
+    }
+    if (visited.has(current)) {
+      return null;
+    }
+    path.push(current);
+    pathSet.add(current);
+    visited.add(current);
+    const skill = rules.skills[current];
+    if (skill?.prerequisites) {
+      const neighbors = [
+        ...skill.prerequisites.suggest || [],
+        ...skill.prerequisites.require || []
+      ];
+      for (const neighbor of neighbors) {
+        const result = dfs(neighbor, path, pathSet);
+        if (result !== null) {
+          return result;
+        }
+      }
+    }
+    path.pop();
+    pathSet.delete(current);
+    return null;
+  }
+  return dfs(skillName, [], /* @__PURE__ */ new Set());
+}
+function topologicalSort(skillName, rules) {
+  const reachable = /* @__PURE__ */ new Set();
+  const queue = [skillName];
+  while (queue.length > 0) {
+    const current = queue.shift();
+    if (reachable.has(current)) continue;
+    reachable.add(current);
+    const skill = rules.skills[current];
+    if (skill?.prerequisites) {
+      const deps = [
+        ...skill.prerequisites.suggest || [],
+        ...skill.prerequisites.require || []
+      ];
+      for (const dep of deps) {
+        queue.push(dep);
+      }
+    }
+  }
+  const inDegree = /* @__PURE__ */ new Map();
+  const adjList = /* @__PURE__ */ new Map();
+  for (const node of reachable) {
+    inDegree.set(node, 0);
+    adjList.set(node, []);
+  }
+  for (const node of reachable) {
+    const skill = rules.skills[node];
+    if (skill?.prerequisites) {
+      const deps = [
+        ...skill.prerequisites.suggest || [],
+        ...skill.prerequisites.require || []
+      ];
+      for (const dep of deps) {
+        if (reachable.has(dep)) {
+          adjList.get(dep).push(node);
+          inDegree.set(node, (inDegree.get(node) || 0) + 1);
+        }
+      }
+    }
+  }
+  const sorted = [];
+  const kahnQueue = Array.from(reachable).filter((n) => inDegree.get(n) === 0).sort();
+  while (kahnQueue.length > 0) {
+    const current = kahnQueue.shift();
+    sorted.push(current);
+    for (const dependent of adjList.get(current) || []) {
+      const newDegree = (inDegree.get(dependent) || 1) - 1;
+      inDegree.set(dependent, newDegree);
+      if (newDegree === 0) {
+        const insertIdx = kahnQueue.findIndex((q) => q > dependent);
+        if (insertIdx === -1) {
+          kahnQueue.push(dependent);
+        } else {
+          kahnQueue.splice(insertIdx, 0, dependent);
+        }
+      }
+    }
+  }
+  if (sorted.length !== reachable.size) {
+    const remaining = Array.from(reachable).filter((n) => !sorted.includes(n));
+    const cyclePath = detectCircularDependency(remaining[0], rules) || remaining;
+    throw new CircularDependencyError(cyclePath);
+  }
+  return sorted;
+}
+function getLoadingMode(skillName, rules) {
+  const skill = rules.skills[skillName];
+  if (!skill) return "lazy";
+  const mode = skill.loading;
+  if (!mode) return "lazy";
+  const validModes = ["lazy", "eager", "eager-prerequisites"];
+  if (!validModes.includes(mode)) {
+    console.warn(`Skill "${skillName}" has invalid loading mode "${mode}", defaulting to lazy`);
+    return "lazy";
+  }
+  return mode;
+}
+function resolveCoActivation(skillName, rules) {
+  const skill = rules.skills[skillName];
+  if (!skill?.coActivate) {
+    return { peers: [], mode: "any" };
+  }
+  const peers = skill.coActivate.filter((peer) => peer !== skillName);
+  for (const peer of peers) {
+    if (!rules.skills[peer]) {
+      console.warn(`Skill "${skillName}" co-activates non-existent peer "${peer}"`);
+    }
+  }
+  const mode = skill.coActivateMode || "any";
+  return { peers, mode };
+}
+function resolvePrerequisites(skillName, rules) {
+  const skill = rules.skills[skillName];
+  const suggest = skill?.prerequisites?.suggest || [];
+  const require2 = skill?.prerequisites?.require || [];
+  const loadOrder = topologicalSort(skillName, rules);
+  return { suggest, require: require2, loadOrder };
+}
+function buildEnhancedLookupResult(baseMatch, rules) {
+  const prerequisites = resolvePrerequisites(baseMatch.skillName, rules);
+  const coActivation = resolveCoActivation(baseMatch.skillName, rules);
+  const loading = getLoadingMode(baseMatch.skillName, rules);
+  return {
+    found: true,
+    skillName: baseMatch.skillName,
+    confidence: baseMatch.priorityValue / 3,
+    source: baseMatch.source,
+    prerequisites,
+    coActivation,
+    loading
+  };
 }
 function extractPromptSignals(task, context = "") {
   const signals = [];
@@ -377,5 +531,11 @@ if (process.argv[1] && process.argv[1].includes("skill-router")) {
   });
 }
 export {
-  route
+  buildEnhancedLookupResult,
+  detectCircularDependency,
+  getLoadingMode,
+  resolveCoActivation,
+  resolvePrerequisites,
+  route,
+  topologicalSort
 };

@@ -115,7 +115,7 @@ function triggerReindex(projectDir: string, files: string[]): void {
 
     proc.unref(); // Don't wait for process
 
-    console.error(`[OK] PageIndex regeneration triggered for: ${files.map(f => path.basename(f)).join(', ')}`);
+    console.error(`[pageindex-watch] PageIndex regeneration triggered for: ${files.map(f => path.basename(f)).join(', ')}`);
   } catch (err) {
     console.error(`[WARN] PageIndex regeneration failed: ${err}`);
   }
@@ -173,7 +173,10 @@ async function main() {
       pending.files.push(filePath);
     }
   } else {
-    // Create new pending state
+    // Different project or no pending state -- flush old pending first
+    if (pending && pending.files.length > 0) {
+      triggerReindex(pending.projectDir, pending.files);
+    }
     pending = {
       files: [filePath],
       timestamp: now,

@@ -27,6 +27,8 @@ import {
     FileSignal,
     SkillRulesConfig,
     SkillRule,
+    SkillLookupResult,
+    CircularDependencyError,
 } from './shared/skill-router-types.js';
 
 // =============================================================================
@@ -106,6 +108,231 @@ function loadSkillRules(): SkillRulesConfig {
     } catch {
         return { skills: {}, agents: {} };
     }
+}
+
+// =============================================================================
+// Prerequisite Resolution & Dependency Analysis
+// =============================================================================
+
+/**
+ * Detect circular dependencies in skill prerequisites using DFS.
+ * Returns the cycle path if found, or null if no cycle exists.
+ */
+export function detectCircularDependency(
+    skillName: string,
+    rules: SkillRulesConfig
+): string[] | null {
+    const visited = new Set<string>();
+
+    function dfs(current: string, path: string[], pathSet: Set<string>): string[] | null {
+        if (pathSet.has(current)) {
+            const cycleStart = path.indexOf(current);
+            return path.slice(cycleStart).concat(current);
+        }
+
+        if (visited.has(current)) {
+            return null;
+        }
+
+        path.push(current);
+        pathSet.add(current);
+        visited.add(current);
+
+        const skill = rules.skills[current];
+        if (skill?.prerequisites) {
+            const neighbors = [
+                ...(skill.prerequisites.suggest || []),
+                ...(skill.prerequisites.require || []),
+            ];
+            for (const neighbor of neighbors) {
+                const result = dfs(neighbor, path, pathSet);
+                if (result !== null) {
+                    return result;
+                }
+            }
+        }
+
+        path.pop();
+        pathSet.delete(current);
+        return null;
+    }
+
+    return dfs(skillName, [], new Set<string>());
+}
+
+/**
+ * Topological sort of skill dependencies using Kahn's algorithm.
+ * Returns skills in dependency-first order (roots first, target last).
+ * Throws CircularDependencyError if a cycle is detected.
+ */
+export function topologicalSort(
+    skillName: string,
+    rules: SkillRulesConfig
+): string[] {
+    // Step 1: Collect all reachable nodes via BFS
+    const reachable = new Set<string>();
+    const queue = [skillName];
+    while (queue.length > 0) {
+        const current = queue.shift()!;
+        if (reachable.has(current)) continue;
+        reachable.add(current);
+        const skill = rules.skills[current];
+        if (skill?.prerequisites) {
+            const deps = [
+                ...(skill.prerequisites.suggest || []),
+                ...(skill.prerequisites.require || []),
+            ];
+            for (const dep of deps) {
+                queue.push(dep);
+            }
+        }
+    }
+
+    // Step 2: Build adjacency list and in-degree map
+    const inDegree = new Map<string, number>();
+    const adjList = new Map<string, string[]>();
+
+    for (const node of reachable) {
+        inDegree.set(node, 0);
+        adjList.set(node, []);
+    }
+
+    for (const node of reachable) {
+        const skill = rules.skills[node];
+        if (skill?.prerequisites) {
+            const deps = [
+                ...(skill.prerequisites.suggest || []),
+                ...(skill.prerequisites.require || []),
+            ];
+            for (const dep of deps) {
+                if (reachable.has(dep)) {
+                    adjList.get(dep)!.push(node);
+                    inDegree.set(node, (inDegree.get(node) || 0) + 1);
+                }
+            }
+        }
+    }
+
+    // Step 3: Kahn's algorithm with alphabetical ordering for determinism
+    const sorted: string[] = [];
+    const kahnQueue = Array.from(reachable)
+        .filter(n => inDegree.get(n) === 0)
+        .sort();
+
+    while (kahnQueue.length > 0) {
+        const current = kahnQueue.shift()!;
+        sorted.push(current);
+        for (const dependent of adjList.get(current) || []) {
+            const newDegree = (inDegree.get(dependent) || 1) - 1;
+            inDegree.set(dependent, newDegree);
+            if (newDegree === 0) {
+                // Insert in sorted position for determinism
+                const insertIdx = kahnQueue.findIndex(q => q > dependent);
+                if (insertIdx === -1) {
+                    kahnQueue.push(dependent);
+                } else {
+                    kahnQueue.splice(insertIdx, 0, dependent);
+                }
+            }
+        }
+    }
+
+    // Step 4: Cycle detection
+    if (sorted.length !== reachable.size) {
+        const remaining = Array.from(reachable).filter(n => !sorted.includes(n));
+        const cyclePath = detectCircularDependency(remaining[0], rules) || remaining;
+        throw new CircularDependencyError(cyclePath);
+    }
+
+    return sorted;
+}
+
+/**
+ * Get the loading mode for a skill.
+ * Returns 'lazy' as default, warns on invalid modes.
+ */
+export function getLoadingMode(
+    skillName: string,
+    rules: SkillRulesConfig
+): 'lazy' | 'eager' | 'eager-prerequisites' {
+    const skill = rules.skills[skillName];
+    if (!skill) return 'lazy';
+
+    const mode = skill.loading;
+    if (!mode) return 'lazy';
+
+    const validModes = ['lazy', 'eager', 'eager-prerequisites'];
+    if (!validModes.includes(mode)) {
+        console.warn(`Skill "${skillName}" has invalid loading mode "${mode}", defaulting to lazy`);
+        return 'lazy';
+    }
+
+    return mode;
+}
+
+/**
+ * Resolve co-activation peers for a skill.
+ * Filters self-references and warns about non-existent peers.
+ */
+export function resolveCoActivation(
+    skillName: string,
+    rules: SkillRulesConfig
+): { peers: string[]; mode: 'all' | 'any' } {
+    const skill = rules.skills[skillName];
+    if (!skill?.coActivate) {
+        return { peers: [], mode: 'any' };
+    }
+
+    const peers = skill.coActivate.filter(peer => peer !== skillName);
+
+    for (const peer of peers) {
+        if (!rules.skills[peer]) {
+            console.warn(`Skill "${skillName}" co-activates non-existent peer "${peer}"`);
+        }
+    }
+
+    const mode = skill.coActivateMode || 'any';
+    return { peers, mode };
+}
+
+/**
+ * Resolve prerequisites for a skill.
+ * Returns direct suggest/require lists and transitive loadOrder via topologicalSort.
+ */
+export function resolvePrerequisites(
+    skillName: string,
+    rules: SkillRulesConfig
+): { suggest: string[]; require: string[]; loadOrder: string[] } {
+    const skill = rules.skills[skillName];
+    const suggest = skill?.prerequisites?.suggest || [];
+    const require = skill?.prerequisites?.require || [];
+
+    const loadOrder = topologicalSort(skillName, rules);
+
+    return { suggest, require, loadOrder };
+}
+
+/**
+ * Build an enhanced SkillLookupResult by composing prerequisites,
+ * co-activation, and loading mode resolution.
+ */
+export function buildEnhancedLookupResult(
+    baseMatch: { skillName: string; source: 'keyword' | 'intent' | 'memory' | 'jit'; priorityValue: number },
+    rules: SkillRulesConfig
+): SkillLookupResult {
+    const prerequisites = resolvePrerequisites(baseMatch.skillName, rules);
+    const coActivation = resolveCoActivation(baseMatch.skillName, rules);
+    const loading = getLoadingMode(baseMatch.skillName, rules);
+
+    return {
+        found: true,
+        skillName: baseMatch.skillName,
+        confidence: baseMatch.priorityValue / 3,
+        source: baseMatch.source,
+        prerequisites,
+        coActivation,
+        loading,
+    };
 }
 
 // =============================================================================

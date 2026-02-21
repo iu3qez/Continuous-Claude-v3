@@ -434,13 +434,13 @@ async function main() {
   }
   let latestPlanPath;
   if (fs.existsSync(planDir)) {
-    const planFiles = fs.readdirSync(planDir).filter((f) => f.endsWith(".md")).sort((a, b) => {
+    const latestPlanFiles = fs.readdirSync(planDir).filter((f) => f.endsWith(".md")).sort((a, b) => {
       const statA = fs.statSync(path.join(planDir, a));
       const statB = fs.statSync(path.join(planDir, b));
       return statB.mtime.getTime() - statA.mtime.getTime();
     });
-    if (planFiles.length > 0) {
-      latestPlanPath = path.join(planDir, planFiles[0]);
+    if (latestPlanFiles.length > 0) {
+      latestPlanPath = path.join(planDir, latestPlanFiles[0]);
     }
   }
   const planInfo = extractPlanInfo(planContent, latestPlanPath);

@@ -21,7 +21,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 
-import { TEST_PATTERNS, getStateFile } from '../test-run-tracker.js';
+import { TEST_PATTERNS, getStateFile, main } from '../test-run-tracker.js';
+import { PassThrough } from 'stream';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -184,5 +185,79 @@ describe('state file content', () => {
     expect(() => {
       try { JSON.parse(fs.readFileSync(statePath, 'utf-8')); } catch { /* expected */ }
     }).not.toThrow();
+  });
+});
+
+// =============================================================================
+// Test 5: Integration -- main() end-to-end
+// =============================================================================
+
+describe('main() integration', () => {
+  let originalStdin: typeof process.stdin;
+
+  beforeEach(() => {
+    originalStdin = process.stdin;
+  });
+
+  afterEach(() => {
+    Object.defineProperty(process, 'stdin', { value: originalStdin, writable: true });
+  });
+
+  it('writes state file when given a test command via stdin', async () => {
+    const input = JSON.stringify({
+      session_id: TEST_SESSION,
+      tool_name: 'Bash',
+      tool_input: { command: 'npm test' },
+    });
+
+    const mockStdin = new PassThrough();
+    Object.defineProperty(process, 'stdin', { value: mockStdin, writable: true });
+
+    const mainPromise = main();
+    mockStdin.end(input);
+    await mainPromise;
+
+    const statePath = getStatePath(TEST_SESSION);
+    expect(fs.existsSync(statePath)).toBe(true);
+    const content = JSON.parse(fs.readFileSync(statePath, 'utf-8'));
+    expect(content).toHaveProperty('lastTestRun');
+    expect(content).toHaveProperty('command', 'npm test');
+    expect(typeof content.lastTestRun).toBe('number');
+  });
+
+  it('does not write state file for non-test commands', async () => {
+    const input = JSON.stringify({
+      session_id: TEST_SESSION,
+      tool_name: 'Bash',
+      tool_input: { command: 'git status' },
+    });
+
+    const mockStdin = new PassThrough();
+    Object.defineProperty(process, 'stdin', { value: mockStdin, writable: true });
+
+    const mainPromise = main();
+    mockStdin.end(input);
+    await mainPromise;
+
+    const statePath = getStatePath(TEST_SESSION);
+    expect(fs.existsSync(statePath)).toBe(false);
+  });
+
+  it('does not write state file for non-Bash tools', async () => {
+    const input = JSON.stringify({
+      session_id: TEST_SESSION,
+      tool_name: 'Read',
+      tool_input: { file_path: '/some/file.ts' },
+    });
+
+    const mockStdin = new PassThrough();
+    Object.defineProperty(process, 'stdin', { value: mockStdin, writable: true });
+
+    const mainPromise = main();
+    mockStdin.end(input);
+    await mainPromise;
+
+    const statePath = getStatePath(TEST_SESSION);
+    expect(fs.existsSync(statePath)).toBe(false);
   });
 });

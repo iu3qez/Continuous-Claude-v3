@@ -150,7 +150,7 @@ async function main() {
   const invalidated = invalidateTree(projectDir);
 
   if (invalidated) {
-    console.error(`[OK] Knowledge tree invalidated (${path.basename(filePath)} changed)`);
+    console.error(`[tree-invalidate] Knowledge tree invalidated (${path.basename(filePath)} changed)`);
   }
 
   console.log(JSON.stringify({ result: 'continue' }));
