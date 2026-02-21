@@ -122,7 +122,7 @@ You: "Go ahead"
 [Walk away. Come back to: working form, passing tests, clean commit]
 ```
 
-### 📚 115 Skills (vs. Original ~50)
+### 📚 119+ Skills (vs. Original ~50)
 
 Skills are pre-built workflows you trigger by describing what you want:
 
@@ -277,8 +277,8 @@ The wizard walks you through 12 steps:
 3. ✅ Sets up the database and API keys (optional)
 4. ✅ Starts Docker containers for PostgreSQL
 5. ✅ Installs 31 specialized agents
-6. ✅ Installs 115 skill workflows
-7. ✅ Installs 80+ lifecycle hooks
+6. ✅ Installs 119+ skill workflows
+7. ✅ Installs 90+ lifecycle hooks
 8. ✅ Installs code analysis tools (95% efficiency boost)
 9. ✅ Installs math capabilities (optional)
 10. ✅ Configures diagnostics and linting
@@ -375,7 +375,7 @@ Result: Same understanding, 95% fewer tokens
 
 ## What You Get
 
-### 115 Skills (Pre-Built Workflows)
+### 119+ Skills (Pre-Built Workflows)
 
 Skills are like apps you trigger by asking naturally. No need to memorize commands.
 
@@ -442,7 +442,7 @@ Agents are AI assistants focused on specific tasks. Claude delegates to them aut
 - **aegis** — Security vulnerability analysis
 - **agentica-agent** — Build Python agents using Agentica SDK
 
-### 80+ Hooks (Automatic Helpers)
+### 90+ Hooks (Automatic Helpers)
 
 Hooks run in the background at specific moments — you don't call them directly.
 
@@ -476,7 +476,7 @@ Hooks run in the background at specific moments — you don't call them directly
 - Spawns background analysis to extract learnings
 - Stores memories for future recall
 
-### 20 Rules (System Policies)
+### 23 Rules (System Policies)
 
 Rules keep Claude consistent and safe:
 
@@ -631,7 +631,7 @@ Result: Visual verification without writing Selenium or Playwright scripts
 
 ## Components Explained Simply
 
-### Skills (115)
+### Skills (119+)
 
 **What they are:** Pre-built workflows you trigger by describing what you want
 
@@ -670,7 +670,7 @@ Result: Visual verification without writing Selenium or Playwright scripts
 
 **Do I need to code?** No. Agents work on your behalf.
 
-### Hooks (83)
+### Hooks (90+)
 
 **What they are:** Background helpers that run automatically at specific moments
 
@@ -686,7 +686,7 @@ Result: Visual verification without writing Selenium or Playwright scripts
 
 **Do I need to code?** No. Hooks work invisibly.
 
-### Rules (20)
+### Rules (23)
 
 **What they are:** Guidelines that keep Claude consistent
 
@@ -853,31 +853,23 @@ Then you can use all features (`/build`, `/fix`, etc.) with full context about y
 
 ### Architecture Overview
 
+```mermaid
+graph TB
+    UP[User Prompt] --> HL[Hook Layer<br/>90+ hooks]
+    HL --> CC[Claude Core]
+    CC --> TE[Tool Execution]
+    CC --> SK[Skills - 119+]
+    CC --> AG[Agents - 31]
+    CC --> MS[Memory System]
+    SK --> AG
+    AG --> TE
+    TE --> TLDR[TLDR Code Analysis<br/>95% token savings]
+    MS --> CL[Continuity<br/>Ledgers + Handoffs]
+    MS --> CO[Coordination<br/>Cross-terminal]
+    CL --> RM[ROADMAP<br/>Auto-sync]
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        CONTINUOUS CLAUDE                            │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐             │
-│  │   Skills    │    │   Agents    │    │    Hooks    │             │
-│  │   (115)     │───▶│    (31)     │◀───│    (80+)    │             │
-│  └─────────────┘    └─────────────┘    └─────────────┘             │
-│         │                  │                  │                     │
-│         ▼                  ▼                  ▼                     │
-│  ┌─────────────────────────────────────────────────────────────┐   │
-│  │                     TLDR Code Analysis                       │   │
-│  │   L1:AST → L2:CallGraph → L3:CFG → L4:DFG → L5:Slicing      │   │
-│  │                    (95% token savings)                       │   │
-│  └─────────────────────────────────────────────────────────────┘   │
-│         │                  │                  │                     │
-│         ▼                  ▼                  ▼                     │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐             │
-│  │   Memory    │    │ Continuity  │    │ Coordination│             │
-│  │   System    │    │   Ledgers   │    │    Layer    │             │
-│  └─────────────┘    └─────────────┘    └─────────────┘             │
-│                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
-```
+
+> **Detailed architecture diagrams:** [System Overview](docs/architecture/diagrams/01-system-overview.md) | [Hook Lifecycle](docs/architecture/diagrams/02-hook-lifecycle.md) | [Memory System](docs/architecture/diagrams/03-memory-system.md) | [Agent Orchestration](docs/architecture/diagrams/04-agent-orchestration.md) | [Continuity Flow](docs/architecture/diagrams/05-continuity-flow.md) | [TLDR Stack](docs/architecture/diagrams/06-tldr-analysis-stack.md)
 
 ### The 5-Layer Code Analysis Stack
 
@@ -1165,11 +1157,11 @@ Two complementary browser automation systems:
 continuous-claude/
 ├── .claude/
 │   ├── agents/           # 31 specialized AI agents
-│   ├── hooks/            # 80+ lifecycle hooks
+│   ├── hooks/            # 90+ lifecycle hooks
 │   │   ├── src/          # TypeScript source
 │   │   └── dist/         # Compiled JavaScript
-│   ├── skills/           # 115 modular capabilities
-│   ├── rules/            # 20 system policies
+│   ├── skills/           # 119+ modular capabilities
+│   ├── rules/            # 23 system policies
 │   ├── docs/architecture/ # Navigable architecture docs
 │   ├── scripts/          # Python utilities
 │   └── settings.json     # Hook configuration
