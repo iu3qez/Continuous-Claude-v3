@@ -153,7 +153,7 @@ function extractKeywords(prompt: string): string {
  */
 function checkLocalMemory(intent: string, projectDir: string): MemoryMatch | null {
   const homeDir = process.env.HOME || process.env.USERPROFILE || '';
-  const projectMemoryScript = path.join(homeDir, '.claude', 'scripts', 'core', 'core', 'project_memory.py');
+  const projectMemoryScript = path.join(homeDir, '.claude', 'scripts', 'core', 'project_memory.py');
 
   if (!existsSync(projectMemoryScript)) return null;
 
@@ -166,7 +166,7 @@ function checkLocalMemory(intent: string, projectDir: string): MemoryMatch | nul
       '--json'
     ], {
       encoding: 'utf-8',
-      cwd: path.join(homeDir, '.claude', 'scripts', 'core', 'core'),
+      cwd: path.join(homeDir, '.claude', 'scripts', 'core'),
       timeout: 2000,
       killSignal: 'SIGKILL',
     });

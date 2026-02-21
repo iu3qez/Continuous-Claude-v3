@@ -395,10 +395,8 @@ describe('reconcile', () => {
 
     const result = reconcile(tempDir);
     // socket.io and helmet are missing from package.json
-    if (Object.keys(result).length > 0) {
-      const msg = (result as any).values?.system || '';
-      expect(msg).toContain('socket.io');
-    }
+    const msg = (result as any).values?.system || '';
+    expect(msg).toContain('socket.io');
   });
 
   it('validates mentioned files exist', () => {
@@ -415,9 +413,7 @@ describe('reconcile', () => {
     const result = reconcile(tempDir);
     // Files don't exist, should produce contradictions (if 2+)
     // At minimum, both files don't exist = 2 contradictions
-    if (Object.keys(result).length > 0) {
-      const msg = (result as any).values?.system || '';
-      expect(msg).toContain('src/feature');
-    }
+    const msg = (result as any).values?.system || '';
+    expect(msg).toContain('src/feature');
   });
 });

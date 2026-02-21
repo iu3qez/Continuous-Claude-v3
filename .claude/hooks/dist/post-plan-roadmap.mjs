@@ -3,6 +3,7 @@
 // src/post-plan-roadmap.ts
 import * as fs from "fs";
 import * as path from "path";
+import { spawn } from "child_process";
 function parseRoadmap(content) {
   const result = {
     current: null,
@@ -344,21 +345,34 @@ function storePlanningLearnings(planInfo, projectDir) {
     contentLines.push("", "Key Steps:", ...planInfo.steps.slice(0, 3).map((s) => `- ${s}`));
   }
   const content = contentLines.join("\n");
-  const opcDir = process.env.CLAUDE_OPC_DIR || path.join(process.env.USERPROFILE || process.env.HOME || "", ".claude");
+  const opcDir = process.env.CLAUDE_OPC_DIR || path.join(process.env.USERPROFILE || process.env.HOME || "", "continuous-claude", "opc");
   const sessionId = `plan-${Date.now()}`;
-  const escapedContent = content.replace(/"/g, '\\"').replace(/\n/g, "\\n");
-  const escapedContext = `planning: ${planInfo.title}`.replace(/"/g, '\\"');
-  const isWindows = process.platform === "win32";
-  const pyArgs = [
-    `--session-id "${sessionId}"`,
-    `--type ARCHITECTURAL_DECISION`,
-    `--content "${escapedContent}"`,
-    `--context "${escapedContext}"`,
-    `--tags "planning,decisions,architecture"`,
-    `--confidence high`,
-    `--scope GLOBAL`
-  ].join(" ");
-  console.error(`\u2139 Skipping memory storage (slow) - ${decisions.length} decisions recorded in ROADMAP`);
+  try {
+    const child = spawn("uv", [
+      "run",
+      "python",
+      "scripts/core/store_learning.py",
+      "--session-id",
+      sessionId,
+      "--type",
+      "ARCHITECTURAL_DECISION",
+      "--content",
+      content,
+      "--context",
+      `planning: ${planInfo.title}`,
+      "--tags",
+      "planning,decisions,architecture",
+      "--confidence",
+      "high"
+    ], {
+      cwd: opcDir,
+      detached: true,
+      stdio: "ignore",
+      env: { ...process.env, PYTHONPATH: "." }
+    });
+    child.unref();
+  } catch {
+  }
 }
 async function main() {
   const input = await readStdin();

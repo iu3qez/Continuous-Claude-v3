@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 
 interface SessionEndInput {
@@ -91,7 +92,13 @@ Location: thoughts/shared/handoffs/${sessionName}/
 // ---------------------------------------------------------------------------
 
 async function main() {
-  const input: SessionEndInput = JSON.parse(await readStdin());
+  let input: SessionEndInput;
+  try {
+    input = JSON.parse(await readStdin());
+  } catch {
+    console.log(JSON.stringify({}));
+    return;
+  }
   const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
 
   // Only prompt on user-initiated session end, not auto-compaction
@@ -157,9 +164,18 @@ async function main() {
   const latestHandoff = handoffFiles[0];
   const handoffName = latestHandoff.replace('.md', '');
 
+  // Read outcome from session state file if available, default to PARTIAL_PLUS
+  const sessionId = input.session_id || 'default';
+  const outcomeFile = path.join(os.tmpdir(), `claude-session-outcome-${sessionId}.json`);
+  let outcome = 'PARTIAL_PLUS';
+  try {
+    const data = JSON.parse(fs.readFileSync(outcomeFile, 'utf-8'));
+    if (data.outcome) outcome = data.outcome;
+  } catch { /* state file missing or malformed -- use default */ }
+
   const output: HookOutput = {
     result: "continue",
-    message: buildOutcomeMessage(sessionName, handoffName)
+    message: buildOutcomeMessage(sessionName, handoffName, outcome)
   };
 
   console.log(JSON.stringify(output));
@@ -167,5 +183,5 @@ async function main() {
 
 // Guard: don't run main() when imported by vitest
 if (!process.env.VITEST) {
-  main().catch(console.error);
+  main().catch(() => { console.log(JSON.stringify({})); });
 }

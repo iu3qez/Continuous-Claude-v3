@@ -49,12 +49,20 @@ function isSignificantFile(filePath) {
 }
 function invalidateTree(projectDir) {
   const treePath = path.join(projectDir, ".claude", "knowledge-tree.json");
+  if (!fs.existsSync(path.dirname(treePath))) return false;
   if (fs.existsSync(treePath)) {
     try {
-      fs.unlinkSync(treePath);
+      const existing = JSON.parse(fs.readFileSync(treePath, "utf-8"));
+      const staleMarker = { ...existing, _stale: true, _invalidated_at: (/* @__PURE__ */ new Date()).toISOString() };
+      fs.writeFileSync(treePath, JSON.stringify(staleMarker, null, 2));
       return true;
     } catch {
-      return false;
+      try {
+        fs.writeFileSync(treePath, JSON.stringify({ _stale: true, _invalidated_at: (/* @__PURE__ */ new Date()).toISOString() }, null, 2));
+        return true;
+      } catch {
+        return false;
+      }
     }
   }
   return false;
@@ -92,7 +100,7 @@ async function main() {
   const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
   const invalidated = invalidateTree(projectDir);
   if (invalidated) {
-    console.error(`\u2713 Knowledge tree invalidated (${path.basename(filePath)} changed)`);
+    console.error(`[OK] Knowledge tree invalidated (${path.basename(filePath)} changed)`);
   }
   console.log(JSON.stringify({ result: "continue" }));
 }

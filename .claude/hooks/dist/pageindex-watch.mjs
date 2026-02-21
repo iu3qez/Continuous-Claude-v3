@@ -73,9 +73,9 @@ function triggerReindex(projectDir, files) {
       }
     });
     proc.unref();
-    console.error(`\u2713 PageIndex regeneration triggered for: ${files.map((f) => path.basename(f)).join(", ")}`);
+    console.error(`[OK] PageIndex regeneration triggered for: ${files.map((f) => path.basename(f)).join(", ")}`);
   } catch (err) {
-    console.error(`\u26A0\uFE0F PageIndex regeneration failed: ${err}`);
+    console.error(`[WARN] PageIndex regeneration failed: ${err}`);
   }
 }
 async function main() {
@@ -115,7 +115,6 @@ async function main() {
     if (!pending.files.includes(filePath)) {
       pending.files.push(filePath);
     }
-    pending.timestamp = now;
   } else {
     pending = {
       files: [filePath],
@@ -124,12 +123,12 @@ async function main() {
     };
   }
   savePending(pending);
-  const elapsed = now - (pending.timestamp - DEBOUNCE_MS);
+  const elapsed = now - pending.timestamp;
   if (elapsed >= DEBOUNCE_MS) {
     triggerReindex(projectDir, pending.files);
     clearPending();
   } else {
-    console.error(`\u{1F4DD} PageIndex update pending: ${path.basename(filePath)}`);
+    console.error(`[pending] PageIndex update pending: ${path.basename(filePath)}`);
   }
   console.log(JSON.stringify({ result: "continue" }));
 }

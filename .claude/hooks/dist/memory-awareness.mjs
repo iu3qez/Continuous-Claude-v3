@@ -96,13 +96,6 @@ function logHook(sessionId, hookName) {
 function readStdin() {
   return readFileSync2(0, "utf-8");
 }
-function isInfrastructureDir(projectDir) {
-  const homeDir = process.env.HOME || process.env.USERPROFILE || "";
-  if (!homeDir) return false;
-  const claudeDir = homeDir.replace(/\\/g, "/") + "/.claude";
-  const normalizedProject = (projectDir || "").replace(/\\/g, "/");
-  return normalizedProject === claudeDir || normalizedProject.endsWith("/.claude");
-}
 function expandGitQuery(prompt) {
   const lower = prompt.toLowerCase().trim();
   const gitExpansions = {
@@ -292,7 +285,7 @@ function extractKeywords(prompt) {
 }
 function checkLocalMemory(intent, projectDir) {
   const homeDir = process.env.HOME || process.env.USERPROFILE || "";
-  const projectMemoryScript = path.join(homeDir, ".claude", "scripts", "core", "core", "project_memory.py");
+  const projectMemoryScript = path.join(homeDir, ".claude", "scripts", "core", "project_memory.py");
   if (!existsSync3(projectMemoryScript)) return null;
   try {
     const result = spawnSync("uv", [
@@ -308,7 +301,7 @@ function checkLocalMemory(intent, projectDir) {
       "--json"
     ], {
       encoding: "utf-8",
-      cwd: path.join(homeDir, ".claude", "scripts", "core", "core"),
+      cwd: path.join(homeDir, ".claude", "scripts", "core"),
       timeout: 2e3,
       killSignal: "SIGKILL"
     });
@@ -384,10 +377,6 @@ function checkMemoryRelevance(intent, projectDir) {
 async function main() {
   const input = JSON.parse(readStdin());
   const projectDir = process.env.CLAUDE_PROJECT_DIR || input.cwd;
-  if (isInfrastructureDir(projectDir)) {
-    outputContinue();
-    return;
-  }
   if (process.env.CLAUDE_AGENT_ID) {
     outputContinue();
     return;

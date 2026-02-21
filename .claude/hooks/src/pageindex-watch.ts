@@ -115,9 +115,9 @@ function triggerReindex(projectDir: string, files: string[]): void {
 
     proc.unref(); // Don't wait for process
 
-    console.error(`✓ PageIndex regeneration triggered for: ${files.map(f => path.basename(f)).join(', ')}`);
+    console.error(`[OK] PageIndex regeneration triggered for: ${files.map(f => path.basename(f)).join(', ')}`);
   } catch (err) {
-    console.error(`⚠️ PageIndex regeneration failed: ${err}`);
+    console.error(`[WARN] PageIndex regeneration failed: ${err}`);
   }
 }
 
@@ -167,13 +167,10 @@ async function main() {
   let pending = loadPending();
 
   if (pending && pending.projectDir === projectDir) {
-    // Add file to existing pending list
+    // Accumulate files -- timestamp is set only at batch creation
+    // DO NOT update pending.timestamp here (preserves debounce start)
     if (!pending.files.includes(filePath)) {
       pending.files.push(filePath);
-    }
-    // Only set timestamp for NEW batches — don't reset on subsequent additions
-    if (!pending.files || pending.files.length === 0) {
-      pending.timestamp = now;
     }
   } else {
     // Create new pending state
@@ -196,7 +193,7 @@ async function main() {
   } else {
     // Schedule check for later (if not already scheduled)
     // Since hooks are stateless, we rely on the next file edit to check
-    console.error(`📝 PageIndex update pending: ${path.basename(filePath)}`);
+    console.error(`[pending] PageIndex update pending: ${path.basename(filePath)}`);
   }
 
   console.log(JSON.stringify({ result: 'continue' }));

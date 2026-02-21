@@ -11,7 +11,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { execSync, spawn } from 'child_process';
+import { spawn } from 'child_process';
 import * as os from 'os';
 
 interface PostToolUseInput {
@@ -447,23 +447,9 @@ function storePlanningLearnings(planInfo: PlanInfo, projectDir: string): void {
 
   const content = contentLines.join('\n');
   const opcDir = process.env.CLAUDE_OPC_DIR ||
-    path.join(process.env.USERPROFILE || process.env.HOME || '', '.claude');
+    path.join(process.env.USERPROFILE || process.env.HOME || '', 'continuous-claude', 'opc');
 
   const sessionId = `plan-${Date.now()}`;
-  const escapedContent = content.replace(/"/g, '\\"').replace(/\n/g, '\\n');
-  const escapedContext = `planning: ${planInfo.title}`.replace(/"/g, '\\"');
-
-  const isWindows = process.platform === 'win32';
-  // Build the Python command with arguments as a single string
-  const pyArgs = [
-    `--session-id "${sessionId}"`,
-    `--type ARCHITECTURAL_DECISION`,
-    `--content "${escapedContent}"`,
-    `--context "${escapedContext}"`,
-    `--tags "planning,decisions,architecture"`,
-    `--confidence high`,
-    `--scope GLOBAL`
-  ].join(' ');
 
   // Store plan learning in background (detached so hook doesn't block)
   try {

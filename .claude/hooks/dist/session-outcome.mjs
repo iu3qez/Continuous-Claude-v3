@@ -1,5 +1,6 @@
 // src/session-outcome.ts
 import * as fs from "fs";
+import * as os from "os";
 import * as path from "path";
 async function readStdin() {
   return new Promise((resolve) => {
@@ -8,8 +9,60 @@ async function readStdin() {
     process.stdin.on("end", () => resolve(data));
   });
 }
+function needsHandoffReminder(outcome) {
+  if (!outcome || typeof outcome !== "string") return false;
+  return outcome === "PARTIAL_PLUS" || outcome === "PARTIAL_MINUS";
+}
+function buildOutcomeMessage(sessionName, handoffName, outcome) {
+  let msg = `
+
+\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+Session ended: ${sessionName}
+Latest handoff: ${handoffName}
+
+To mark outcome and improve future sessions:
+
+  cd ~/.claude && uv run python scripts/core/artifact_mark.py \\
+    --handoff <handoff-id> \\
+    --outcome SUCCEEDED|PARTIAL_PLUS|PARTIAL_MINUS|FAILED
+
+To find handoff ID, query the database:
+
+  sqlite3 .claude/cache/artifact-index/context.db \\
+    "SELECT id, file_path FROM handoffs WHERE session_name='${sessionName}' ORDER BY indexed_at DESC LIMIT 1"
+
+Outcome meanings:
+  SUCCEEDED      - Task completed successfully
+  PARTIAL_PLUS   - Mostly done, minor issues remain
+  PARTIAL_MINUS  - Some progress, major issues remain
+  FAILED         - Task abandoned or blocked
+\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+`;
+  if (needsHandoffReminder(outcome)) {
+    msg += `
+HANDOFF REMINDER: This session has a partial outcome (${outcome}).
+Create a handoff document to preserve context for the next session:
+
+  Use /create_handoff to generate a structured handoff with:
+  - What was completed
+  - What remains
+  - Blockers encountered
+  - Resumption instructions
+
+Location: thoughts/shared/handoffs/${sessionName}/
+\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+`;
+  }
+  return msg;
+}
 async function main() {
-  const input = JSON.parse(await readStdin());
+  let input;
+  try {
+    input = JSON.parse(await readStdin());
+  } catch {
+    console.log(JSON.stringify({}));
+    return;
+  }
   const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
   if (input.reason === "other") {
     console.log(JSON.stringify({ result: "continue" }));
@@ -52,33 +105,26 @@ async function main() {
   }
   const latestHandoff = handoffFiles[0];
   const handoffName = latestHandoff.replace(".md", "");
+  const sessionId = input.session_id || "default";
+  const outcomeFile = path.join(os.tmpdir(), `claude-session-outcome-${sessionId}.json`);
+  let outcome = "PARTIAL_PLUS";
+  try {
+    const data = JSON.parse(fs.readFileSync(outcomeFile, "utf-8"));
+    if (data.outcome) outcome = data.outcome;
+  } catch {
+  }
   const output = {
     result: "continue",
-    message: `
-
-\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
-Session ended: ${sessionName}
-Latest handoff: ${handoffName}
-
-To mark outcome and improve future sessions:
-
-  cd ~/.claude && uv run python scripts/core/artifact_mark.py \\
-    --handoff <handoff-id> \\
-    --outcome SUCCEEDED|PARTIAL_PLUS|PARTIAL_MINUS|FAILED
-
-To find handoff ID, query the database:
-
-  sqlite3 .claude/cache/artifact-index/context.db \\
-    "SELECT id, file_path FROM handoffs WHERE session_name='${sessionName}' ORDER BY indexed_at DESC LIMIT 1"
-
-Outcome meanings:
-  SUCCEEDED      - Task completed successfully
-  PARTIAL_PLUS   - Mostly done, minor issues remain
-  PARTIAL_MINUS  - Some progress, major issues remain
-  FAILED         - Task abandoned or blocked
-\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
-`
+    message: buildOutcomeMessage(sessionName, handoffName, outcome)
   };
   console.log(JSON.stringify(output));
 }
-main().catch(console.error);
+if (!process.env.VITEST) {
+  main().catch(() => {
+    console.log(JSON.stringify({}));
+  });
+}
+export {
+  buildOutcomeMessage,
+  needsHandoffReminder
+};

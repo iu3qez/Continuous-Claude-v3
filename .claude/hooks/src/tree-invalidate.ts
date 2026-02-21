@@ -11,7 +11,6 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { execSync } from 'child_process';
 
 interface PostToolUseInput {
   tool_name: string;
@@ -83,6 +82,9 @@ function isSignificantFile(filePath: string): boolean {
 function invalidateTree(projectDir: string): boolean {
   const treePath = path.join(projectDir, '.claude', 'knowledge-tree.json');
 
+  // Ensure .claude directory exists before attempting write
+  if (!fs.existsSync(path.dirname(treePath))) return false;
+
   if (fs.existsSync(treePath)) {
     try {
       // Instead of deleting, mark stale so tree stays available until regenerated
@@ -148,7 +150,7 @@ async function main() {
   const invalidated = invalidateTree(projectDir);
 
   if (invalidated) {
-    console.error(`✓ Knowledge tree invalidated (${path.basename(filePath)} changed)`);
+    console.error(`[OK] Knowledge tree invalidated (${path.basename(filePath)} changed)`);
   }
 
   console.log(JSON.stringify({ result: 'continue' }));
