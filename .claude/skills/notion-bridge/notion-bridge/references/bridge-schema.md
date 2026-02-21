@@ -12,7 +12,7 @@ Use these section identifiers for `notion-update-page` operations.
 ---
 
 ### 1. Active Context
-**Purpose:** Current sprint focus, overall state, last-updated date  
+**Purpose:** Current sprint focus, overall state, last-updated date
 **Update trigger:** Project focus changes, major milestone, weekly sync
 
 **Selection string for replace:**
@@ -32,8 +32,8 @@ selection_with_ellipsis: "## 📋 Active Context...Active Projects:"
 ---
 
 ### 2. Key Decisions Log
-**Purpose:** Architectural decisions, strategic choices, rationale  
-**Update trigger:** Any significant decision made with Dave  
+**Purpose:** Architectural decisions, strategic choices, rationale
+**Update trigger:** Any significant decision made with Dave
 **Order:** Newest first — always insert at TOP of log
 
 **Selection string for insert (add new entry at top):**
@@ -54,7 +54,7 @@ selection_with_ellipsis: "## 📌 Key Decisions Log...at the top.*"
 ---
 
 ### 3. Architecture & Technical Notes
-**Purpose:** System design, technical context, integration details — evergreen  
+**Purpose:** System design, technical context, integration details — evergreen
 **Update trigger:** New integration, changed system design, technical constraint discovered
 
 **Selection string:**
@@ -74,8 +74,8 @@ selection_with_ellipsis: "## 🧠 Architecture & Technical Notes...Keep this eve
 ---
 
 ### 4. Handoff Queue: Eve → Claude Code
-**Purpose:** Work, context, or instructions Eve is passing to Claude Code  
-**Update trigger:** Eve needs Code to do something  
+**Purpose:** Work, context, or instructions Eve is passing to Claude Code
+**Update trigger:** Eve needs Code to do something
 **Clear trigger:** After Claude Code has acknowledged/acted on the item
 
 **Selection string for adding item:**
@@ -83,17 +83,17 @@ selection_with_ellipsis: "## 🧠 Architecture & Technical Notes...Keep this eve
 selection_with_ellipsis: "## 🔄 Handoff Queue: Eve → Claude Code...move to Implementation Log.*"
 ```
 
-**Command:** `insert_content_after` the blockquote  
-**Replace placeholder when first item added:** Replace `**[EMPTY — Ready for first handoff]**`
+**Command:** `insert_content_after` the blockquote
+**Empty queue state:** Queue shows `*Queue clear — no pending items.*` with an Archive page link. Add new items after the blockquote intro (target the selection string above), not after the "Queue clear" text (which contains a page mention that breaks selection strings in Claude Code).
 
 **Format for handoff item:**
 ```markdown
 ### [YYYY-MM-DD] [Short Title] — STATUS: PENDING
-**From:** Eve  
-**To:** Claude Code  
-**Context:** [What Dave and Eve discussed / decided]  
-**Action needed:** [Specific thing Code should do]  
-**Priority:** [High / Mid / Low]  
+**From:** Eve
+**To:** Claude Code
+**Context:** [What Dave and Eve discussed / decided]
+**Action needed:** [Specific thing Code should do]
+**Priority:** [High / Mid / Low]
 **Related files/URLs:** [if any]
 ```
 
@@ -102,26 +102,26 @@ selection_with_ellipsis: "## 🔄 Handoff Queue: Eve → Claude Code...move to I
 ---
 
 ### 5. Handoff Queue: Claude Code → Eve
-**Purpose:** What Claude Code has built or needs Eve/Dave to know  
-**Update trigger:** Code completes significant work  
+**Purpose:** What Claude Code has built or needs Eve/Dave to know
+**Update trigger:** Code completes significant work
 **Clear trigger:** After Eve has surfaced the item to Dave
 
 **Selection string for adding item:**
 ```
-selection_with_ellipsis: "## 🔄 Handoff Queue: Claude Code → Eve...Ready for first write-back.*"
+selection_with_ellipsis: "## 🔄 Handoff Queue: Claude Code → Eve...conversations with Dave.*"
 ```
 
-**Command:** `insert_content_after` the blockquote  
-**Replace placeholder when first item added:** Replace `**[EMPTY — Ready for first write-back]**`
+**Command:** `insert_content_after` the blockquote
+**Empty queue state:** Queue shows `*Queue clear — no pending items.*` with an Archive page link. Add new items after the blockquote intro (target the selection string above), not after the "Queue clear" text (which contains a page mention that breaks selection strings in Claude Code).
 
 **Format for write-back item:**
 ```markdown
 ### [YYYY-MM-DD] [Short Title] — STATUS: UNREAD
-**From:** Claude Code  
-**To:** Eve  
-**What was built/decided:** [Summary]  
-**Dave needs to know:** [Key points to surface]  
-**Files/PRs/URLs:** [if any]  
+**From:** Claude Code
+**To:** Eve
+**What was built/decided:** [Summary]
+**Dave needs to know:** [Key points to surface]
+**Files/PRs/URLs:** [if any]
 **Next suggested action:** [Optional]
 ```
 
@@ -130,7 +130,7 @@ selection_with_ellipsis: "## 🔄 Handoff Queue: Claude Code → Eve...Ready for
 ---
 
 ### 6. Current Sprint State
-**Purpose:** Snapshot table of what's in flight  
+**Purpose:** Snapshot table of what's in flight
 **Update trigger:** Status changes, new items, completions
 
 **Selection string:**
@@ -149,7 +149,7 @@ selection_with_ellipsis: "## ⚡ Current Sprint State...Update weekly or per spr
 
 **Status emoji guide:**
 - ✅ Done
-- 🔄 In progress  
+- 🔄 In progress
 - ⏳ Next up
 - 🚫 Blocked
 - 💬 Needs decision
@@ -157,8 +157,8 @@ selection_with_ellipsis: "## ⚡ Current Sprint State...Update weekly or per spr
 ---
 
 ### 7. Implementation Log
-**Purpose:** Completed work history — never delete entries  
-**Update trigger:** After any significant build/completion  
+**Purpose:** Completed work history — never delete entries
+**Update trigger:** After any significant build/completion
 **Order:** Newest first — always insert at TOP
 
 **Selection string for insert:**
@@ -179,8 +179,31 @@ selection_with_ellipsis: "## 📚 Implementation Log...Most recent at top.*"
 ---
 
 ### 8. Bridge Protocol (reference only)
-**Purpose:** Instructions for both Claude instances — do not modify without Dave's instruction  
+**Purpose:** Instructions for both Claude instances — do not modify without Dave's instruction
 **Update trigger:** Only when the protocol itself changes (Eve or Dave decision)
+
+---
+
+### 9. Claude Bridge Archive
+**Purpose:** Completed work swept from HQ on `bridge sync` — full history preserved
+**URL:** `https://www.notion.so/30e76fd7ac8281258cd9d281aa873298`
+**Update trigger:** `bridge sync` sweeps completed items here automatically
+**Read trigger:** Looking up past sprints, old handoffs, historical decisions
+
+**Format:** Reverse-chronological sprint blocks. Each block contains:
+- Sprint name and date range
+- Narrative summary of what was accomplished
+- Key decisions made during the sprint
+- **Lessons** field — what worked, what didn't, patterns discovered
+
+**Adding a new sprint block:**
+Always `notion-fetch` the Archive page first, then use `insert_content_after` targeting the intro section to place the newest sprint block at the top.
+
+**Read/Write Rules:**
+- **Read:** `notion-fetch` the Archive page URL directly — not the HQ page
+- **Write:** Only during `bridge sync` — never write individual items directly to Archive
+- **Order:** Newest sprint blocks at top (reverse chronological)
+- **Never delete** archive entries — this is the permanent record
 
 ---
 
@@ -195,3 +218,5 @@ selection_with_ellipsis: "## 📚 Implementation Log...Most recent at top.*"
 | Log completed work | Implementation Log | `insert_content_after` (top) |
 | Update sprint table | Sprint State | `replace_content_range` |
 | Add tech notes | Architecture Notes | `insert_content_after` |
+| Look up past work | Archive | `notion-fetch` Archive page |
+| Sweep completed items | Archive | `insert_content_after` (top of Archive) |
