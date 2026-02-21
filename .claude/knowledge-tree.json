@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "updated_at": "2026-02-21T13:26:33.483381+00:00",
+  "updated_at": "2026-02-21T22:08:50.634766+00:00",
   "project": {
     "name": "continuous-claude",
     "description": "> Give Claude a notebook, memory, specialized assistants, and autonomous development capability — so every conversation builds on the last [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE) [![Claude Code](https://img.shields.io/badge/Claude-Code-orange.svg)](https://claude.ai/code)",
@@ -1477,6 +1477,10 @@
       "thoughts\\shared\\handoffs\\spark-frontend-experiment/": {
         "purpose": "YAML config",
         "key_files": null
+      },
+      "thoughts\\shared\\plans/": {
+        "purpose": "Project directory",
+        "key_files": null
       }
     }
   },
@@ -1568,6 +1572,18 @@
     "source": "ROADMAP.md",
     "current": null,
     "completed": [
+      {
+        "title": "[fix] resolve 6 tsc errors, update docs to match reality (2026-02-21) `28f830c`",
+        "completed": null
+      },
+      {
+        "title": "[fix](skill) bridge-schema.md v1.2 — fix queue selection strings + add Archive section (2026-02-21) `d3f6e87`",
+        "completed": null
+      },
+      {
+        "title": "[feat](skill) notion-bridge v1.1 — Archive system + Claude Code API addendum (2026-02-21) `61b36d3`",
+        "completed": null
+      },
       {
         "title": "[fix](hooks) V5 final repair — eliminate Python bridge, fix Windows daemon tests (2026-02-21) `2067653`",
         "completed": null
@@ -1859,5 +1875,5 @@
     "env_vars": ".env.example"
   },
   "_stale": true,
-  "_invalidated_at": "2026-02-21T14:56:01.879Z"
+  "_invalidated_at": "2026-02-21T22:10:45.887Z"
 }
