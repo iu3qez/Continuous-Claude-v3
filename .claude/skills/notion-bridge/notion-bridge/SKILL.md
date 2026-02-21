@@ -4,7 +4,7 @@ description: This skill governs the two-layer Bridge communication system betwee
 ---
 
 # Notion Claude Bridge Skill
-## v1.0 | 2026-02-20 | Eve ↔ Claude Code Communication Layer
+## v1.1 | 2026-02-21 | Eve ↔ Claude Code Communication Layer
 
 This skill governs all read/write operations on the Claude Bridge system — the shared knowledge and communication layer between Claude.ai (Eve) and Claude Code. Always load `references/bridge-schema.md` before any write operation.
 
@@ -20,6 +20,9 @@ Ideas, decisions,        (shared memory)          Builds, implements,
 project direction              ↕                  writes back results
                     Claude Bridge Bucket
                     (Projects + Tasks)
+                           ↓
+                    Claude Bridge Archive
+                    (completed sprints, swept on bridge sync)
 ```
 
 ---
@@ -30,6 +33,7 @@ project direction              ↕                  writes back results
 |----------|----------|
 | **Claude Bridge Bucket** | Page ID: `30e76fd7-ac82-81e1-b30e-d170600896a7` |
 | **Claude Bridge HQ Page** | `https://www.notion.so/30e76fd7ac8281e99fe1c0b257088b34` |
+| **Claude Bridge Archive** | `https://www.notion.so/30e76fd7ac8281258cd9d281aa873298` |
 | **Life Buckets DB** | `9ec76fd7-ac82-8342-8bc3-87129f7cf1dc` |
 | **Projects DB** | `33b76fd7-ac82-8234-a202-8719384ac5b1` |
 | **Tasks DB** | `c3176fd7-ac82-825c-a03c-073837e5493c` |
@@ -96,9 +100,20 @@ Rich Notion page at the URL above. This is where context, decisions, and impleme
 ```
 1. notion-fetch: Claude Bridge HQ page (full read)
 2. Audit all sections for staleness
-3. Update Active Context to reflect current reality
-4. Update Sprint State table
-5. Report summary to Dave: what's current, what's stale, what needs action
+3. Auto-sweep completed items:
+   - Move DONE handoff queue items → Archive subpage
+   - Move completed (all done) sprint rows → Archive subpage
+   - Archive uses reverse-chronological sprint blocks (narrative + Lessons field)
+4. Update Active Context to reflect current reality
+5. Update Sprint State table (remove swept rows)
+6. Report summary to Dave: what's current, what's stale, what needs action
+```
+
+### Archive Lookup (looking for past work)
+```
+1. notion-fetch: Claude Bridge Archive page
+2. Search for the relevant sprint block or handoff
+3. Archive URL: https://www.notion.so/30e76fd7ac8281258cd9d281aa873298
 ```
 
 ---
@@ -126,6 +141,8 @@ Rich Notion page at the URL above. This is where context, decisions, and impleme
 | Code completing a build | Handoff Queue: Code → Eve + Implementation Log |
 | Overall project focus shifts | Active Context |
 | Sprint milestone hit | Current Sprint State |
+| Bridge sync requested | Auto-sweep completed items to Archive, then audit all sections |
+| Looking for past work | Fetch Archive page (not HQ) |
 
 ---
 
@@ -143,8 +160,73 @@ Load `references/bridge-schema.md` for the full section map with exact selection
 4. Always return the HQ page URL after any write operation
 5. If HQ page content is ambiguous or conflicting — ask Dave before writing
 6. Handoff Queue items should be cleared/marked after the receiving Claude has acted on them
+7. When queues are empty, they show: `*Queue clear — no pending items. Completed handoffs in Claude Bridge Archive.*`
+8. To add to an empty queue, use `insert_content_after` targeting the "Queue clear" italic text
 
 ---
 
-*notion-bridge v1.0 | 2026-02-20 | Works alongside notion-task-manager skill*
+## Claude Code-Specific API Notes
+
+Claude Code uses the `claude.ai Notion` cloud MCP server (streamable-http). The rendering behavior differs from Claude.ai's native Notion integration. These rules apply ONLY to Claude Code sessions.
+
+### 1. Selection Strings Must Avoid Link/Mention Syntax
+
+`notion-fetch` renders page links as markdown: `[Page Title]({{url}})`. But Notion internally stores them as `<mention-page url="..."/>` XML tags. **Selection strings that include rendered link text will fail.**
+
+| What you see in fetch output | What Notion stores internally |
+|------------------------------|-------------------------------|
+| `[Claude Bridge Archive]({{url}})` | `<mention-page url="..."/>` |
+| `*Completed handoffs in [Archive](...).*` | `*Completed handoffs in <mention-page .../>.*` |
+
+**Rule:** End selection strings BEFORE any link/mention text. Use the surrounding plain text instead.
+
+```
+WRONG: selection_with_ellipsis: "Queue clear...in Claude Bridge Archive.*"
+RIGHT: selection_with_ellipsis: "Queue clear...no pending items.*"
+   OR: Target the section header/blockquote instead
+```
+
+### 2. Prefer `insert_content_after` Over `replace_content_range`
+
+When a section contains page mentions or links, `replace_content_range` selection strings are fragile. Use `insert_content_after` targeting the section header or blockquote intro instead.
+
+| Scenario | Preferred Command | Target |
+|----------|-------------------|--------|
+| Add to empty queue | `insert_content_after` | Section blockquote intro line |
+| Add log entry | `insert_content_after` | Section blockquote intro line |
+| Update table (no links) | `replace_content_range` | Safe -- tables rarely have mentions |
+| Update Active Context | `replace_content_range` | Safe -- plain text section |
+
+### 3. Notion Tables Use HTML, Not Markdown
+
+Sprint State and other tables render as `<table><tr><td>` HTML in fetch output, NOT Markdown pipe format. When using `selection_with_ellipsis` on table content, match `<td>` cell content.
+
+```
+WRONG: "| Item | Owner | Status |"
+RIGHT: "<td>Item Name</td>...<td>Status notes</td>"
+```
+
+### 4. Practical Workflow for Claude Code
+
+```
+1. notion-fetch: Read HQ page (always first)
+2. Identify target section from bridge-schema.md
+3. For sections WITH links/mentions:
+   -> Use insert_content_after targeting header or blockquote
+4. For sections WITHOUT links (Active Context, plain tables):
+   -> replace_content_range is safe
+5. After ANY write: verify by re-fetching if critical
+```
+
+### 5. Error Recovery
+
+If a `notion-update-page` call fails with selection mismatch:
+1. Re-fetch the page to see current rendered content
+2. Shorten the selection string -- end BEFORE any `[link](url)` text
+3. Switch to `insert_content_after` if `replace_content_range` keeps failing
+4. Target a broader anchor (section header) rather than specific content
+
+---
+
+*notion-bridge v1.1 | 2026-02-21 | Works alongside notion-task-manager skill*
 *Reference: bridge-schema.md for HQ page section map*
