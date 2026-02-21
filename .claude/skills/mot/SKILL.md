@@ -143,77 +143,71 @@ grep -oE '"command":\s*"[^"]*\.sh"' .claude/settings.json 2>/dev/null | \
 ```bash
 echo "=== MEMORY SYSTEM ==="
 
-# Check DATABASE_URL
-if [ -z "$DATABASE_URL" ]; then
-  echo "FAIL: DATABASE_URL not set"
-else
-  echo "PASS: DATABASE_URL is set"
+# Helper: all queries go through docker exec (psql direct fails on Windows)
+PG="docker exec continuous-claude-postgres psql -U claude -d continuous_claude"
 
-  # Test connection
-  if psql "$DATABASE_URL" -c "SELECT 1" > /dev/null 2>&1; then
-    echo "PASS: PostgreSQL reachable"
+# Test connection
+if $PG -c "SELECT 1" > /dev/null 2>&1; then
+  echo "PASS: PostgreSQL reachable (via docker exec)"
 
-    # Check pgvector
-    if psql "$DATABASE_URL" -c "SELECT extname FROM pg_extension WHERE extname='vector'" 2>/dev/null | grep -q vector; then
-      echo "PASS: pgvector extension installed"
+  # Check pgvector
+  if $PG -c "SELECT extname FROM pg_extension WHERE extname='vector'" 2>/dev/null | grep -q vector; then
+    echo "PASS: pgvector extension installed"
+  else
+    echo "FAIL: pgvector extension not installed"
+  fi
+
+  # Check table exists
+  if $PG -c "\d archival_memory" > /dev/null 2>&1; then
+    echo "PASS: archival_memory table exists"
+
+    # Count learnings
+    COUNT=$($PG -t -c "SELECT COUNT(*) FROM archival_memory" 2>/dev/null | xargs)
+    echo "INFO: $COUNT learnings stored"
+
+    # --- Quality checks ---
+
+    # Learning count by type (stored in metadata JSONB, not a column)
+    echo "Learning distribution:"
+    $PG -c \
+      "SELECT metadata->>'type' as type, COUNT(*) FROM archival_memory WHERE metadata->>'type' IS NOT NULL GROUP BY type ORDER BY count DESC;" 2>/dev/null
+
+    # Recent learnings (last 7 days)
+    RECENT=$($PG -t -c \
+      "SELECT COUNT(*) FROM archival_memory WHERE created_at > NOW() - INTERVAL '7 days';" 2>/dev/null | xargs)
+    if [ -n "$RECENT" ] && [ "$RECENT" -gt 0 ] 2>/dev/null; then
+      echo "PASS: $RECENT learnings in last 7 days"
     else
-      echo "FAIL: pgvector extension not installed"
+      echo "WARN: No learnings captured in last 7 days"
     fi
 
-    # Check table exists
-    if psql "$DATABASE_URL" -c "\d archival_memory" > /dev/null 2>&1; then
-      echo "PASS: archival_memory table exists"
-
-      # Count learnings
-      COUNT=$(psql "$DATABASE_URL" -t -c "SELECT COUNT(*) FROM archival_memory" 2>/dev/null | xargs)
-      echo "INFO: $COUNT learnings stored"
-
-      # --- Quality checks ---
-
-      # Learning count by type
-      echo "Learning distribution:"
-      docker exec continuous-claude-postgres psql -U claude -d continuous_claude -c \
-        "SELECT learning_type, COUNT(*) FROM archival_memory GROUP BY learning_type ORDER BY count DESC;" 2>/dev/null
-
-      # Recent learnings (last 7 days)
-      RECENT=$(docker exec continuous-claude-postgres psql -U claude -d continuous_claude -t -c \
-        "SELECT COUNT(*) FROM archival_memory WHERE created_at > NOW() - INTERVAL '7 days';" 2>/dev/null | xargs)
-      if [ -n "$RECENT" ] && [ "$RECENT" -gt 0 ] 2>/dev/null; then
-        echo "PASS: $RECENT learnings in last 7 days"
+    # Duplicates check
+    TOTAL=$($PG -t -c "SELECT COUNT(*) FROM archival_memory;" 2>/dev/null | xargs)
+    UNIQUE=$($PG -t -c "SELECT COUNT(DISTINCT content) FROM archival_memory;" 2>/dev/null | xargs)
+    if [ -n "$TOTAL" ] && [ "$TOTAL" -gt 0 ] 2>/dev/null; then
+      RATIO=$((UNIQUE * 100 / TOTAL))
+      echo "INFO: $UNIQUE unique / $TOTAL total learnings (${RATIO}% unique)"
+      if [ "$RATIO" -lt 90 ]; then
+        echo "WARN: Unique ratio ${RATIO}% < 90% -- possible duplicates"
       else
-        echo "WARN: No learnings captured in last 7 days"
+        echo "PASS: Unique ratio ${RATIO}% >= 90%"
       fi
+    fi
 
-      # Duplicates check
-      TOTAL=$(docker exec continuous-claude-postgres psql -U claude -d continuous_claude -t -c \
-        "SELECT COUNT(*) FROM archival_memory;" 2>/dev/null | xargs)
-      UNIQUE=$(docker exec continuous-claude-postgres psql -U claude -d continuous_claude -t -c \
-        "SELECT COUNT(DISTINCT content) FROM archival_memory;" 2>/dev/null | xargs)
-      if [ -n "$TOTAL" ] && [ "$TOTAL" -gt 0 ] 2>/dev/null; then
-        RATIO=$((UNIQUE * 100 / TOTAL))
-        echo "INFO: $UNIQUE unique / $TOTAL total learnings (${RATIO}% unique)"
-        if [ "$RATIO" -lt 90 ]; then
-          echo "WARN: Unique ratio ${RATIO}% < 90% -- possible duplicates"
-        else
-          echo "PASS: Unique ratio ${RATIO}% >= 90%"
-        fi
-      fi
-
-      # Spot check: recall a known-good query
-      echo "Spot check recall..."
-      RECALL_OUT=$(cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/recall_learnings.py \
-        --query "hook development" --k 1 --text-only 2>&1 | head -5)
-      if [ -n "$RECALL_OUT" ] && echo "$RECALL_OUT" | grep -qv "^$"; then
-        echo "PASS: Recall returns results for 'hook development'"
-      else
-        echo "WARN: Recall returned empty for spot check query"
-      fi
+    # Spot check: recall a known-good query
+    echo "Spot check recall..."
+    RECALL_OUT=$(cd $CLAUDE_OPC_DIR && PYTHONPATH=. uv run python scripts/core/recall_learnings.py \
+      --query "hook development" --k 1 --text-only 2>&1 | head -5)
+    if [ -n "$RECALL_OUT" ] && echo "$RECALL_OUT" | grep -qv "^$"; then
+      echo "PASS: Recall returns results for 'hook development'"
     else
-      echo "FAIL: archival_memory table missing"
+      echo "WARN: Recall returned empty for spot check query"
     fi
   else
-    echo "FAIL: PostgreSQL not reachable"
+    echo "FAIL: archival_memory table missing"
   fi
+else
+  echo "FAIL: PostgreSQL not reachable (docker exec failed)"
 fi
 
 # Check Python dependencies
