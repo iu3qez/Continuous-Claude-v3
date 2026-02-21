@@ -5,6 +5,12 @@
 _No current goal. Next planned item will be promoted on next planning session._
 
 ## Completed
+- [x] [fix](hooks) V5 final repair — eliminate Python bridge, fix Windows daemon tests (2026-02-21) `2067653`
+- [x] [feat](hooks) implement skill-router functions + LOW severity fixes (2026-02-21) `e97222c`
+- [x] [docs] update README counts and add Mermaid architecture diagrams (2026-02-21) `cd1fcdc`
+- [x] [fix](hooks) context management v3 — 8 remaining gaps resolved (2026-02-21) `29c3f64`
+- [x] [fix](hooks) repair context management system — 10 audit findings resolved (2026-02-20) `00e41da`
+- [x] [fix](infra) subsystem audit fixes — session activity, PageIndex MCP, Braintrust stop hook (2026-02-20) `6f1a08a`
 - [x] [feat](hooks) add plan-to-ralph enforcement hooks (2026-02-20) `560cbcb`
 - [x] [fix](settings) remove broken statusLine PowerShell wrapper from project config (2026-02-19) `dd0c611`
 - [x] [test](ralph) add 211 regression tests for all 11 bug fixes + state backbone (2026-02-19) `2422a62`
