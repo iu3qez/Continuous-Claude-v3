@@ -14,6 +14,8 @@ function isTreeStale(projectDir) {
     return true;
   }
   try {
+    const content = JSON.parse(fs.readFileSync(treePath, "utf-8"));
+    if (content._stale) return true;
     const stats = fs.statSync(treePath);
     const ageSeconds = (Date.now() - stats.mtimeMs) / 1e3;
     return ageSeconds >= TREE_MAX_AGE_SECONDS;

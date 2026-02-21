@@ -26,6 +26,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { spawn } from 'child_process';
 
 interface PostToolUseInput {
   session_id: string;
@@ -198,21 +199,26 @@ Solution: ${state.last_edit_content || 'Final edit'}
 ${failedApproaches ? `Failed approaches: ${failedApproaches}` : ''}
 Test: ${state.test_command || 'Unknown test command'}`;
 
-  const script = 'scripts/core/store_learning.py';
-  const escapedContent = content.slice(0, 2000).replace(/"/g, '\\"');
   const contextStr = `Victory: ${state.context || state.tracked_file}`;
   const tagsStr = `victory,verified,attempts:${state.attempts}`;
-  const cmd = `uv run python ${script} --session-id "${state.session_id}" --type WORKING_SOLUTION --content "${escapedContent}" --context "${contextStr}" --tags "${tagsStr}" --confidence high --project-dir "${projectDir}"`;
 
   try {
-    const { execSync } = require('child_process');
-    execSync(cmd, {
-      encoding: 'utf-8',
+    const child = spawn('uv', [
+      'run', 'python', 'scripts/core/store_learning.py',
+      '--session-id', state.session_id,
+      '--type', 'WORKING_SOLUTION',
+      '--content', content.slice(0, 2000),
+      '--context', contextStr,
+      '--tags', tagsStr,
+      '--confidence', 'high',
+      '--project-dir', projectDir,
+    ], {
       cwd: opcDir,
-      timeout: 60000,
-      stdio: ['pipe', 'pipe', 'pipe'],
-      shell: true
+      detached: true,
+      stdio: 'ignore',
+      env: { ...process.env, PYTHONPATH: '.' },
     });
+    child.unref();
     return true;
   } catch {
     return false;
@@ -238,7 +244,8 @@ function processTransition(
     if (filePath && (
       filePath.includes('smarter-everyday-state') ||
       filePath.includes('.claude/cache/') ||
-      (filePath.endsWith('.json') && filePath.includes('.claude/'))
+      filePath.includes('extraction-state.json') ||
+      filePath.includes('.claude/maestro-state.json')
     )) {
       return { newState: state, message: null };
     }

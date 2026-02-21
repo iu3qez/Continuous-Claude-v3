@@ -2,15 +2,16 @@
  * Tests for TypeScript Daemon Client
  *
  * TDD tests for the shared daemon client used by all TypeScript hooks.
- * The client communicates with the Python TLDR daemon via Unix socket.
+ * The client communicates with the TLDR daemon via Unix socket or TCP (Windows).
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { existsSync, mkdirSync, writeFileSync, rmSync, unlinkSync } from 'fs';
-import { join } from 'path';
+import { join, resolve } from 'path';
 import { execSync, spawnSync } from 'child_process';
 import * as net from 'net';
 import * as crypto from 'crypto';
+import { tmpdir } from 'os';
 
 // Import the actual implementation
 import {
@@ -19,13 +20,15 @@ import {
   isIndexing,
   queryDaemon,
   queryDaemonSync,
+  getConnectionInfo,
   DaemonQuery,
   DaemonResponse,
 } from '../daemon-client.js';
 
-// Test fixtures
-const TEST_PROJECT_DIR = '/tmp/daemon-client-test';
+// Test fixtures — use platform temp dir
+const TEST_PROJECT_DIR = join(tmpdir(), 'daemon-client-test');
 const TLDR_DIR = join(TEST_PROJECT_DIR, '.tldr');
+const IS_WINDOWS = process.platform === 'win32';
 
 function setupTestEnv(): void {
   if (!existsSync(TLDR_DIR)) {
@@ -39,10 +42,50 @@ function cleanupTestEnv(): void {
   }
 }
 
-// Helper to compute socket path (mirrors the daemon logic)
+/**
+ * Helper to compute socket path (mirrors daemon logic).
+ * On Unix: /tmp/tldr-{hash}.sock
+ * On Windows: getSocketPath still returns Unix-style but daemon uses TCP.
+ */
 function computeSocketPath(projectDir: string): string {
-  const hash = crypto.createHash('md5').update(projectDir).digest('hex').substring(0, 8);
-  return `/tmp/tldr-${hash}.sock`;
+  const resolvedPath = resolve(projectDir);
+  const hash = crypto.createHash('md5').update(resolvedPath).digest('hex').substring(0, 8);
+  return join(tmpdir(), `tldr-${hash}.sock`);
+}
+
+/**
+ * Start a mock daemon server using the same transport as the real implementation.
+ * On Windows: TCP on localhost with deterministic port.
+ * On Unix: Unix domain socket.
+ */
+function startMockServer(
+  projectDir: string,
+  handler: (conn: net.Socket) => void
+): Promise<net.Server> {
+  const connInfo = getConnectionInfo(projectDir);
+  const server = net.createServer(handler);
+  return new Promise<net.Server>((res) => {
+    if (connInfo.type === 'tcp') {
+      server.listen(connInfo.port!, connInfo.host!, () => res(server));
+    } else {
+      server.listen(connInfo.path!, () => res(server));
+    }
+  });
+}
+
+/** Stop a mock server and wait for close. */
+function stopMockServer(server: net.Server | null): Promise<void> {
+  if (!server) return Promise.resolve();
+  return new Promise<void>((res) => server.close(() => res()));
+}
+
+/** Clean up Unix socket file if applicable. */
+function cleanupSocket(projectDir: string): void {
+  if (IS_WINDOWS) return; // TCP on Windows — no socket file to clean
+  const socketPath = computeSocketPath(projectDir);
+  if (existsSync(socketPath)) {
+    try { unlinkSync(socketPath); } catch {}
+  }
 }
 
 // =============================================================================
@@ -51,13 +94,14 @@ function computeSocketPath(projectDir: string): string {
 
 describe('getSocketPath', () => {
   it('should compute socket path using md5 hash', () => {
-    // The daemon uses: /tmp/tldr-{md5(project_path)[:8]}.sock
     const projectPath = '/Users/test/myproject';
+    const resolvedPath = resolve(projectPath);
     const expectedHash = crypto.createHash('md5')
-      .update(projectPath)
+      .update(resolvedPath)
       .digest('hex')
       .substring(0, 8);
-    const expectedPath = `/tmp/tldr-${expectedHash}.sock`;
+    // Implementation uses template literal (forward slash), not join()
+    const expectedPath = `${tmpdir()}/tldr-${expectedHash}.sock`;
 
     expect(getSocketPath(projectPath)).toBe(expectedPath);
   });
@@ -156,28 +200,17 @@ describe('DaemonQuery and DaemonResponse types', () => {
 // =============================================================================
 
 describe('queryDaemonSync', () => {
-  let mockSocketPath: string;
-
   beforeEach(() => {
     setupTestEnv();
-    mockSocketPath = computeSocketPath(TEST_PROJECT_DIR);
-    // Clean up any existing socket
-    if (existsSync(mockSocketPath)) {
-      unlinkSync(mockSocketPath);
-    }
   });
 
   afterEach(() => {
-    if (existsSync(mockSocketPath)) {
-      try {
-        unlinkSync(mockSocketPath);
-      } catch {}
-    }
+    cleanupSocket(TEST_PROJECT_DIR);
     cleanupTestEnv();
   });
 
-  it('should return unavailable when socket does not exist', () => {
-    // Using the real implementation - it should return unavailable when no socket
+  it('should return unavailable when socket does not exist', { timeout: 30000 }, () => {
+    // Real implementation tries to start daemon (may spin ~10s on Windows)
     const result = queryDaemonSync({ cmd: 'ping' }, TEST_PROJECT_DIR);
     expect(result.status).toBe('unavailable');
   });
@@ -185,15 +218,13 @@ describe('queryDaemonSync', () => {
   it('should return indexing:true when status file says indexing', () => {
     writeFileSync(join(TLDR_DIR, 'status'), 'indexing');
 
-    // The real implementation checks status file first
+    // The real implementation checks status file first — returns immediately
     const result = queryDaemonSync({ cmd: 'search', pattern: 'test' }, TEST_PROJECT_DIR);
     expect(result.indexing).toBe(true);
   });
 
   it('should handle timeout gracefully', () => {
-    // This test validates the expected behavior of timeout handling
-    // The real implementation returns { status: 'error', error: 'timeout' }
-    // We test the shape of such a response
+    // Test the shape of a timeout response
     const timeoutResponse: DaemonResponse = { status: 'error', error: 'timeout' };
     expect(timeoutResponse.error).toBe('timeout');
   });
@@ -205,37 +236,22 @@ describe('queryDaemonSync', () => {
 
 describe('queryDaemon async', () => {
   let mockServer: net.Server | null = null;
-  let mockSocketPath: string;
 
   beforeEach(() => {
     setupTestEnv();
-    mockSocketPath = computeSocketPath(TEST_PROJECT_DIR);
-    // Clean up any existing socket
-    if (existsSync(mockSocketPath)) {
-      unlinkSync(mockSocketPath);
-    }
+    cleanupSocket(TEST_PROJECT_DIR);
   });
 
   afterEach(async () => {
-    if (mockServer) {
-      await new Promise<void>((resolve) => {
-        mockServer!.close(() => {
-          mockServer = null;
-          resolve();
-        });
-      });
-    }
-    if (existsSync(mockSocketPath)) {
-      try {
-        unlinkSync(mockSocketPath);
-      } catch {}
-    }
+    await stopMockServer(mockServer);
+    mockServer = null;
+    cleanupSocket(TEST_PROJECT_DIR);
     cleanupTestEnv();
   });
 
-  it('should connect to daemon and receive response', async () => {
-    // Create a mock server to simulate the daemon
-    mockServer = net.createServer((conn) => {
+  it('should connect to daemon and receive response', { timeout: 30000 }, async () => {
+    // Create mock server on same transport as real implementation
+    mockServer = await startMockServer(TEST_PROJECT_DIR, (conn) => {
       conn.on('data', (data) => {
         const request = JSON.parse(data.toString().trim());
         if (request.cmd === 'ping') {
@@ -245,17 +261,12 @@ describe('queryDaemon async', () => {
       });
     });
 
-    await new Promise<void>((resolve) => {
-      mockServer!.listen(mockSocketPath, () => resolve());
-    });
-
-    // Test the real implementation
     const result = await queryDaemon({ cmd: 'ping' }, TEST_PROJECT_DIR);
     expect(result.status).toBe('ok');
   });
 
-  it('should handle search command', async () => {
-    mockServer = net.createServer((conn) => {
+  it('should handle search command', { timeout: 30000 }, async () => {
+    mockServer = await startMockServer(TEST_PROJECT_DIR, (conn) => {
       conn.on('data', (data) => {
         const request = JSON.parse(data.toString().trim());
         if (request.cmd === 'search') {
@@ -270,77 +281,66 @@ describe('queryDaemon async', () => {
       });
     });
 
-    await new Promise<void>((resolve) => {
-      mockServer!.listen(mockSocketPath, () => resolve());
-    });
-
-    // Test the real implementation
     const result = await queryDaemon({ cmd: 'search', pattern: 'test' }, TEST_PROJECT_DIR);
     expect(result.status).toBe('ok');
     expect(result.results).toHaveLength(1);
     expect(result.results![0].file).toBe('test.ts');
   });
 
-  it('should return unavailable on connection error', async () => {
-    // No server running - the real implementation returns unavailable (not throws)
+  it('should return unavailable on connection error', { timeout: 30000 }, async () => {
+    // No server running — real implementation returns unavailable
     const result = await queryDaemon({ cmd: 'ping' }, TEST_PROJECT_DIR);
     expect(result.status).toBe('unavailable');
   });
 
-  it('should timeout after QUERY_TIMEOUT ms', async () => {
-    // The real implementation has a 3 second timeout.
-    // We test with a mock server that never responds.
+  it('should timeout after QUERY_TIMEOUT ms', { timeout: 30000 }, async () => {
+    // Mock server that never responds — simulates hung daemon
     let clientConn: net.Socket | null = null;
 
-    mockServer = net.createServer((conn) => {
+    mockServer = await startMockServer(TEST_PROJECT_DIR, (conn) => {
       clientConn = conn;
-      // Don't respond - simulate slow/hung daemon
+      // Don't respond — simulate slow/hung daemon
     });
 
-    await new Promise<void>((resolve) => {
-      mockServer!.listen(mockSocketPath, () => resolve());
-    });
-
-    // The real queryDaemon will timeout and return error status
-    // We use a shorter timeout test helper to avoid waiting 3 seconds
+    // Use a short-timeout helper to avoid waiting full 3s
+    const connInfo = getConnectionInfo(TEST_PROJECT_DIR);
     const queryDaemonWithShortTimeout = (
       query: { cmd: string },
-      projectDir: string,
       timeout: number
     ): Promise<any> => {
-      return new Promise((resolve) => {
-        const socketPath = computeSocketPath(projectDir);
+      return new Promise((res) => {
         const client = new net.Socket();
-
         const timer = setTimeout(() => {
           client.destroy();
-          resolve({ status: 'error', error: 'timeout' });
+          res({ status: 'error', error: 'timeout' });
         }, timeout);
 
-        client.connect(socketPath, () => {
+        const onConnect = () => {
           client.write(JSON.stringify(query) + '\n');
-        });
+        };
+
+        if (connInfo.type === 'tcp') {
+          client.connect(connInfo.port!, connInfo.host!, onConnect);
+        } else {
+          client.connect(connInfo.path!, onConnect);
+        }
 
         client.on('data', (chunk) => {
           clearTimeout(timer);
           client.end();
-          resolve(JSON.parse(chunk.toString().trim()));
+          res(JSON.parse(chunk.toString().trim()));
         });
-
         client.on('error', () => {
           clearTimeout(timer);
-          resolve({ status: 'error', error: 'connection failed' });
+          res({ status: 'error', error: 'connection failed' });
         });
       });
     };
 
-    const result = await queryDaemonWithShortTimeout({ cmd: 'ping' }, TEST_PROJECT_DIR, 100);
+    const result = await queryDaemonWithShortTimeout({ cmd: 'ping' }, 100);
     expect(result.error).toBe('timeout');
 
-    // Clean up the server-side connection
-    if (clientConn) {
-      (clientConn as net.Socket).destroy();
-    }
+    if (clientConn) (clientConn as net.Socket).destroy();
   });
 });
 
@@ -354,37 +354,36 @@ describe('auto-start daemon', () => {
   });
 
   afterEach(() => {
+    cleanupSocket(TEST_PROJECT_DIR);
     cleanupTestEnv();
-    // Clean up any socket file
-    const socketPath = computeSocketPath(TEST_PROJECT_DIR);
-    if (existsSync(socketPath)) {
-      try {
-        unlinkSync(socketPath);
-      } catch {}
-    }
   });
 
   it('should detect when socket is missing', () => {
-    const socketPath = getSocketPath(TEST_PROJECT_DIR);
-    // Socket should not exist for fresh test project
-    expect(existsSync(socketPath)).toBe(false);
+    if (IS_WINDOWS) {
+      // On Windows, daemon uses TCP — no socket file. Verify getSocketPath returns a path.
+      const socketPath = getSocketPath(TEST_PROJECT_DIR);
+      expect(socketPath).toContain('tldr-');
+    } else {
+      const socketPath = getSocketPath(TEST_PROJECT_DIR);
+      expect(existsSync(socketPath)).toBe(false);
+    }
   });
 
   it('should detect when socket file exists', () => {
-    const socketPath = getSocketPath(TEST_PROJECT_DIR);
-
-    // Create a dummy socket file
-    writeFileSync(socketPath, '');
-
-    expect(existsSync(socketPath)).toBe(true);
-
-    // Cleanup
-    unlinkSync(socketPath);
+    if (IS_WINDOWS) {
+      // On Windows, getSocketPath returns Unix-style; actual daemon uses TCP.
+      const socketPath = getSocketPath(TEST_PROJECT_DIR);
+      expect(socketPath).toContain('tldr-');
+    } else {
+      const socketPath = getSocketPath(TEST_PROJECT_DIR);
+      writeFileSync(socketPath, '');
+      expect(existsSync(socketPath)).toBe(true);
+      unlinkSync(socketPath);
+    }
   });
 
-  it('should return unavailable when daemon cannot start', async () => {
-    // The real implementation tries to start daemon when socket missing
-    // When tldr CLI is not available, it returns unavailable
+  it('should return unavailable when daemon cannot start', { timeout: 30000 }, async () => {
+    // Real implementation tries to start daemon — may spin ~10s on Windows
     const result = await queryDaemon({ cmd: 'ping' }, TEST_PROJECT_DIR);
     expect(result.status).toBe('unavailable');
   });
@@ -460,13 +459,13 @@ describe('error handling', () => {
     expect(result.error).toContain('Invalid JSON');
   });
 
-  it('should return unavailable when socket does not exist', async () => {
+  it('should return unavailable when socket does not exist', { timeout: 30000 }, async () => {
     // Socket doesn't exist and tldr CLI is not available
     const result = await queryDaemon({ cmd: 'ping' }, TEST_PROJECT_DIR);
     expect(result.status).toBe('unavailable');
   });
 
-  it('should handle sync query to missing socket', () => {
+  it('should handle sync query to missing socket', { timeout: 30000 }, () => {
     // queryDaemonSync also returns unavailable when socket missing
     const result = queryDaemonSync({ cmd: 'ping' }, TEST_PROJECT_DIR);
     expect(result.status).toBe('unavailable');

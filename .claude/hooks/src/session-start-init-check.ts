@@ -33,6 +33,10 @@ function isTreeStale(projectDir: string): boolean {
   }
 
   try {
+    // Check content for stale marker (set by tree-invalidate hook)
+    const content = JSON.parse(fs.readFileSync(treePath, 'utf-8'));
+    if (content._stale) return true;
+    // Also check mtime as fallback for age-based staleness
     const stats = fs.statSync(treePath);
     const ageSeconds = (Date.now() - stats.mtimeMs) / 1000;
     return ageSeconds >= TREE_MAX_AGE_SECONDS;

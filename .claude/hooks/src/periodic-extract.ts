@@ -159,7 +159,8 @@ async function main() {
     return;
   }
 
-  const sessionId = data.session_id || 'unknown';
+  const rawSessionId = data.session_id || 'unknown';
+  const sessionId = rawSessionId.replace(/[^a-zA-Z0-9_-]/g, '_');
   const toolName = data.tool_name || '';
 
   // State file for this session
@@ -189,7 +190,7 @@ async function main() {
     const child = spawn('uv', [
       'run', 'python', 'scripts/core/store_learning.py',
       '--session-id', sessionId,
-      '--type', 'CODEBASE_PATTERN',
+      '--type', 'OPEN_THREAD',
       '--content', content,
       '--context', 'periodic mid-session extraction',
       '--tags', 'periodic,extraction,scope:project',
@@ -211,6 +212,8 @@ async function main() {
   console.log(JSON.stringify(buildOutput(state, true)));
 }
 
-main().catch(() => {
-  console.log(JSON.stringify({}));
-});
+if (!process.env.VITEST) {
+  main().catch(() => {
+    console.log(JSON.stringify({}));
+  });
+}

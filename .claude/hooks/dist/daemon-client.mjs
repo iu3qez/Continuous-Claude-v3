@@ -90,21 +90,12 @@ function isDaemonReachable(projectDir) {
   const connInfo = getConnectionInfo(projectDir);
   if (connInfo.type === "tcp") {
     try {
-      const testSocket = new net.Socket();
-      testSocket.setTimeout(100);
-      let connected = false;
-      testSocket.on("connect", () => {
-        connected = true;
-        testSocket.destroy();
+      const script = `const s=require('net').connect(${connInfo.port},'${connInfo.host}',()=>{s.destroy();process.exit(0)});s.on('error',()=>process.exit(1));s.setTimeout(500,()=>{s.destroy();process.exit(1)})`;
+      const result = spawnSync(process.execPath, ["-e", script], {
+        timeout: 2e3,
+        stdio: "pipe"
       });
-      testSocket.on("error", () => {
-        testSocket.destroy();
-      });
-      testSocket.connect(connInfo.port, connInfo.host);
-      const end = Date.now() + 200;
-      while (Date.now() < end && !connected) {
-      }
-      return connected;
+      return result.status === 0;
     } catch {
       return false;
     }

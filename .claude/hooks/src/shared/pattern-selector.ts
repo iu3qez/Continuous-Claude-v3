@@ -2,14 +2,11 @@
  * Pattern Selector
  *
  * Selects appropriate patterns for tasks and validates pattern compositions.
- * Uses Python bridge to call validate_composition.py and pattern_inference.py.
+ * Uses a TypeScript compatibility matrix — no Python dependency.
  */
-
-import { callPatternInference, callValidateComposition } from './python-bridge.js';
 
 /**
  * All supported orchestration patterns.
- * Matches Python PATTERNS dict in validate_composition.py
  */
 export const SUPPORTED_PATTERNS = [
   'swarm',
@@ -32,19 +29,16 @@ export type PatternType = (typeof SUPPORTED_PATTERNS)[number];
 
 /**
  * State sharing scope types.
- * Matches Python ScopeType enum in validate_composition.py
  */
 export type ScopeType = 'iso' | 'shared' | 'fed' | 'handoff';
 
 /**
  * Composition operators.
- * Matches Python Operator enum in validate_composition.py
  */
 export type OperatorType = ';' | '|' | '+';
 
 /**
  * Result of pattern composition validation.
- * Matches Python ValidationResult dataclass.
  */
 export interface ValidationResult {
   valid: boolean;
@@ -56,7 +50,6 @@ export interface ValidationResult {
 
 /**
  * Result of pattern inference from task description.
- * Matches Python PatternInference dataclass.
  */
 export interface PatternInferenceResult {
   pattern: PatternType;
@@ -83,22 +76,121 @@ export interface Task {
 }
 
 /**
- * Select the best pattern for a given task.
- * Uses Python pattern_inference.py via subprocess.
+ * Pattern scope compatibility matrix.
+ * Each pattern lists the scopes it supports for composition.
  */
-export function selectPattern(task: Task): PatternSelection {
-  const result = callPatternInference(task.description);
+const PATTERN_SCOPES: Record<string, ScopeType[]> = {
+  pipeline: ['handoff', 'shared'],
+  aggregator: ['handoff', 'shared'],
+  swarm: ['iso', 'shared'],
+  jury: ['iso'],
+  hierarchical: ['shared', 'fed'],
+  map_reduce: ['shared', 'fed'],
+  blackboard: ['shared'],
+  generator_critic: ['shared', 'handoff'],
+  circuit_breaker: ['iso', 'shared'],
+  chain_of_responsibility: ['handoff'],
+  adversarial: ['iso'],
+  consensus: ['shared', 'fed'],
+  broadcast: ['shared', 'fed'],
+  event_driven: ['shared'],
+};
+
+/**
+ * Keyword-to-pattern inference rules.
+ * Each entry: [keywords, pattern, confidence, reason].
+ */
+const INFERENCE_RULES: Array<[string[], PatternType, number, string]> = [
+  [['implement', 'build', 'create', 'add', 'develop'], 'hierarchical', 0.7, 'Coordinated implementation with specialists'],
+  [['research', 'investigate', 'explore', 'analyze', 'understand'], 'swarm', 0.7, 'Parallel exploration across sources'],
+  [['process', 'stage', 'pipeline', 'transform', 'etl'], 'map_reduce', 0.7, 'Data processing through stages'],
+  [['review', 'evaluate', 'judge', 'assess', 'critique'], 'jury', 0.7, 'Independent evaluation and scoring'],
+];
+
+/**
+ * Validate a single pair of patterns for scope compatibility.
+ */
+function validatePair(
+  patternA: string,
+  patternB: string,
+  scope: ScopeType,
+  operator: OperatorType
+): ValidationResult {
+  const scopesA = PATTERN_SCOPES[patternA];
+  const scopesB = PATTERN_SCOPES[patternB];
+  const expr = `${patternA} ${operator}[${scope}] ${patternB}`;
+
+  // Unknown pattern check
+  if (!scopesA) {
+    return {
+      valid: false,
+      composition: expr,
+      errors: [`Unknown pattern: ${patternA}`],
+      warnings: [],
+      scopeTrace: [],
+    };
+  }
+  if (!scopesB) {
+    return {
+      valid: false,
+      composition: expr,
+      errors: [`Unknown pattern: ${patternB}`],
+      warnings: [],
+      scopeTrace: [],
+    };
+  }
+
+  // Scope compatibility check
+  if (!scopesA.includes(scope)) {
+    return {
+      valid: false,
+      composition: expr,
+      errors: [`Scope mismatch: ${patternA} does not support scope '${scope}' (supports: ${scopesA.join(', ')})`],
+      warnings: [],
+      scopeTrace: [`${patternA}[${scope}] -> FAIL`],
+    };
+  }
+  if (!scopesB.includes(scope)) {
+    return {
+      valid: false,
+      composition: expr,
+      errors: [`Scope mismatch: ${patternB} does not support scope '${scope}' (supports: ${scopesB.join(', ')})`],
+      warnings: [],
+      scopeTrace: [`${patternB}[${scope}] -> FAIL`],
+    };
+  }
 
   return {
-    pattern: result.pattern,
-    confidence: result.confidence,
-    reason: result.workBreakdown,
+    valid: true,
+    composition: expr,
+    errors: [],
+    warnings: [],
+    scopeTrace: [`${patternA}[${scope}] -> ${patternB}[${scope}]`],
+  };
+}
+
+/**
+ * Select the best pattern for a given task via keyword matching.
+ */
+export function selectPattern(task: Task): PatternSelection {
+  const desc = task.description.toLowerCase();
+
+  for (const [keywords, pattern, confidence, reason] of INFERENCE_RULES) {
+    if (keywords.some(kw => desc.includes(kw))) {
+      return { pattern, confidence, reason };
+    }
+  }
+
+  // Default fallback
+  return {
+    pattern: 'hierarchical',
+    confidence: 0.3,
+    reason: 'Coordinated task decomposition with specialists',
   };
 }
 
 /**
  * Validate that a composition of patterns is valid.
- * Uses Python validate_composition.py via subprocess.
  *
  * For chains of 3+ patterns, validates pairwise left-to-right.
  *
@@ -123,9 +215,20 @@ export function validateComposition(
   }
 
   if (patterns.length === 1) {
+    const p = patterns[0];
+    const scopes = PATTERN_SCOPES[p];
+    if (!scopes) {
+      return {
+        valid: false,
+        composition: p,
+        errors: [`Unknown pattern: ${p}`],
+        warnings: [],
+        scopeTrace: [],
+      };
+    }
     return {
       valid: true,
-      composition: patterns[0],
+      composition: p,
       errors: [],
       warnings: [],
       scopeTrace: [],
@@ -138,12 +241,7 @@ export function validateComposition(
   let compositionStr = patterns[0];
 
   for (let i = 0; i < patterns.length - 1; i++) {
-    const result = callValidateComposition(
-      patterns[i],
-      patterns[i + 1],
-      scope,
-      operator
-    );
+    const result = validatePair(patterns[i], patterns[i + 1], scope, operator);
 
     if (!result.valid) {
       return {

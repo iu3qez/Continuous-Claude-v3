@@ -95,6 +95,15 @@ function buildPackageLookup(): Map<string, string> {
 const PACKAGE_LOOKUP = buildPackageLookup();
 
 // ---------------------------------------------------------------------------
+// Shared helpers
+// ---------------------------------------------------------------------------
+
+function extractPaths(text: string): string[] {
+  const matches = text.match(/\b(?:src|lib|app|packages|modules|components)\/[\w/.-]+/g);
+  return matches ? matches.map(p => p.replace(/\/+$/, '')) : [];
+}
+
+// ---------------------------------------------------------------------------
 // Extraction functions
 // ---------------------------------------------------------------------------
 
@@ -138,8 +147,8 @@ export function extractDecisions(content: string): Decision[] {
       continue;
     }
 
-    // End of table
-    if (inDecisionTable && separatorSeen && !trimmed.startsWith('|')) {
+    // End of table -- any non-pipe line exits table mode
+    if (inDecisionTable && !trimmed.startsWith('|')) {
       inDecisionTable = false;
       headerSeen = false;
       separatorSeen = false;
@@ -306,15 +315,17 @@ export function validateMilestones(
   const issues: string[] = [];
   const logLower = gitLog.toLowerCase();
 
+  const STOP_WORDS = new Set(['the', 'and', 'for', 'with', 'from', 'that', 'this', 'have', 'been', 'will', 'been', 'into', 'also', 'some', 'than', 'then', 'when', 'what', 'which', 'about', 'after', 'before']);
+
   for (const milestone of milestones) {
     if (!milestone.completed) continue;
 
-    // Extract key words from milestone title (3+ char words)
+    // Extract key words from milestone title (5+ char, no stop words)
     const titleWords = milestone.title
       .toLowerCase()
       .replace(/[^\w\s]/g, ' ')
       .split(/\s+/)
-      .filter(w => w.length >= 3);
+      .filter(w => w.length >= 5 && !STOP_WORDS.has(w));
 
     // Check if at least 2 key words appear in git log
     const matchCount = titleWords.filter(w => logLower.includes(w)).length;
@@ -340,16 +351,11 @@ export function validateCurrentFocus(
 
   const issues: string[] = [];
   const allText = `${focus.title} ${focus.details}`;
+  const paths = extractPaths(allText);
 
-  // Extract path-like references (src/..., lib/..., etc.)
-  const pathPatterns = allText.match(/\b(?:src|lib|app|packages|modules|components)\/[\w/.-]+/g);
-  if (pathPatterns) {
-    for (const p of pathPatterns) {
-      // Normalize: remove trailing slash
-      const normalized = p.replace(/\/+$/, '');
-      if (!existingPaths.has(normalized)) {
-        issues.push(`Current focus mentions "${normalized}" but it does not exist`);
-      }
+  for (const normalized of paths) {
+    if (!existingPaths.has(normalized)) {
+      issues.push(`Current focus mentions "${normalized}" but it does not exist`);
     }
   }
 
@@ -426,14 +432,11 @@ export function reconcile(projectDir: string): ReconcileResult {
   if (focus) {
     const existingPaths = new Set<string>();
     const allText = `${focus.title} ${focus.details}`;
-    const pathPatterns = allText.match(/\b(?:src|lib|app|packages|modules|components)\/[\w/.-]+/g);
-    if (pathPatterns) {
-      for (const p of pathPatterns) {
-        const normalized = p.replace(/\/+$/, '');
-        const fullPath = path.join(projectDir, normalized);
-        if (fs.existsSync(fullPath)) {
-          existingPaths.add(normalized);
-        }
+    const paths = extractPaths(allText);
+    for (const normalized of paths) {
+      const fullPath = path.join(projectDir, normalized);
+      if (fs.existsSync(fullPath)) {
+        existingPaths.add(normalized);
       }
     }
     allIssues.push(...validateCurrentFocus(focus, existingPaths));

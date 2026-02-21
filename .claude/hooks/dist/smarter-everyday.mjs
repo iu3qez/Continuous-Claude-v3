@@ -1,14 +1,9 @@
 #!/usr/bin/env node
-var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require : typeof Proxy !== "undefined" ? new Proxy(x, {
-  get: (a, b) => (typeof require !== "undefined" ? require : a)[b]
-}) : x)(function(x) {
-  if (typeof require !== "undefined") return require.apply(this, arguments);
-  throw Error('Dynamic require of "' + x + '" is not supported');
-});
 
 // src/smarter-everyday.ts
 import * as fs from "fs";
 import * as path from "path";
+import { spawn } from "child_process";
 var TEST_COMMANDS = [
   /\b(npm|yarn|pnpm)\s+(run\s+)?test/i,
   /\bpytest\b/i,
@@ -116,20 +111,34 @@ File: ${state.tracked_file}
 Solution: ${state.last_edit_content || "Final edit"}
 ${failedApproaches ? `Failed approaches: ${failedApproaches}` : ""}
 Test: ${state.test_command || "Unknown test command"}`;
-  const script = "scripts/core/store_learning.py";
-  const escapedContent = content.slice(0, 2e3).replace(/"/g, '\\"');
   const contextStr = `Victory: ${state.context || state.tracked_file}`;
   const tagsStr = `victory,verified,attempts:${state.attempts}`;
-  const cmd = `uv run python ${script} --session-id "${state.session_id}" --type WORKING_SOLUTION --content "${escapedContent}" --context "${contextStr}" --tags "${tagsStr}" --confidence high --project-dir "${projectDir}"`;
   try {
-    const { execSync } = __require("child_process");
-    execSync(cmd, {
-      encoding: "utf-8",
+    const child = spawn("uv", [
+      "run",
+      "python",
+      "scripts/core/store_learning.py",
+      "--session-id",
+      state.session_id,
+      "--type",
+      "WORKING_SOLUTION",
+      "--content",
+      content.slice(0, 2e3),
+      "--context",
+      contextStr,
+      "--tags",
+      tagsStr,
+      "--confidence",
+      "high",
+      "--project-dir",
+      projectDir
+    ], {
       cwd: opcDir,
-      timeout: 6e4,
-      stdio: ["pipe", "pipe", "pipe"],
-      shell: true
+      detached: true,
+      stdio: "ignore",
+      env: { ...process.env, PYTHONPATH: "." }
     });
+    child.unref();
     return true;
   } catch {
     return false;
@@ -140,6 +149,9 @@ function processTransition(state, toolName, toolInput, toolResponse, projectDir)
   let message = null;
   if (toolName === "Edit" || toolName === "Write") {
     const filePath = toolInput.file_path || "";
+    if (filePath && (filePath.includes("smarter-everyday-state") || filePath.includes(".claude/cache/") || filePath.includes("extraction-state.json") || filePath.includes(".claude/maestro-state.json"))) {
+      return { newState: state, message: null };
+    }
     const normalizedPath = path.basename(filePath);
     if (newState.state === "IDLE") {
       newState.state = "ATTEMPTING";
