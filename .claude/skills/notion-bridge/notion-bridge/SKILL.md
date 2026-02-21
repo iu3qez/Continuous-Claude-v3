@@ -199,12 +199,34 @@ When a section contains page mentions or links, `replace_content_range` selectio
 
 ### 3. Notion Tables Use HTML, Not Markdown
 
-Sprint State and other tables render as `<table><tr><td>` HTML in fetch output, NOT Markdown pipe format. When using `selection_with_ellipsis` on table content, match `<td>` cell content.
+Sprint State and other tables render as `<table><tr><td>` HTML in fetch output, NOT Markdown pipe format. This applies to BOTH reading (selection strings) AND writing (replacement content).
 
+**Selection strings** — match `<td>` cell content, not Markdown pipes:
 ```
 WRONG: "| Item | Owner | Status |"
 RIGHT: "<td>Item Name</td>...<td>Status notes</td>"
 ```
+
+**Replacement content** — Markdown pipe tables silently fail. Notion strips them, leaving an empty `<table>` shell. Always use cell-level targeting instead:
+```
+WRONG (replace_content_range with Markdown pipe table as new_str):
+  new_str: "| Item | Owner | Status |\n|------|-------|--------|\n| Fix bug | Code | Done |"
+  → Result: empty table shell, content lost
+
+RIGHT (target individual cells):
+  selection_with_ellipsis: "<td>In progress</td>"
+  new_str: "<td>Done</td>"
+
+RIGHT (replace a full row):
+  selection_with_ellipsis: "<td>Item Name</td>...<td>Old Status</td>"
+  new_str: "<td>Item Name</td><td>Owner</td><td>New Status</td><td>Notes</td>"
+```
+
+**Recommended strategy for table updates:**
+1. **Cell-level updates** (preferred) — target a single `<td>` and replace just that cell
+2. **Row-level updates** — select from first `<td>` to last `<td>` in the row
+3. **Never** use `replace_content_range` with a full Markdown pipe table as `new_str`
+4. To add a new row, use `insert_content_after` targeting the last `</tr>` or a specific row
 
 ### 4. Practical Workflow for Claude Code
 

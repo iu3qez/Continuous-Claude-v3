@@ -26,6 +26,7 @@ import json
 import os
 import subprocess
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 
@@ -97,6 +98,77 @@ def git_add_commit(project: str, message: str) -> tuple[bool, str]:
         return False, "Git not found on PATH"
 
 
+def write_handoff_yaml(project: str, story_id: str, status: dict) -> str | None:
+    """Write a minimal YAML handoff to the standard continuity directory.
+
+    This bridges Ralph state into the handoff scanner so session-start-continuity.ts
+    can find Ralph progress through the standard handoff mechanism.
+    Returns the handoff path on success, None on failure.
+    """
+    try:
+        handoff_dir = os.path.join(project, "thoughts", "shared", "handoffs", f"ralph-{story_id}")
+        os.makedirs(handoff_dir, exist_ok=True)
+
+        # Collect state info
+        tasks = status.get("tasks", [])
+        completed = [t for t in tasks if t.get("status") in ("complete", "completed")]
+        in_progress = [t for t in tasks if t.get("status") in ("in_progress", "in-progress")]
+        pending = [t for t in tasks if t.get("status") == "pending"]
+        total = len(tasks)
+
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        current_task = in_progress[0] if in_progress else (pending[0] if pending else None)
+
+        lines = [
+            "---",
+            f"session: ralph-{story_id}",
+            f"date: {datetime.now(timezone.utc).strftime('%Y-%m-%d')}",
+            f"status: {'active' if status.get('session', {}).get('active') else 'paused'}",
+            "outcome: IN_PROGRESS",
+            "---",
+            "",
+            f"goal: Ralph orchestration for story {story_id}",
+            f"now: {current_task.get('name', 'awaiting next task') if current_task else 'all tasks complete'}",
+            "",
+            f"progress: {len(completed)}/{total} tasks complete",
+            f"stage: {status.get('stage', 'unknown')}",
+            f"iteration: {status.get('iteration', 0)}/{status.get('max_iterations', 30)}",
+            "",
+            "done_this_session:",
+        ]
+
+        for t in completed[-5:]:  # Last 5 completed tasks
+            lines.append(f"  - task: \"{t.get('name', t.get('id', '?'))}\"")
+            if t.get("commit"):
+                lines.append(f"    commit: {t['commit']}")
+
+        if pending:
+            lines.append("")
+            lines.append("next:")
+            for t in pending[:5]:  # Next 5 pending
+                deps = t.get("depends_on", [])
+                dep_str = f" (blocked by: {', '.join(deps)})" if deps else ""
+                lines.append(f"  - {t.get('name', t.get('id', '?'))}{dep_str}")
+
+        retry_queue = status.get("retry_queue", [])
+        if retry_queue:
+            lines.append("")
+            lines.append("blockers:")
+            for r in retry_queue[:3]:
+                lines.append(f"  - \"{r}\"")
+
+        content = "\n".join(lines) + "\n"
+
+        # Write as current handoff (overwrite — only latest matters)
+        handoff_path = os.path.join(handoff_dir, f"{datetime.now(timezone.utc).strftime('%Y-%m-%d')}_current.yaml")
+        with open(handoff_path, "w", encoding="utf-8") as f:
+            f.write(content)
+
+        return handoff_path
+    except Exception:
+        return None  # Fail open
+
+
 def cmd_commit(args) -> int:
     """Checkpoint: git commit + state update."""
     project = os.path.abspath(args.project or os.getcwd())
@@ -132,12 +204,16 @@ def cmd_commit(args) -> int:
     if task_id:
         run_state_cmd(project, "task-complete", "--id", task_id, "--commit", commit_hash)
 
+    # Write handoff YAML for continuity system integration
+    handoff_path = write_handoff_yaml(project, story_id, status)
+
     print(json.dumps({
         "success": True,
         "commit": commit_hash,
         "message": commit_msg,
         "checkpoint": ckpt_result.get("checkpoint", {}),
         "story_id": story_id,
+        "handoff": handoff_path,
     }))
     return 0
 

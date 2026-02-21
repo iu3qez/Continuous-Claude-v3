@@ -14,7 +14,7 @@
 import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { createLogger } from './logger.js';
-import { getStatePathWithMigration } from './session-isolation.js';
+// Legacy getStatePathWithMigration import removed — unified state only
 
 const log = createLogger('state-schema');
 
@@ -144,8 +144,11 @@ export interface RalphSessionState {
 export interface RalphUnifiedState {
   version: string;
   story_id: string;
+  stage?: string;
+  iteration?: number;
+  max_iterations?: number;
   session: RalphSessionState;
-  tasks: Array<{ id: string; status: string; name?: string; [key: string]: unknown }>;
+  tasks: Array<{ id: string; status: string; name?: string; agent?: string; [key: string]: unknown }>;
   retry_queue: unknown[];
   checkpoints: unknown[];
 }
@@ -175,29 +178,13 @@ export function readRalphUnifiedState(projectDir?: string): RalphUnifiedState | 
 }
 
 /**
- * Check if Ralph is active, checking unified state first, then legacy.
- * Returns { active, storyId, source } where source indicates which state file was used.
+ * Check if Ralph is active via unified .ralph/state.json.
+ * Returns { active, storyId, source }.
  */
-export function isRalphActive(projectDir?: string, sessionId?: string): { active: boolean; storyId: string; source: string } {
-  // Try unified state first
+export function isRalphActive(projectDir?: string, _sessionId?: string): { active: boolean; storyId: string; source: string } {
   const unified = readRalphUnifiedState(projectDir);
   if (unified?.session?.active) {
     return { active: true, storyId: unified.story_id, source: 'unified' };
-  }
-
-  // Fall back to legacy temp file state
-  try {
-    const legacyPath = getStatePathWithMigration('ralph-state', sessionId);
-    if (existsSync(legacyPath)) {
-      const content = readFileSync(legacyPath, 'utf-8');
-      const state = JSON.parse(content);
-      const valid = validateRalphState(state, sessionId);
-      if (valid?.active) {
-        return { active: true, storyId: valid.storyId, source: 'legacy' };
-      }
-    }
-  } catch {
-    // Legacy check failed, not active
   }
 
   return { active: false, storyId: '', source: 'none' };

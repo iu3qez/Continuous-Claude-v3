@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(powershell -Command \"$ws = New-Object -ComObject WScript.Shell; $shortcut = $ws.CreateShortcut\\(''C:\\\\Users\\\\david.hayes\\\\Desktop\\\\Claude Code \\(Skip Permissions\\).lnk''\\); Write-Host ''Current Target:'' $shortcut.TargetPath; Write-Host ''Current Args:'' $shortcut.Arguments; Write-Host ''Current WorkingDir:'' $shortcut.WorkingDirectory\")",
+      "Bash(powershell:*)",
+      "Bash(del \"C:\\\\Users\\\\david.hayes\\\\continuous-claude\\\\fix-shortcut.ps1\")",
+      "Bash(grep:*)",
+      "Bash(findstr:*)",
+      "Bash(tldr:*)",
+      "Bash(node:*)",
+      "Bash($env:DEBUG=\"tldr*\")"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "context7",
+    "github",
+    "shadcn",
+    "landing-page",
+    "idearalph"
+  ]
+}

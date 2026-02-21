@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { parseTranscript, generateAutoHandoff } from './transcript-parser.js';
+import { readRalphUnifiedState } from './shared/state-schema.js';
 
 interface PreCompactInput {
   trigger: 'manual' | 'auto';
@@ -12,6 +13,49 @@ interface PreCompactInput {
 interface HookOutput {
   continue?: boolean;
   systemMessage?: string;
+}
+
+/**
+ * Generate Ralph state YAML snippet for inclusion in auto-handoff.
+ * Returns null if no active Ralph session.
+ */
+function getRalphStateYaml(projectDir: string): string | null {
+  try {
+    const state = readRalphUnifiedState(projectDir);
+    if (!state) return null;
+
+    const hasActive = state.session?.active === true;
+    const inProgress = (state.tasks || []).filter(t => t.status === 'in_progress' || t.status === 'in-progress');
+    const completed = (state.tasks || []).filter(t => t.status === 'complete' || t.status === 'completed');
+    const total = (state.tasks || []).length;
+
+    if (!hasActive && inProgress.length === 0) return null;
+
+    const lines: string[] = [];
+    lines.push(`ralph_state:`);
+    lines.push(`  story_id: "${state.story_id || 'unknown'}"`);
+    lines.push(`  stage: "${state.stage || 'unknown'}"`);
+    lines.push(`  iteration: ${state.iteration || 0}`);
+    lines.push(`  max_iterations: ${state.max_iterations || 30}`);
+    lines.push(`  progress: "${completed.length}/${total} tasks complete"`);
+    lines.push(`  retry_queue_size: ${(state.retry_queue || []).length}`);
+
+    if (inProgress.length > 0) {
+      lines.push(`  active_task:`);
+      lines.push(`    id: "${inProgress[0].id}"`);
+      lines.push(`    name: "${(inProgress[0].name || '').replace(/"/g, '\\"')}"`);
+      lines.push(`    agent: "${inProgress[0].agent || 'unassigned'}"`);
+    }
+
+    const pending = (state.tasks || []).filter(t => t.status === 'pending');
+    if (pending.length > 0) {
+      lines.push(`  pending_tasks: [${pending.slice(0, 10).map(t => `"${t.id}"`).join(', ')}]`);
+    }
+
+    return lines.join('\n');
+  } catch {
+    return null;
+  }
 }
 
 async function main() {
@@ -60,7 +104,13 @@ async function main() {
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
       handoffFile = `auto-handoff-${timestamp}.yaml`;
       const handoffPath = path.join(handoffDir, handoffFile);
-      fs.writeFileSync(handoffPath, handoffContent);
+
+      // Append Ralph state to handoff if active
+      const ralphYaml = getRalphStateYaml(projectDir);
+      const finalContent = ralphYaml
+        ? handoffContent + '\n\n' + ralphYaml + '\n'
+        : handoffContent;
+      fs.writeFileSync(handoffPath, finalContent);
 
       // Also append brief summary to ledger for visibility
       const briefSummary = generateAutoSummary(projectDir, input.session_id);
@@ -75,9 +125,12 @@ async function main() {
       }
     }
 
+    // Check Ralph state for message (even if no transcript handoff was written)
+    const ralphStateMsg = getRalphStateYaml(projectDir) ? ' (Ralph state preserved)' : '';
+
     const message = handoffFile
-      ? `[PreCompact:auto] Created YAML handoff: thoughts/shared/handoffs/${sessionName}/${handoffFile}`
-      : `[PreCompact:auto] Session summary auto-appended to ${mostRecent}`;
+      ? `[PreCompact:auto] Created YAML handoff: thoughts/shared/handoffs/${sessionName}/${handoffFile}${ralphStateMsg}`
+      : `[PreCompact:auto] Session summary auto-appended to ${mostRecent}${ralphStateMsg}`;
 
     const output: HookOutput = {
       continue: true,

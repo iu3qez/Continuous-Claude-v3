@@ -195,34 +195,6 @@ function readStateWithLock(filePath) {
 import { existsSync as existsSync4, readFileSync as readFileSync2 } from "fs";
 import { join as join3 } from "path";
 var log2 = createLogger("state-schema");
-function validateRalphState(obj, sessionId) {
-  if (!obj || typeof obj !== "object") {
-    log2.warn("Ralph state is not an object", { received: typeof obj, sessionId });
-    return null;
-  }
-  const s = obj;
-  if (typeof s.active !== "boolean") {
-    log2.warn('Ralph state missing or invalid "active" field', { value: s.active, sessionId });
-    return null;
-  }
-  if (typeof s.storyId !== "string" || s.storyId.length === 0) {
-    log2.warn('Ralph state missing or invalid "storyId" field', { value: s.storyId, sessionId });
-    return null;
-  }
-  if (typeof s.activatedAt !== "number" || s.activatedAt <= 0) {
-    log2.warn('Ralph state missing or invalid "activatedAt" field', { value: s.activatedAt, sessionId });
-    return null;
-  }
-  if (s.lastActivity !== void 0 && typeof s.lastActivity !== "number") {
-    log2.warn('Ralph state invalid "lastActivity" field', { value: s.lastActivity, sessionId });
-    return null;
-  }
-  if (s.sessionId !== void 0 && typeof s.sessionId !== "string") {
-    log2.warn('Ralph state invalid "sessionId" field', { value: s.sessionId, sessionId });
-    return null;
-  }
-  return obj;
-}
 function readRalphUnifiedState(projectDir) {
   const dir = projectDir || process.env.CLAUDE_PROJECT_DIR || process.cwd();
   const statePath = join3(dir, ".ralph", "state.json");
@@ -240,22 +212,10 @@ function readRalphUnifiedState(projectDir) {
     return null;
   }
 }
-function isRalphActive(projectDir, sessionId) {
+function isRalphActive(projectDir, _sessionId) {
   const unified = readRalphUnifiedState(projectDir);
   if (unified?.session?.active) {
     return { active: true, storyId: unified.story_id, source: "unified" };
-  }
-  try {
-    const legacyPath = getStatePathWithMigration("ralph-state", sessionId);
-    if (existsSync4(legacyPath)) {
-      const content = readFileSync2(legacyPath, "utf-8");
-      const state = JSON.parse(content);
-      const valid = validateRalphState(state, sessionId);
-      if (valid?.active) {
-        return { active: true, storyId: valid.storyId, source: "legacy" };
-      }
-    }
-  } catch {
   }
   return { active: false, storyId: "", source: "none" };
 }

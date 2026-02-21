@@ -290,22 +290,10 @@ function readRalphUnifiedState(projectDir) {
     return null;
   }
 }
-function isRalphActive(projectDir, sessionId) {
+function isRalphActive(projectDir, _sessionId) {
   const unified = readRalphUnifiedState(projectDir);
   if (unified?.session?.active) {
     return { active: true, storyId: unified.story_id, source: "unified" };
-  }
-  try {
-    const legacyPath = getStatePathWithMigration("ralph-state", sessionId);
-    if (existsSync4(legacyPath)) {
-      const content = readFileSync2(legacyPath, "utf-8");
-      const state = JSON.parse(content);
-      const valid = validateRalphState(state, sessionId);
-      if (valid?.active) {
-        return { active: true, storyId: valid.storyId, source: "legacy" };
-      }
-    }
-  } catch {
   }
   return { active: false, storyId: "", source: "none" };
 }

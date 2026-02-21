@@ -138,13 +138,27 @@ selection_with_ellipsis: "## 🔄 Handoff Queue: Claude Code → Eve...conversat
 selection_with_ellipsis: "## ⚡ Current Sprint State...Update weekly or per sprint.*"
 ```
 
-**Command:** `replace_content_range` to update the whole table
+**Command:** Cell-level or row-level `replace_content_range` (NEVER full table replacement with Markdown pipes)
 
-**Table format:**
-```markdown
-| Item | Owner | Status | Notes |
-|------|-------|--------|-------|
-| [Item name] | [Eve/Code/Dave] | ✅ Done / 🔄 In progress / ⏳ Next / 🚫 Blocked | [Notes] |
+**Table update strategy:**
+
+Notion tables use `<table><tr><td>` HTML internally. Markdown pipe tables silently fail — Notion strips them, leaving an empty `<table>` shell.
+
+```
+WRONG (Markdown pipe table as new_str — content will be lost):
+  new_str: "| Item | Owner | Status | Notes |\n|------|-------|--------|-------|\n| Fix bug | Code | Done | Shipped |"
+
+RIGHT (cell-level — update one cell):
+  selection_with_ellipsis: "<td>In progress</td>"
+  new_str: "<td>Done</td>"
+
+RIGHT (row-level — update a full row):
+  selection_with_ellipsis: "<td>Item Name</td>...<td>Old notes</td>"
+  new_str: "<td>Item Name</td><td>Owner</td><td>New Status</td><td>Updated notes</td>"
+
+RIGHT (add new row — insert after last row):
+  insert_content_after targeting last </tr> in the table
+  new_str: "<tr><td>New Item</td><td>Code</td><td>In progress</td><td>Just started</td></tr>"
 ```
 
 **Status emoji guide:**
@@ -216,7 +230,7 @@ Always `notion-fetch` the Archive page first, then use `insert_content_after` ta
 | Pass work to Code | Handoff Queue: Eve→Code | `insert_content_after` |
 | Code writing back | Handoff Queue: Code→Eve | `insert_content_after` |
 | Log completed work | Implementation Log | `insert_content_after` (top) |
-| Update sprint table | Sprint State | `replace_content_range` |
+| Update sprint table cell | Sprint State | `replace_content_range` (cell/row level, NOT Markdown pipes) |
 | Add tech notes | Architecture Notes | `insert_content_after` |
 | Look up past work | Archive | `notion-fetch` Archive page |
 | Sweep completed items | Archive | `insert_content_after` (top of Archive) |

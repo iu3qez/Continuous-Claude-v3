@@ -2,6 +2,103 @@
 import * as fs from "fs";
 import * as path from "path";
 import { execSync } from "child_process";
+
+// src/shared/state-schema.ts
+import { existsSync as existsSync2, readFileSync } from "fs";
+import { join as join2 } from "path";
+
+// src/shared/logger.ts
+import { appendFileSync, existsSync, mkdirSync, statSync, renameSync } from "fs";
+import { join } from "path";
+import { homedir } from "os";
+var LOG_DIR = join(homedir(), ".claude", "logs");
+var LOG_FILE = join(LOG_DIR, "hooks.log");
+var MAX_LOG_SIZE = 5 * 1024 * 1024;
+var MIN_LEVEL = process.env.CLAUDE_HOOK_LOG_LEVEL || "info";
+var LEVEL_ORDER = {
+  debug: 0,
+  info: 1,
+  warn: 2,
+  error: 3
+};
+function shouldLog(level) {
+  return LEVEL_ORDER[level] >= LEVEL_ORDER[MIN_LEVEL];
+}
+function ensureLogDir() {
+  if (!existsSync(LOG_DIR)) {
+    mkdirSync(LOG_DIR, { recursive: true });
+  }
+}
+function rotateIfNeeded() {
+  try {
+    if (existsSync(LOG_FILE)) {
+      const stat = statSync(LOG_FILE);
+      if (stat.size > MAX_LOG_SIZE) {
+        const rotated = LOG_FILE + ".1";
+        renameSync(LOG_FILE, rotated);
+      }
+    }
+  } catch {
+  }
+}
+function getSessionId() {
+  return process.env.CLAUDE_SESSION_ID || void 0;
+}
+function writeLog(entry) {
+  try {
+    ensureLogDir();
+    rotateIfNeeded();
+    appendFileSync(LOG_FILE, JSON.stringify(entry) + "\n");
+  } catch {
+  }
+}
+function createLogger(hookName) {
+  function log2(level, msg, data) {
+    if (!shouldLog(level)) return;
+    const entry = {
+      ts: (/* @__PURE__ */ new Date()).toISOString(),
+      level,
+      hook: hookName,
+      msg,
+      sessionId: getSessionId()
+    };
+    if (data && Object.keys(data).length > 0) {
+      entry.data = data;
+    }
+    writeLog(entry);
+    if (level === "error" || level === "warn") {
+      console.error(`[${hookName}] ${level.toUpperCase()}: ${msg}`);
+    }
+  }
+  return {
+    debug: (msg, data) => log2("debug", msg, data),
+    info: (msg, data) => log2("info", msg, data),
+    warn: (msg, data) => log2("warn", msg, data),
+    error: (msg, data) => log2("error", msg, data)
+  };
+}
+
+// src/shared/state-schema.ts
+var log = createLogger("state-schema");
+function readRalphUnifiedState(projectDir) {
+  const dir = projectDir || process.env.CLAUDE_PROJECT_DIR || process.cwd();
+  const statePath = join2(dir, ".ralph", "state.json");
+  if (!existsSync2(statePath)) return null;
+  try {
+    const content = readFileSync(statePath, "utf-8");
+    const state = JSON.parse(content);
+    if (!state.version || !state.version.startsWith("2.")) {
+      log.warn("Ralph unified state has unexpected version", { version: state.version });
+      return null;
+    }
+    return state;
+  } catch (err) {
+    log.warn("Failed to read Ralph unified state", { error: String(err) });
+    return null;
+  }
+}
+
+// src/session-start-continuity.ts
 var STALE_THRESHOLD_DAYS = 7;
 var STALE_THRESHOLD_MS = STALE_THRESHOLD_DAYS * 24 * 60 * 60 * 1e3;
 function buildHandoffDirName(sessionName, sessionId) {
@@ -227,6 +324,51 @@ function getUnmarkedHandoffs() {
     return [];
   }
 }
+function getRalphSessionContext(projectDir, sessionType) {
+  try {
+    const state = readRalphUnifiedState(projectDir);
+    if (!state) return null;
+    const hasActiveSession = state.session?.active === true;
+    const inProgressTasks = (state.tasks || []).filter((t) => t.status === "in_progress" || t.status === "in-progress");
+    const completedTasks = (state.tasks || []).filter((t) => t.status === "complete" || t.status === "completed");
+    const totalTasks = (state.tasks || []).length;
+    if (!hasActiveSession && inProgressTasks.length === 0) return null;
+    const storyId = state.story_id || "unknown";
+    const stage = state.stage || "unknown";
+    const iteration = state.iteration || 0;
+    const maxIterations = state.max_iterations || 30;
+    const retryCount = (state.retry_queue || []).length;
+    const currentTask = inProgressTasks[0];
+    if (sessionType === "startup") {
+      const taskInfo = currentTask ? `, task ${currentTask.id} in progress` : "";
+      return {
+        message: `RALPH SESSION ACTIVE: Story ${storyId}${taskInfo}. ${completedTasks.length}/${totalTasks} tasks done. Run /ralph to resume.`,
+        detail: ""
+      };
+    }
+    const lines = [];
+    lines.push(`## Ralph Session State`);
+    lines.push(`- **Story:** ${storyId} | **Stage:** ${stage}`);
+    lines.push(`- **Iteration:** ${iteration}/${maxIterations}`);
+    lines.push(`- **Progress:** ${completedTasks.length}/${totalTasks} tasks complete`);
+    if (retryCount > 0) lines.push(`- **Retry queue:** ${retryCount} items`);
+    if (currentTask) {
+      lines.push(`- **Current task:** ${currentTask.id} \u2014 ${currentTask.name || "unnamed"} (${currentTask.agent || "unassigned"})`);
+    }
+    const pendingTasks = (state.tasks || []).filter((t) => t.status === "pending");
+    if (pendingTasks.length > 0) {
+      lines.push(`- **Pending:** ${pendingTasks.slice(0, 5).map((t) => t.id).join(", ")}${pendingTasks.length > 5 ? ` (+${pendingTasks.length - 5} more)` : ""}`);
+    }
+    lines.push(`
+Run \`/ralph\` to resume orchestration.`);
+    return {
+      message: `RALPH SESSION ACTIVE: Story ${storyId}, ${completedTasks.length}/${totalTasks} done, iteration ${iteration}/${maxIterations}. Run /ralph to resume.`,
+      detail: lines.join("\n")
+    };
+  } catch {
+    return null;
+  }
+}
 async function main() {
   let input;
   try {
@@ -401,6 +543,17 @@ Full handoff available at: ${handoffPath}
       }
     } catch (error) {
       console.error(`Warning: Error scanning handoffs: ${error}`);
+    }
+  }
+  const ralphContext = getRalphSessionContext(projectDir, sessionType);
+  if (ralphContext) {
+    if (message) {
+      message += " | " + ralphContext.message;
+    } else {
+      message = ralphContext.message;
+    }
+    if (ralphContext.detail) {
+      additionalContext = additionalContext ? additionalContext + "\n\n---\n\n" + ralphContext.detail : ralphContext.detail;
     }
   }
   if (!usedHandoffLedger) {

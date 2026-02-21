@@ -86,6 +86,12 @@ Do NOT use Ralph for:
 
 **Before interviewing user, load context from memory and knowledge systems.**
 
+> **Note:** `session-start-continuity.ts` already injects ROADMAP, knowledge tree navigation,
+> and goal-based memories at session start. Phase 0's value is the **feature-specific** memory
+> query (step 0.1) which targets the user's actual request, not just the current ROADMAP goal.
+> If resuming a Ralph session, `session-start-continuity.ts` will also inject Ralph state from
+> `.ralph/state.json` — check for "RALPH SESSION ACTIVE" in the session start message.
+
 ### 0.0 Project Readiness Check
 
 Before anything else, ensure the project has the infrastructure Ralph needs:
