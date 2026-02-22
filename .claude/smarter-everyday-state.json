@@ -1,12 +1,12 @@
 {
-  "session_id": "85ddb603-caa7-43bf-bc9f-fb91c05a93f7",
+  "session_id": "0c763455-7d8a-477a-9fa9-65cef4cda658",
   "state": "ATTEMPTING",
-  "tracked_file": "C:\\Users\\david.hayes\\.claude\\plans\\immutable-dazzling-dragonfly.md",
-  "attempts": 1,
+  "tracked_file": "C:\\Users\\david.hayes\\.claude\\mcp.json",
+  "attempts": 2,
   "failures": [],
   "candidate_turn": null,
-  "last_edit_content": "# Phase 2b: Heartbeat Debounce + Braintrust Unicode Fix\n\n## Context\n\nPhase 2 (commit `676461e`) fixed 5 issues (C3, H4, H5, M6, M7). Two items remain on `fix/ralph-post-review` before merge:\n\n1. **M8**: Heartbeat `spawnSync` fires on every PreToolUse enforcement check — 100+ Python process spawns per busy session\n2. **B1** (NEW): Braintrust `stop` hook crashes on Windows with `UnicodeDecodeError` — `open(conv_file, \"r\")` defaults to cp1252 on Windows, but JSONL conversation files contain non-ASC",
+  "last_edit_content": "# Plan: MCP Config Sync Between Two Locations\n\n## Context\n\nAfter MCP consolidation, the same config now lives in two files:\n- `~/.mcp.json` — home root (documented as user-scope by Claude Code docs)\n- `~/.claude/mcp.json` — inside .claude directory (what the user found in their editor)\n\nBoth are read by Claude Code. Keeping them manually in sync is error-prone. We need a zero-maintenance solution.\n\n## Recommended Approach: Symlink\n\nMake `~/.mcp.json` a symlink pointing to `~/.claude/mcp.json`.\n\n",
   "test_command": null,
-  "context": "Editing immutable-dazzling-dragonfly.md",
-  "current_turn": 7
+  "context": "Editing mcp.json",
+  "current_turn": 4
 }

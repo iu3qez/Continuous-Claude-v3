@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "updated_at": "2026-02-22T00:10:13.681681+00:00",
+  "updated_at": "2026-02-22T19:30:31.002709+00:00",
   "project": {
     "name": "continuous-claude",
     "description": "> Give Claude a notebook, memory, specialized assistants, and autonomous development capability — so every conversation builds on the last [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE) [![Claude Code](https://img.shields.io/badge/Claude-Code-orange.svg)](https://claude.ai/code)",
@@ -1109,6 +1109,64 @@
           "README.md"
         ]
       },
+      "forge-landing/": {
+        "purpose": "JSON data/config",
+        "key_files": [
+          "package.json"
+        ]
+      },
+      "forge-landing\\app/": {
+        "purpose": "React/TypeScript components",
+        "key_files": null
+      },
+      "forge-landing\\app\\components/": {
+        "purpose": "UI components",
+        "key_files": null
+      },
+      "forge-landing\\app\\hero-01/": {
+        "purpose": "React/TypeScript components",
+        "key_files": null
+      },
+      "forge-landing\\app\\nexus/": {
+        "purpose": "React/TypeScript components",
+        "key_files": null
+      },
+      "forge-landing\\app\\nexus\\components/": {
+        "purpose": "UI components",
+        "key_files": null
+      },
+      "forge-landing\\assets/": {
+        "purpose": "Asset files",
+        "key_files": null
+      },
+      "forge-landing\\assets\\logo/": {
+        "purpose": "React/TypeScript components",
+        "key_files": null
+      },
+      "forge-landing\\components/": {
+        "purpose": "UI components",
+        "key_files": null
+      },
+      "forge-landing\\components\\shadcn-space/": {
+        "purpose": "Project directory",
+        "key_files": null
+      },
+      "forge-landing\\components\\shadcn-space\\animations/": {
+        "purpose": "React/TypeScript components",
+        "key_files": null
+      },
+      "forge-landing\\components\\shadcn-space\\blocks/": {
+        "purpose": "Project directory",
+        "key_files": null
+      },
+      "forge-landing\\components\\ui/": {
+        "purpose": "React/TypeScript components",
+        "key_files": null
+      },
+      "forge-landing\\lib/": {
+        "purpose": "Library code",
+        "key_files": null
+      },
       "fourth-transformation/": {
         "purpose": "Project directory",
         "key_files": [
@@ -1519,7 +1577,9 @@
       "files": [
         ".claude\\reviews/",
         ".claude\\skills\\frontend-slides\\components/",
-        "spark-frontend-experiment\\nexus\\components/"
+        "forge-landing\\app\\components/",
+        "forge-landing\\app\\nexus\\components/",
+        "forge-landing\\components/"
       ],
       "description": "UI Components - layer component",
       "related": []
@@ -1546,7 +1606,7 @@
       "add_component": [
         ".claude\\reviews/",
         ".claude\\skills\\frontend-slides\\components/",
-        "spark-frontend-experiment\\nexus\\components/"
+        "forge-landing\\app\\components/"
       ],
       "add_test": [
         ".claude\\hooks\\src\\__tests__/",
@@ -1573,23 +1633,7 @@
     "current": null,
     "completed": [
       {
-        "title": "[fix](hooks) address 11 review findings from Ralph dev system audit (2026-02-22) `69b31b0`",
-        "completed": null
-      },
-      {
-        "title": "[fix](skill) bridge-schema.md v1.3 — table replacement must use HTML, not Markdown pipes (2026-02-21) `7c6a352`",
-        "completed": null
-      },
-      {
-        "title": "[fix] resolve 6 tsc errors, update docs to match reality (2026-02-21) `28f830c`",
-        "completed": null
-      },
-      {
-        "title": "[fix](skill) bridge-schema.md v1.2 — fix queue selection strings + add Archive section (2026-02-21) `d3f6e87`",
-        "completed": null
-      },
-      {
-        "title": "[feat](skill) notion-bridge v1.1 — Archive system + Claude Code API addendum (2026-02-21) `61b36d3`",
+        "title": "[feat] add forge-landing Next.js project (frontend-design skill v1.2.0 test) (2026-02-22) `68b035b`",
         "completed": null
       },
       {
@@ -1881,7 +1925,5 @@
   },
   "critical_info": {
     "env_vars": ".env.example"
-  },
-  "_stale": true,
-  "_invalidated_at": "2026-02-22T01:04:16.473Z"
+  }
 }
