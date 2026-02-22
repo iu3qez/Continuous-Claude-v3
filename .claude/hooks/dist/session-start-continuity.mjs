@@ -88,7 +88,10 @@ function readRalphUnifiedState(projectDir) {
     const content = readFileSync(statePath, "utf-8");
     const state = JSON.parse(content);
     if (!state.version || !state.version.startsWith("2.")) {
-      log.warn("Ralph unified state has unexpected version", { version: state.version });
+      log.warn("Ralph unified state version mismatch (expected 2.x) \u2014 returning null", {
+        version: state.version,
+        statePath: join2(dir, ".ralph", "state.json")
+      });
       return null;
     }
     return state;
@@ -201,7 +204,7 @@ function pruneLedger(ledgerPath) {
 }
 function getLatestHandoff(handoffDir) {
   if (!fs.existsSync(handoffDir)) return null;
-  const handoffFiles = fs.readdirSync(handoffDir).filter((f) => (f.startsWith("task-") || f.startsWith("auto-handoff-")) && isHandoffFile(f)).sort((a, b) => {
+  const handoffFiles = fs.readdirSync(handoffDir).filter((f) => isHandoffFile(f)).sort((a, b) => {
     const statA = fs.statSync(path.join(handoffDir, a));
     const statB = fs.statSync(path.join(handoffDir, b));
     return statB.mtime.getTime() - statA.mtime.getTime();
@@ -331,12 +334,15 @@ function getRalphSessionContext(projectDir, sessionType) {
     const hasActiveSession = state.session?.active === true;
     const inProgressTasks = (state.tasks || []).filter((t) => t.status === "in_progress" || t.status === "in-progress");
     const completedTasks = (state.tasks || []).filter((t) => t.status === "complete" || t.status === "completed");
+    const problemTasks = (state.tasks || []).filter(
+      (t) => ["failed", "blocked", "paused", "cancelled"].includes(t.status)
+    );
     const totalTasks = (state.tasks || []).length;
-    if (!hasActiveSession && inProgressTasks.length === 0) return null;
+    if (!hasActiveSession) return null;
     const storyId = state.story_id || "unknown";
     const stage = state.stage || "unknown";
-    const iteration = state.iteration || 0;
-    const maxIterations = state.max_iterations || 30;
+    const iteration = state.iteration ?? 0;
+    const maxIterations = state.max_iterations ?? 30;
     const retryCount = (state.retry_queue || []).length;
     const currentTask = inProgressTasks[0];
     if (sessionType === "startup") {
@@ -352,6 +358,9 @@ function getRalphSessionContext(projectDir, sessionType) {
     lines.push(`- **Iteration:** ${iteration}/${maxIterations}`);
     lines.push(`- **Progress:** ${completedTasks.length}/${totalTasks} tasks complete`);
     if (retryCount > 0) lines.push(`- **Retry queue:** ${retryCount} items`);
+    if (problemTasks.length > 0) {
+      lines.push(`- **Needs attention:** ${problemTasks.map((t) => `${t.id}(${t.status})`).join(", ")}`);
+    }
     if (currentTask) {
       lines.push(`- **Current task:** ${currentTask.id} \u2014 ${currentTask.name || "unnamed"} (${currentTask.agent || "unassigned"})`);
     }

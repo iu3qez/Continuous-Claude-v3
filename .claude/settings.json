@@ -243,6 +243,11 @@
             "type": "command",
             "command": "node C:/Users/david.hayes/.claude/hooks/dist/pre-compact-extract.mjs",
             "timeout": 15000
+          },
+          {
+            "type": "command",
+            "command": "node C:/Users/david.hayes/.claude/hooks/dist/pre-compact-continuity.mjs",
+            "timeout": 15000
           }
         ]
       }

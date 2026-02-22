@@ -4,7 +4,7 @@ description: This skill governs the two-layer Bridge communication system betwee
 ---
 
 # Notion Claude Bridge Skill
-## v1.1 | 2026-02-21 | Eve ↔ Claude Code Communication Layer
+## v1.2 | 2026-02-21 | Eve ↔ Claude Code Communication Layer
 
 This skill governs all read/write operations on the Claude Bridge system — the shared knowledge and communication layer between Claude.ai (Eve) and Claude Code. Always load `references/bridge-schema.md` before any write operation.
 
@@ -77,7 +77,7 @@ Rich Notion page at the URL above. This is where context, decisions, and impleme
 2. Read: Active Context + Handoff Queue: Eve → Code
 3. If items in queue: execute, then write back to Handoff Queue: Code → Eve
 4. Add to Implementation Log after completion
-5. Update Sprint State table if status changed
+5. Update Sprint State callout if status changed
 ```
 
 ### 🟠 Claude Code Writing Back to Eve
@@ -85,7 +85,7 @@ Rich Notion page at the URL above. This is where context, decisions, and impleme
 1. notion-fetch: Claude Bridge HQ page (read current)
 2. notion-update-page: insert into Handoff Queue: Code → Eve
 3. notion-update-page: add entry to Implementation Log
-4. Update Sprint State table row(s) if applicable
+4. Update Sprint State callout(s) if applicable
 ```
 
 ### 🔵 Eve Reading Claude Code's Work
@@ -102,10 +102,10 @@ Rich Notion page at the URL above. This is where context, decisions, and impleme
 2. Audit all sections for staleness
 3. Auto-sweep completed items:
    - Move DONE handoff queue items → Archive subpage
-   - Move completed (all done) sprint rows → Archive subpage
+   - Sweep ✅ Done sprint callouts + detail lines → Archive subpage
    - Archive uses reverse-chronological sprint blocks (narrative + Lessons field)
 4. Update Active Context to reflect current reality
-5. Update Sprint State table (remove swept rows)
+5. Update Sprint State (remove swept callouts)
 6. Report summary to Dave: what's current, what's stale, what needs action
 ```
 
@@ -194,53 +194,61 @@ When a section contains page mentions or links, `replace_content_range` selectio
 |----------|-------------------|--------|
 | Add to empty queue | `insert_content_after` | Section blockquote intro line |
 | Add log entry | `insert_content_after` | Section blockquote intro line |
-| Update table (no links) | `replace_content_range` | Safe -- tables rarely have mentions |
+| Update sprint callout | `replace_content_range` | Safe -- callouts have no mentions |
 | Update Active Context | `replace_content_range` | Safe -- plain text section |
 
-### 3. Notion Tables Use HTML, Not Markdown
+### 3. Sprint State Uses Callout Blocks, Not Tables
 
-Sprint State and other tables render as `<table><tr><td>` HTML in fetch output, NOT Markdown pipe format. This applies to BOTH reading (selection strings) AND writing (replacement content).
+Tables are dead. Notion silently strips Markdown pipe tables and HTML table replacements are fragile. **Sprint State uses callout blocks instead.**
 
-**Selection strings** — match `<td>` cell content, not Markdown pipes:
+Each sprint item is a callout block + a plain text detail line:
 ```
-WRONG: "| Item | Owner | Status |"
-RIGHT: "<td>Item Name</td>...<td>Status notes</td>"
-```
-
-**Replacement content** — Markdown pipe tables silently fail. Notion strips them, leaving an empty `<table>` shell. Always use cell-level targeting instead:
-```
-WRONG (replace_content_range with Markdown pipe table as new_str):
-  new_str: "| Item | Owner | Status |\n|------|-------|--------|\n| Fix bug | Code | Done |"
-  → Result: empty table shell, content lost
-
-RIGHT (target individual cells):
-  selection_with_ellipsis: "<td>In progress</td>"
-  new_str: "<td>Done</td>"
-
-RIGHT (replace a full row):
-  selection_with_ellipsis: "<td>Item Name</td>...<td>Old Status</td>"
-  new_str: "<td>Item Name</td><td>Owner</td><td>New Status</td><td>Notes</td>"
+::: callout
+[emoji] **[Task name]** | Owner: [name] | Status: [status]
+:::
+[One line of supporting detail]
 ```
 
-**Recommended strategy for table updates:**
-1. **Cell-level updates** (preferred) — target a single `<td>` and replace just that cell
-2. **Row-level updates** — select from first `<td>` to last `<td>` in the row
-3. **Never** use `replace_content_range` with a full Markdown pipe table as `new_str`
-4. To add a new row, use `insert_content_after` targeting the last `</tr>` or a specific row
+**Color-coded emoji status system:**
+- 🔴 Blocked — cannot proceed, needs intervention
+- 🟡 Pending — queued, not yet started
+- 🔵 In progress — actively being worked on
+- ✅ Done — sweep to Archive on next `bridge sync`
 
-### 4. Practical Workflow for Claude Code
+**Rules:**
+- ALWAYS use callout blocks for Sprint State — never tables, never Markdown pipes, never raw HTML
+- Status emoji goes FIRST in the callout headline, before the task name
+- Detail line sits OUTSIDE the callout as a plain text line immediately below
+- To add a new sprint item: `insert_content_after` targeting the last detail line in the section
+- To update status: `replace_content_range` targeting the callout headline (safe — no links/mentions in callouts)
+- On `bridge sync`: sweep ✅ Done callouts + their detail lines to Archive
+
+### 4. Handoff Queue Hygiene
+
+Handoff queue entries must be self-contained and well-structured:
+
+- Each entry includes status emoji in both the title line AND the Status field
+- **Status values (Eve → Code):** 🟡 Pending | 🔵 In Progress | ✅ Done
+- **Status values (Code → Eve):** 🟡 Unread | ✅ Read (surfaced to Dave)
+- Every entry MUST have a `**Write back:**` field telling the receiver what to confirm when done
+- No orphaned lines — each entry is a complete block from `**[HANDOFF]**` to `**Write back:**`
+- When marking an entry done, update the status emoji in BOTH the title line and the Status field
+- Don't delete completed entries — leave them for the receiving Claude to sweep on `bridge sync`
+- Empty queue state: `*Queue clear — no pending items. Completed handoffs in Claude Bridge Archive.*`
+
+### 5. Practical Workflow for Claude Code
 
 ```
 1. notion-fetch: Read HQ page (always first)
 2. Identify target section from bridge-schema.md
 3. For sections WITH links/mentions:
    -> Use insert_content_after targeting header or blockquote
-4. For sections WITHOUT links (Active Context, plain tables):
+4. For sections WITHOUT links (Active Context, sprint callouts):
    -> replace_content_range is safe
 5. After ANY write: verify by re-fetching if critical
 ```
 
-### 5. Error Recovery
+### 6. Error Recovery
 
 If a `notion-update-page` call fails with selection mismatch:
 1. Re-fetch the page to see current rendered content
@@ -250,5 +258,5 @@ If a `notion-update-page` call fails with selection mismatch:
 
 ---
 
-*notion-bridge v1.1 | 2026-02-21 | Works alongside notion-task-manager skill*
+*notion-bridge v1.2 | 2026-02-21 | Works alongside notion-task-manager skill*
 *Reference: bridge-schema.md for HQ page section map*

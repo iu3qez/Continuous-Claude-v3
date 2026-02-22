@@ -203,7 +203,10 @@ function readRalphUnifiedState(projectDir) {
     const content = readFileSync2(statePath, "utf-8");
     const state = JSON.parse(content);
     if (!state.version || !state.version.startsWith("2.")) {
-      log2.warn("Ralph unified state has unexpected version", { version: state.version });
+      log2.warn("Ralph unified state version mismatch (expected 2.x) \u2014 returning null", {
+        version: state.version,
+        statePath: join3(dir, ".ralph", "state.json")
+      });
       return null;
     }
     return state;
@@ -212,7 +215,7 @@ function readRalphUnifiedState(projectDir) {
     return null;
   }
 }
-function isRalphActive(projectDir, _sessionId) {
+function isRalphActive(projectDir) {
   const unified = readRalphUnifiedState(projectDir);
   if (unified?.session?.active) {
     return { active: true, storyId: unified.story_id, source: "unified" };
@@ -280,27 +283,7 @@ function logHook(sessionId, hookName) {
   writeFileSync2(filePath, JSON.stringify(activity), { encoding: "utf-8" });
 }
 
-// src/plan-to-ralph-enforcer.ts
-var log3 = createLogger("plan-to-ralph-enforcer");
-function decidePlanEnforcement(params) {
-  const { planApproved, ralphActive, filePath } = params;
-  if (!planApproved) {
-    return { block: false };
-  }
-  if (ralphActive) {
-    return { block: false };
-  }
-  if (isAllowedConfigFile(filePath)) {
-    return { block: false };
-  }
-  if (isCodeFile(filePath)) {
-    return {
-      block: true,
-      reason: "Plan approved -- direct code edits are blocked. Use /ralph to delegate implementation to agents."
-    };
-  }
-  return { block: false };
-}
+// src/shared/file-classification.ts
 function isCodeFile(filePath) {
   const codeExtensions = [
     ".ts",
@@ -344,6 +327,28 @@ function isAllowedConfigFile(filePath) {
     /\.md$/
   ];
   return configPatterns.some((p) => p.test(filePath));
+}
+
+// src/plan-to-ralph-enforcer.ts
+var log3 = createLogger("plan-to-ralph-enforcer");
+function decidePlanEnforcement(params) {
+  const { planApproved, ralphActive, filePath } = params;
+  if (!planApproved) {
+    return { block: false };
+  }
+  if (ralphActive) {
+    return { block: false };
+  }
+  if (isAllowedConfigFile(filePath)) {
+    return { block: false };
+  }
+  if (isCodeFile(filePath)) {
+    return {
+      block: true,
+      reason: "Plan approved -- direct code edits are blocked. Use /ralph to delegate implementation to agents."
+    };
+  }
+  return { block: false };
 }
 function makeBlockOutput(reason) {
   const output = {
@@ -393,7 +398,7 @@ async function main() {
     let ralphActive = false;
     if (planApproved) {
       try {
-        const ralphStatus = isRalphActive(projectDir, sessionId);
+        const ralphStatus = isRalphActive(projectDir);
         ralphActive = ralphStatus.active;
       } catch {
         ralphActive = false;

@@ -217,9 +217,9 @@ function pruneLedger(ledgerPath: string): void {
 function getLatestHandoff(handoffDir: string): HandoffSummary | null {
   if (!fs.existsSync(handoffDir)) return null;
 
-  // Match task-* and auto-handoff-* files with .md, .yaml, or .yml extensions
+  // Match any handoff files (.md, .yaml, .yml) — no prefix filter
   const handoffFiles = fs.readdirSync(handoffDir)
-    .filter(f => (f.startsWith('task-') || f.startsWith('auto-handoff-')) && isHandoffFile(f))
+    .filter(f => isHandoffFile(f))
     .sort((a, b) => {
       // Sort by modification time (most recent first)
       const statA = fs.statSync(path.join(handoffDir, a));
@@ -420,14 +420,17 @@ function getRalphSessionContext(projectDir: string, sessionType: string | undefi
     const hasActiveSession = state.session?.active === true;
     const inProgressTasks = (state.tasks || []).filter(t => t.status === 'in_progress' || t.status === 'in-progress');
     const completedTasks = (state.tasks || []).filter(t => t.status === 'complete' || t.status === 'completed');
+    const problemTasks = (state.tasks || []).filter(t =>
+      ['failed', 'blocked', 'paused', 'cancelled'].includes(t.status)
+    );
     const totalTasks = (state.tasks || []).length;
 
-    if (!hasActiveSession && inProgressTasks.length === 0) return null;
+    if (!hasActiveSession) return null;
 
     const storyId = state.story_id || 'unknown';
     const stage = state.stage || 'unknown';
-    const iteration = state.iteration || 0;
-    const maxIterations = state.max_iterations || 30;
+    const iteration = state.iteration ?? 0;
+    const maxIterations = state.max_iterations ?? 30;
     const retryCount = (state.retry_queue || []).length;
     const currentTask = inProgressTasks[0];
 
@@ -447,6 +450,9 @@ function getRalphSessionContext(projectDir: string, sessionType: string | undefi
     lines.push(`- **Iteration:** ${iteration}/${maxIterations}`);
     lines.push(`- **Progress:** ${completedTasks.length}/${totalTasks} tasks complete`);
     if (retryCount > 0) lines.push(`- **Retry queue:** ${retryCount} items`);
+    if (problemTasks.length > 0) {
+      lines.push(`- **Needs attention:** ${problemTasks.map(t => `${t.id}(${t.status})`).join(', ')}`);
+    }
     if (currentTask) {
       lines.push(`- **Current task:** ${currentTask.id} — ${currentTask.name || 'unnamed'} (${currentTask.agent || 'unassigned'})`);
     }

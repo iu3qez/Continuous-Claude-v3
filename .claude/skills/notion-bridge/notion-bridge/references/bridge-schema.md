@@ -88,16 +88,17 @@ selection_with_ellipsis: "## 🔄 Handoff Queue: Eve → Claude Code...move to I
 
 **Format for handoff item:**
 ```markdown
-### [YYYY-MM-DD] [Short Title] — STATUS: PENDING
-**From:** Eve
-**To:** Claude Code
+**[HANDOFF] YYYY-MM-DD — [Short Title]** [status emoji] [STATUS]
+**From:** Eve | **To:** Claude Code | **Status:** [status emoji] [Status]
 **Context:** [What Dave and Eve discussed / decided]
 **Action needed:** [Specific thing Code should do]
 **Priority:** [High / Mid / Low]
 **Related files/URLs:** [if any]
+**Write back:** [What Code should confirm when done]
 ```
 
-**After Code acts:** Change STATUS to `DONE` or move entry to Implementation Log
+**Status values:** 🟡 Pending | 🔵 In Progress | ✅ Done
+**After Code acts:** Update status to ✅ Done IN the queue entry (don't delete — Eve sweeps on `bridge sync`)
 
 ---
 
@@ -116,21 +117,21 @@ selection_with_ellipsis: "## 🔄 Handoff Queue: Claude Code → Eve...conversat
 
 **Format for write-back item:**
 ```markdown
-### [YYYY-MM-DD] [Short Title] — STATUS: UNREAD
-**From:** Claude Code
-**To:** Eve
+**[HANDOFF] YYYY-MM-DD — [Short Title]** [status emoji] [STATUS]
+**From:** Claude Code | **To:** Eve | **Status:** 🟡 Unread
 **What was built/decided:** [Summary]
 **Dave needs to know:** [Key points to surface]
 **Files/PRs/URLs:** [if any]
-**Next suggested action:** [Optional]
+**Write back:** [What Eve should do with this — surface to Dave, review, etc.]
 ```
 
-**After Eve reads and surfaces:** Change STATUS to `READ`
+**Status values:** 🟡 Unread | ✅ Read (surfaced to Dave)
+**After Eve reads and surfaces:** Update status to ✅ Read
 
 ---
 
 ### 6. Current Sprint State
-**Purpose:** Snapshot table of what's in flight
+**Purpose:** Snapshot of what's in flight — uses callout blocks (NOT tables)
 **Update trigger:** Status changes, new items, completions
 
 **Selection string:**
@@ -138,35 +139,45 @@ selection_with_ellipsis: "## 🔄 Handoff Queue: Claude Code → Eve...conversat
 selection_with_ellipsis: "## ⚡ Current Sprint State...Update weekly or per sprint.*"
 ```
 
-**Command:** Cell-level or row-level `replace_content_range` (NEVER full table replacement with Markdown pipes)
+**Format: Callout blocks with detail lines**
 
-**Table update strategy:**
+Tables are dead — Notion silently strips Markdown pipe tables and HTML table replacements are fragile. Sprint State uses callout blocks instead.
 
-Notion tables use `<table><tr><td>` HTML internally. Markdown pipe tables silently fail — Notion strips them, leaving an empty `<table>` shell.
-
+Each sprint item is a callout block + a plain text detail line:
 ```
-WRONG (Markdown pipe table as new_str — content will be lost):
-  new_str: "| Item | Owner | Status | Notes |\n|------|-------|--------|-------|\n| Fix bug | Code | Done | Shipped |"
-
-RIGHT (cell-level — update one cell):
-  selection_with_ellipsis: "<td>In progress</td>"
-  new_str: "<td>Done</td>"
-
-RIGHT (row-level — update a full row):
-  selection_with_ellipsis: "<td>Item Name</td>...<td>Old notes</td>"
-  new_str: "<td>Item Name</td><td>Owner</td><td>New Status</td><td>Updated notes</td>"
-
-RIGHT (add new row — insert after last row):
-  insert_content_after targeting last </tr> in the table
-  new_str: "<tr><td>New Item</td><td>Code</td><td>In progress</td><td>Just started</td></tr>"
+::: callout
+[emoji] **[Task name]** | Owner: [name] | Status: [status]
+:::
+[One line of supporting detail]
 ```
 
-**Status emoji guide:**
-- ✅ Done
-- 🔄 In progress
-- ⏳ Next up
-- 🚫 Blocked
-- 💬 Needs decision
+**Worked example — a full two-item Sprint State block:**
+```
+::: callout
+🔵 **Fix auth token refresh** | Owner: Claude Code | Status: In progress
+:::
+Implementing retry logic in middleware — PR draft open
+
+::: callout
+🟡 **Design new onboarding flow** | Owner: Eve | Status: Pending
+:::
+Waiting for Dave's feedback on wireframes from last session
+```
+
+**Color-coded emoji status system:**
+- 🔴 Blocked — cannot proceed, needs intervention
+- 🟡 Pending — queued, not yet started
+- 🔵 In progress — actively being worked on
+- ✅ Done — sweep to Archive on next `bridge sync`
+
+**Rules:**
+- ALWAYS use callout blocks for Sprint State items — never tables, never Markdown pipes, never raw HTML
+- Status emoji goes FIRST in the callout headline, before the task name
+- Format: `[emoji] **[Task]** | Owner: [X] | Status: [Y]`
+- Detail line sits OUTSIDE the callout as a plain text line immediately below
+- To add a new sprint item: `insert_content_after` targeting the last detail line in the section
+- To update status: `replace_content_range` targeting the callout headline (safe — no links/mentions in callouts)
+- On `bridge sync`: sweep ✅ Done callouts + their detail lines to Archive
 
 ---
 
@@ -230,7 +241,8 @@ Always `notion-fetch` the Archive page first, then use `insert_content_after` ta
 | Pass work to Code | Handoff Queue: Eve→Code | `insert_content_after` |
 | Code writing back | Handoff Queue: Code→Eve | `insert_content_after` |
 | Log completed work | Implementation Log | `insert_content_after` (top) |
-| Update sprint table cell | Sprint State | `replace_content_range` (cell/row level, NOT Markdown pipes) |
+| Update sprint item status | Sprint State | `replace_content_range` (callout headline — no tables) |
+| Add sprint item | Sprint State | `insert_content_after` (last detail line) |
 | Add tech notes | Architecture Notes | `insert_content_after` |
 | Look up past work | Archive | `notion-fetch` Archive page |
 | Sweep completed items | Archive | `insert_content_after` (top of Archive) |

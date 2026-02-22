@@ -124,7 +124,10 @@ function readRalphUnifiedState(projectDir) {
     const content = readFileSync(statePath, "utf-8");
     const state = JSON.parse(content);
     if (!state.version || !state.version.startsWith("2.")) {
-      log.warn("Ralph unified state has unexpected version", { version: state.version });
+      log.warn("Ralph unified state version mismatch (expected 2.x) \u2014 returning null", {
+        version: state.version,
+        statePath: join3(dir, ".ralph", "state.json")
+      });
       return null;
     }
     return state;
