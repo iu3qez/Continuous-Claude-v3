@@ -298,7 +298,10 @@ function readRalphUnifiedState(projectDir) {
     const content = readFileSync2(statePath, "utf-8");
     const state = JSON.parse(content);
     if (!state.version || !state.version.startsWith("2.")) {
-      log.warn("Ralph unified state has unexpected version", { version: state.version });
+      log.warn("Ralph unified state version mismatch (expected 2.x) \u2014 returning null", {
+        version: state.version,
+        statePath: join2(dir, ".ralph", "state.json")
+      });
       return null;
     }
     return state;
@@ -318,7 +321,11 @@ function getRalphStateYaml(projectDir) {
     const completed = (state.tasks || []).filter((t) => t.status === "complete" || t.status === "completed");
     const total = (state.tasks || []).length;
     if (!hasActive && inProgress.length === 0) return null;
+    const currentTaskName = inProgress.length > 0 ? (inProgress[0].name || inProgress[0].id || "current task").replace(/"/g, '\\"') : "orchestration complete";
     const lines = [];
+    lines.push(`goal: "Ralph orchestration for story ${state.story_id || "unknown"}"`);
+    lines.push(`now: "${currentTaskName}"`);
+    lines.push("");
     lines.push(`ralph_state:`);
     lines.push(`  story_id: "${state.story_id || "unknown"}"`);
     lines.push(`  stage: "${state.stage || "unknown"}"`);

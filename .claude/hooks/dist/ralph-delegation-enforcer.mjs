@@ -1,47 +1,14 @@
 #!/usr/bin/env node
 
 // src/ralph-delegation-enforcer.ts
-import { readFileSync as readFileSync4, existsSync as existsSync6 } from "fs";
-import { join as join6 } from "path";
+import { readFileSync as readFileSync3, existsSync as existsSync5 } from "fs";
+import { join as join5 } from "path";
 import { spawnSync } from "child_process";
 
 // src/shared/session-isolation.ts
 import { tmpdir, hostname } from "os";
 import { join } from "path";
 import { existsSync, readdirSync, statSync, unlinkSync } from "fs";
-function getSessionId() {
-  if (process.env.CLAUDE_SESSION_ID) {
-    return process.env.CLAUDE_SESSION_ID;
-  }
-  const host = hostname().replace(/[^a-zA-Z0-9]/g, "").substring(0, 8);
-  return `${host}-${process.pid}`;
-}
-function getSessionStatePath(baseName, sessionId) {
-  const sid = sessionId || getSessionId();
-  const safeSid = sid.replace(/[^a-zA-Z0-9-_]/g, "_").substring(0, 32);
-  return join(tmpdir(), `claude-${baseName}-${safeSid}.json`);
-}
-function getLegacyStatePath(baseName) {
-  return join(tmpdir(), `claude-${baseName}.json`);
-}
-function getStatePathWithMigration(baseName, sessionId) {
-  const sessionPath = getSessionStatePath(baseName, sessionId);
-  const legacyPath = getLegacyStatePath(baseName);
-  if (existsSync(sessionPath)) {
-    return sessionPath;
-  }
-  if (existsSync(legacyPath)) {
-    try {
-      const stat = statSync(legacyPath);
-      const oneHourAgo = Date.now() - 60 * 60 * 1e3;
-      if (stat.mtimeMs > oneHourAgo) {
-        return legacyPath;
-      }
-    } catch {
-    }
-  }
-  return sessionPath;
-}
 function cleanupOldStateFiles(baseName, maxAgeMs = 24 * 60 * 60 * 1e3) {
   const tmpDir = tmpdir();
   const pattern = new RegExp(`^claude-${baseName}-.*\\.json$`);
@@ -100,7 +67,7 @@ function rotateIfNeeded() {
   } catch {
   }
 }
-function getSessionId2() {
+function getSessionId() {
   return process.env.CLAUDE_SESSION_ID || void 0;
 }
 function writeLog(entry) {
@@ -119,7 +86,7 @@ function createLogger(hookName) {
       level,
       hook: hookName,
       msg,
-      sessionId: getSessionId2()
+      sessionId: getSessionId()
     };
     if (data && Object.keys(data).length > 0) {
       entry.data = data;
@@ -138,150 +105,24 @@ function createLogger(hookName) {
 }
 
 // src/shared/atomic-write.ts
-import {
-  writeFileSync,
-  renameSync as renameSync2,
-  unlinkSync as unlinkSync2,
-  existsSync as existsSync3,
-  openSync,
-  closeSync,
-  readFileSync,
-  statSync as statSync3,
-  constants
-} from "fs";
-import { dirname, basename as basename2, join as join3 } from "path";
 var log = createLogger("atomic-write");
-var LOCK_STALE_MS = 1e4;
-var LOCK_RETRY_MS = 50;
-var LOCK_TIMEOUT_MS = 5e3;
-function atomicWriteSync(filePath, content) {
-  const dir = dirname(filePath);
-  const tmpFile = join3(dir, `.${basename2(filePath)}.tmp.${process.pid}`);
-  try {
-    writeFileSync(tmpFile, content, "utf-8");
-    renameSync2(tmpFile, filePath);
-  } catch (err) {
-    try {
-      if (existsSync3(tmpFile)) unlinkSync2(tmpFile);
-    } catch {
-    }
-    throw err;
-  }
-}
-function acquireLockSync(filePath, timeoutMs = LOCK_TIMEOUT_MS) {
-  const lockFile = filePath + ".lock";
-  const startTime = Date.now();
-  while (true) {
-    try {
-      const fd = openSync(lockFile, constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY);
-      writeFileSync(fd, `${process.pid}
-${Date.now()}`, "utf-8");
-      closeSync(fd);
-      return true;
-    } catch (err) {
-      if (err.code === "EEXIST") {
-        try {
-          const stat = statSync3(lockFile);
-          if (Date.now() - stat.mtimeMs > LOCK_STALE_MS) {
-            log.warn("Removing stale lock", { lockFile, ageMs: Date.now() - stat.mtimeMs });
-            unlinkSync2(lockFile);
-            continue;
-          }
-        } catch {
-          continue;
-        }
-        if (Date.now() - startTime > timeoutMs) {
-          log.error("Lock acquisition timed out", { lockFile, timeoutMs });
-          return false;
-        }
-        const waitUntil = Date.now() + LOCK_RETRY_MS;
-        while (Date.now() < waitUntil) {
-        }
-      } else {
-        log.error("Lock acquisition failed", { lockFile, error: String(err) });
-        return false;
-      }
-    }
-  }
-}
-function releaseLockSync(filePath) {
-  const lockFile = filePath + ".lock";
-  try {
-    if (existsSync3(lockFile)) {
-      unlinkSync2(lockFile);
-    }
-  } catch (err) {
-    log.warn("Failed to release lock", { lockFile, error: String(err) });
-  }
-}
-function writeStateWithLock(filePath, content) {
-  const locked = acquireLockSync(filePath);
-  try {
-    atomicWriteSync(filePath, content);
-  } catch (err) {
-    log.error("State write failed", { filePath, error: String(err) });
-  } finally {
-    if (locked) {
-      releaseLockSync(filePath);
-    }
-  }
-}
-function readStateWithLock(filePath) {
-  if (!existsSync3(filePath)) return null;
-  const locked = acquireLockSync(filePath, 2e3);
-  try {
-    return readFileSync(filePath, "utf-8");
-  } catch (err) {
-    log.error("State read failed", { filePath, error: String(err) });
-    return null;
-  } finally {
-    if (locked) {
-      releaseLockSync(filePath);
-    }
-  }
-}
 
 // src/shared/state-schema.ts
-import { existsSync as existsSync4, readFileSync as readFileSync2 } from "fs";
-import { join as join4 } from "path";
+import { existsSync as existsSync3, readFileSync } from "fs";
+import { join as join3 } from "path";
 var log2 = createLogger("state-schema");
-function validateRalphState(obj, sessionId) {
-  if (!obj || typeof obj !== "object") {
-    log2.warn("Ralph state is not an object", { received: typeof obj, sessionId });
-    return null;
-  }
-  const s = obj;
-  if (typeof s.active !== "boolean") {
-    log2.warn('Ralph state missing or invalid "active" field', { value: s.active, sessionId });
-    return null;
-  }
-  if (typeof s.storyId !== "string" || s.storyId.length === 0) {
-    log2.warn('Ralph state missing or invalid "storyId" field', { value: s.storyId, sessionId });
-    return null;
-  }
-  if (typeof s.activatedAt !== "number" || s.activatedAt <= 0) {
-    log2.warn('Ralph state missing or invalid "activatedAt" field', { value: s.activatedAt, sessionId });
-    return null;
-  }
-  if (s.lastActivity !== void 0 && typeof s.lastActivity !== "number") {
-    log2.warn('Ralph state invalid "lastActivity" field', { value: s.lastActivity, sessionId });
-    return null;
-  }
-  if (s.sessionId !== void 0 && typeof s.sessionId !== "string") {
-    log2.warn('Ralph state invalid "sessionId" field', { value: s.sessionId, sessionId });
-    return null;
-  }
-  return obj;
-}
 function readRalphUnifiedState(projectDir) {
   const dir = projectDir || process.env.CLAUDE_PROJECT_DIR || process.cwd();
-  const statePath = join4(dir, ".ralph", "state.json");
-  if (!existsSync4(statePath)) return null;
+  const statePath = join3(dir, ".ralph", "state.json");
+  if (!existsSync3(statePath)) return null;
   try {
-    const content = readFileSync2(statePath, "utf-8");
+    const content = readFileSync(statePath, "utf-8");
     const state = JSON.parse(content);
     if (!state.version || !state.version.startsWith("2.")) {
-      log2.warn("Ralph unified state has unexpected version", { version: state.version });
+      log2.warn("Ralph unified state version mismatch (expected 2.x) \u2014 returning null", {
+        version: state.version,
+        statePath: join3(dir, ".ralph", "state.json")
+      });
       return null;
     }
     return state;
@@ -290,7 +131,7 @@ function readRalphUnifiedState(projectDir) {
     return null;
   }
 }
-function isRalphActive(projectDir, _sessionId) {
+function isRalphActive(projectDir) {
   const unified = readRalphUnifiedState(projectDir);
   if (unified?.session?.active) {
     return { active: true, storyId: unified.story_id, source: "unified" };
@@ -299,26 +140,26 @@ function isRalphActive(projectDir, _sessionId) {
 }
 
 // src/shared/session-activity.ts
-import { existsSync as existsSync5, mkdirSync as mkdirSync2, readFileSync as readFileSync3, writeFileSync as writeFileSync2 } from "fs";
-import { join as join5 } from "path";
+import { existsSync as existsSync4, mkdirSync as mkdirSync2, readFileSync as readFileSync2, writeFileSync } from "fs";
+import { join as join4 } from "path";
 function getHomeDir() {
   return process.env.HOME || process.env.USERPROFILE || "/tmp";
 }
 function getActivityPath(sessionId) {
-  const dir = join5(getHomeDir(), ".claude", "cache", "session-activity");
+  const dir = join4(getHomeDir(), ".claude", "cache", "session-activity");
   try {
     mkdirSync2(dir, { recursive: true });
   } catch {
   }
-  return join5(dir, `${sessionId}.json`);
+  return join4(dir, `${sessionId}.json`);
 }
 function readActivity(sessionId) {
   const filePath = getActivityPath(sessionId);
   try {
-    if (!existsSync5(filePath)) {
+    if (!existsSync4(filePath)) {
       return null;
     }
-    const raw = readFileSync3(filePath, "utf-8");
+    const raw = readFileSync2(filePath, "utf-8");
     if (!raw.trim()) {
       return null;
     }
@@ -355,31 +196,15 @@ function logHook(sessionId, hookName) {
   const activity = loadOrCreate(sessionId);
   upsertEntry(activity.hooks, hookName);
   const filePath = getActivityPath(sessionId);
-  writeFileSync2(filePath, JSON.stringify(activity), { encoding: "utf-8" });
+  writeFileSync(filePath, JSON.stringify(activity), { encoding: "utf-8" });
 }
 
 // src/ralph-delegation-enforcer.ts
 var log3 = createLogger("ralph-delegation-enforcer");
 var STATE_BASE_NAME = "ralph-state";
 var STATE_TTL = 12 * 60 * 60 * 1e3;
-function getRalphStateFile(sessionId) {
-  return getStatePathWithMigration(STATE_BASE_NAME, sessionId);
-}
-function updateHeartbeat(sessionId) {
-  const stateFile = getRalphStateFile(sessionId);
-  if (!existsSync6(stateFile)) return;
-  try {
-    const content = readStateWithLock(stateFile);
-    if (!content) return;
-    const state = validateRalphState(JSON.parse(content));
-    if (!state) return;
-    state.lastActivity = Date.now();
-    writeStateWithLock(stateFile, JSON.stringify(state, null, 2));
-  } catch {
-  }
-}
 function readStdin() {
-  return readFileSync4(0, "utf-8");
+  return readFileSync3(0, "utf-8");
 }
 function makeBlockOutput(reason) {
   const output = {
@@ -477,7 +302,7 @@ async function main() {
     }
     const sessionId = input.session_id;
     const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
-    const ralphStatus = isRalphActive(projectDir, sessionId);
+    const ralphStatus = isRalphActive(projectDir);
     if (!ralphStatus.active) {
       makeAllowOutput();
       return;
@@ -486,8 +311,8 @@ async function main() {
     if (ralphStatus.source === "unified") {
       try {
         const homeDir = process.env.HOME || process.env.USERPROFILE || "";
-        const v2Script = join6(homeDir, ".claude", "scripts", "ralph", "ralph-state-v2.py");
-        if (existsSync6(v2Script)) {
+        const v2Script = join5(homeDir, ".claude", "scripts", "ralph", "ralph-state-v2.py");
+        if (existsSync5(v2Script)) {
           spawnSync("python", [v2Script, "-p", projectDir, "session-heartbeat"], {
             encoding: "utf-8",
             timeout: 3e3
@@ -495,8 +320,6 @@ async function main() {
         }
       } catch {
       }
-    } else {
-      updateHeartbeat(sessionId);
     }
     log3.info(`Enforcing delegation: tool=${input.tool_name}`, { storyId, sessionId, source: ralphStatus.source });
     try {

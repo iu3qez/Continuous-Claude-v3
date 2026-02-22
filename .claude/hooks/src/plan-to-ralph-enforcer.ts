@@ -195,7 +195,7 @@ async function main() {
     let ralphActive = false;
     if (planApproved) {
       try {
-        const ralphStatus = isRalphActive(projectDir, sessionId);
+        const ralphStatus = isRalphActive(projectDir);
         ralphActive = ralphStatus.active;
       } catch {
         // Fail open

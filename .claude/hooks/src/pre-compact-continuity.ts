@@ -31,7 +31,14 @@ function getRalphStateYaml(projectDir: string): string | null {
 
     if (!hasActive && inProgress.length === 0) return null;
 
+    const currentTaskName = inProgress.length > 0
+      ? (inProgress[0].name || inProgress[0].id || 'current task').replace(/"/g, '\\"')
+      : 'orchestration complete';
+
     const lines: string[] = [];
+    lines.push(`goal: "Ralph orchestration for story ${state.story_id || 'unknown'}"`);
+    lines.push(`now: "${currentTaskName}"`);
+    lines.push('');
     lines.push(`ralph_state:`);
     lines.push(`  story_id: "${state.story_id || 'unknown'}"`);
     lines.push(`  stage: "${state.stage || 'unknown'}"`);

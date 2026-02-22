@@ -137,7 +137,7 @@ export function validateMaestroState(obj: unknown, sessionId?: string): MaestroS
 export interface RalphSessionState {
   active: boolean;
   story_id: string;
-  activated_at: string;
+  activated_at: number | string;
   last_activity?: number;  // epoch ms from Python
 }
 
@@ -167,7 +167,10 @@ export function readRalphUnifiedState(projectDir?: string): RalphUnifiedState | 
     const content = readFileSync(statePath, 'utf-8');
     const state = JSON.parse(content);
     if (!state.version || !state.version.startsWith('2.')) {
-      log.warn('Ralph unified state has unexpected version', { version: state.version });
+      log.warn('Ralph unified state version mismatch (expected 2.x) — returning null', {
+        version: state.version,
+        statePath: join(dir, '.ralph', 'state.json')
+      });
       return null;
     }
     return state as RalphUnifiedState;
@@ -181,7 +184,7 @@ export function readRalphUnifiedState(projectDir?: string): RalphUnifiedState | 
  * Check if Ralph is active via unified .ralph/state.json.
  * Returns { active, storyId, source }.
  */
-export function isRalphActive(projectDir?: string, _sessionId?: string): { active: boolean; storyId: string; source: string } {
+export function isRalphActive(projectDir?: string): { active: boolean; storyId: string; source: string } {
   const unified = readRalphUnifiedState(projectDir);
   if (unified?.session?.active) {
     return { active: true, storyId: unified.story_id, source: 'unified' };

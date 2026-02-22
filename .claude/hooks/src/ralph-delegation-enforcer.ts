@@ -84,22 +84,6 @@ function readRalphState(sessionId?: string): RalphState | null {
   }
 }
 
-function updateHeartbeat(sessionId?: string): void {
-  const stateFile = getRalphStateFile(sessionId);
-  if (!existsSync(stateFile)) return;
-
-  try {
-    const content = readStateWithLock(stateFile);
-    if (!content) return;
-    const state = validateRalphState(JSON.parse(content));
-    if (!state) return;
-    state.lastActivity = Date.now();
-    writeStateWithLock(stateFile, JSON.stringify(state, null, 2));
-  } catch {
-    // Ignore heartbeat failures
-  }
-}
-
 function readStdin(): string {
   return readFileSync(0, 'utf-8');
 }
@@ -199,7 +183,7 @@ async function main() {
     const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
 
     // Check unified state first, then legacy
-    const ralphStatus = isRalphActive(projectDir, sessionId);
+    const ralphStatus = isRalphActive(projectDir);
 
     if (!ralphStatus.active) {
       makeAllowOutput();
@@ -220,8 +204,6 @@ async function main() {
           });
         }
       } catch { /* ignore heartbeat failures */ }
-    } else {
-      updateHeartbeat(sessionId);
     }
 
     log.info(`Enforcing delegation: tool=${input.tool_name}`, { storyId, sessionId, source: ralphStatus.source });

@@ -203,7 +203,10 @@ function readRalphUnifiedState(projectDir) {
     const content = readFileSync2(statePath, "utf-8");
     const state = JSON.parse(content);
     if (!state.version || !state.version.startsWith("2.")) {
-      log2.warn("Ralph unified state has unexpected version", { version: state.version });
+      log2.warn("Ralph unified state version mismatch (expected 2.x) \u2014 returning null", {
+        version: state.version,
+        statePath: join3(dir, ".ralph", "state.json")
+      });
       return null;
     }
     return state;
@@ -212,7 +215,7 @@ function readRalphUnifiedState(projectDir) {
     return null;
   }
 }
-function isRalphActive(projectDir, _sessionId) {
+function isRalphActive(projectDir) {
   const unified = readRalphUnifiedState(projectDir);
   if (unified?.session?.active) {
     return { active: true, storyId: unified.story_id, source: "unified" };
@@ -393,7 +396,7 @@ async function main() {
     let ralphActive = false;
     if (planApproved) {
       try {
-        const ralphStatus = isRalphActive(projectDir, sessionId);
+        const ralphStatus = isRalphActive(projectDir);
         ralphActive = ralphStatus.active;
       } catch {
         ralphActive = false;
