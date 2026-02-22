@@ -326,9 +326,6 @@ function getRalphStateYaml(projectDir) {
     if (!hasActive && inProgress.length === 0 && problemTasks.length === 0) return null;
     const currentTaskName = inProgress.length > 0 ? (inProgress[0].name || inProgress[0].id || "current task").replace(/"/g, '\\"') : "orchestration complete";
     const lines = [];
-    lines.push(`goal: "Ralph orchestration for story ${state.story_id || "unknown"}"`);
-    lines.push(`now: "${currentTaskName}"`);
-    lines.push("");
     lines.push(`ralph_state:`);
     lines.push(`  story_id: "${state.story_id || "unknown"}"`);
     lines.push(`  stage: "${state.stage || "unknown"}"`);
@@ -358,60 +355,78 @@ async function main() {
   const input = JSON.parse(await readStdin());
   const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
   const ledgerDir = path.join(projectDir, "thoughts", "ledgers");
-  const ledgerFiles = fs2.readdirSync(ledgerDir).filter((f) => f.startsWith("CONTINUITY_CLAUDE-") && f.endsWith(".md"));
-  if (ledgerFiles.length === 0) {
-    const output = {
-      continue: true,
-      systemMessage: "[PreCompact] No ledger found. Create one? /continuity_ledger"
-    };
-    console.log(JSON.stringify(output));
-    return;
+  const ledgerFiles = fs2.existsSync(ledgerDir) ? fs2.readdirSync(ledgerDir).filter((f) => f.startsWith("CONTINUITY_CLAUDE-") && f.endsWith(".md")) : [];
+  let handoffFile = "";
+  let ledgerMessage = "";
+  if (ledgerFiles.length > 0) {
+    const mostRecent = ledgerFiles.sort((a, b) => {
+      const statA = fs2.statSync(path.join(ledgerDir, a));
+      const statB = fs2.statSync(path.join(ledgerDir, b));
+      return statB.mtime.getTime() - statA.mtime.getTime();
+    })[0];
+    const ledgerPath = path.join(ledgerDir, mostRecent);
+    if (input.trigger === "auto") {
+      const sessionName = mostRecent.replace("CONTINUITY_CLAUDE-", "").replace(".md", "");
+      if (input.transcript_path && fs2.existsSync(input.transcript_path)) {
+        const summary = parseTranscript(input.transcript_path);
+        const handoffContent = generateAutoHandoff(summary, sessionName);
+        const handoffDir = path.join(projectDir, "thoughts", "shared", "handoffs", sessionName);
+        fs2.mkdirSync(handoffDir, { recursive: true });
+        const timestamp = (/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-").slice(0, 19);
+        handoffFile = `auto-handoff-${timestamp}.yaml`;
+        const handoffPath = path.join(handoffDir, handoffFile);
+        const ralphYaml2 = getRalphStateYaml(projectDir);
+        const finalContent = ralphYaml2 ? handoffContent + "\n\n" + ralphYaml2 + "\n" : handoffContent;
+        fs2.writeFileSync(handoffPath, finalContent);
+        const briefSummary = generateAutoSummary(projectDir, input.session_id);
+        if (briefSummary) {
+          appendToLedger(ledgerPath, briefSummary);
+        }
+      } else {
+        const briefSummary = generateAutoSummary(projectDir, input.session_id);
+        if (briefSummary) {
+          appendToLedger(ledgerPath, briefSummary);
+        }
+      }
+      ledgerMessage = handoffFile ? `[PreCompact:auto] Created YAML handoff: thoughts/shared/handoffs/${mostRecent.replace("CONTINUITY_CLAUDE-", "").replace(".md", "")}/${handoffFile}` : `[PreCompact:auto] Session summary auto-appended to ${mostRecent}`;
+    } else {
+      ledgerMessage = `[PreCompact] Consider updating ledger before compacting: /continuity_ledger
+Ledger: ${mostRecent}`;
+    }
   }
-  const mostRecent = ledgerFiles.sort((a, b) => {
-    const statA = fs2.statSync(path.join(ledgerDir, a));
-    const statB = fs2.statSync(path.join(ledgerDir, b));
-    return statB.mtime.getTime() - statA.mtime.getTime();
-  })[0];
-  const ledgerPath = path.join(ledgerDir, mostRecent);
-  if (input.trigger === "auto") {
-    const sessionName = mostRecent.replace("CONTINUITY_CLAUDE-", "").replace(".md", "");
-    let handoffFile = "";
-    if (input.transcript_path && fs2.existsSync(input.transcript_path)) {
-      const summary = parseTranscript(input.transcript_path);
-      const handoffContent = generateAutoHandoff(summary, sessionName);
-      const handoffDir = path.join(projectDir, "thoughts", "shared", "handoffs", sessionName);
+  const ralphYaml = getRalphStateYaml(projectDir);
+  if (ralphYaml) {
+    if (handoffFile) {
+      ledgerMessage += " (Ralph state preserved)";
+    } else {
+      const handoffDir = path.join(projectDir, "thoughts", "shared", "handoffs", "ralph-auto");
       fs2.mkdirSync(handoffDir, { recursive: true });
       const timestamp = (/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-").slice(0, 19);
-      handoffFile = `auto-handoff-${timestamp}.yaml`;
-      const handoffPath = path.join(handoffDir, handoffFile);
-      const ralphYaml = getRalphStateYaml(projectDir);
-      const finalContent = ralphYaml ? handoffContent + "\n\n" + ralphYaml + "\n" : handoffContent;
-      fs2.writeFileSync(handoffPath, finalContent);
-      const briefSummary = generateAutoSummary(projectDir, input.session_id);
-      if (briefSummary) {
-        appendToLedger(ledgerPath, briefSummary);
-      }
-    } else {
-      const briefSummary = generateAutoSummary(projectDir, input.session_id);
-      if (briefSummary) {
-        appendToLedger(ledgerPath, briefSummary);
-      }
+      const ralphHandoffFile = `ralph-handoff-${timestamp}.yaml`;
+      const storyId = ralphYaml.match(/story_id:\s*"([^"]+)"/)?.[1] || "unknown";
+      const currentTask = ralphYaml.match(/name:\s*"([^"]+)"/)?.[1] || "orchestration";
+      fs2.writeFileSync(
+        path.join(handoffDir, ralphHandoffFile),
+        `---
+type: auto-handoff
+session: ralph-auto
+date: ${(/* @__PURE__ */ new Date()).toISOString().split("T")[0]}
+---
+
+goal: "Ralph orchestration for story ${storyId}"
+now: "${currentTask}"
+
+${ralphYaml}
+`
+      );
+      ledgerMessage = `[PreCompact] Ralph state preserved to thoughts/shared/handoffs/ralph-auto/${ralphHandoffFile}`;
     }
-    const ralphStateMsg = getRalphStateYaml(projectDir) ? " (Ralph state preserved)" : "";
-    const message = handoffFile ? `[PreCompact:auto] Created YAML handoff: thoughts/shared/handoffs/${sessionName}/${handoffFile}${ralphStateMsg}` : `[PreCompact:auto] Session summary auto-appended to ${mostRecent}${ralphStateMsg}`;
-    const output = {
-      continue: true,
-      systemMessage: message
-    };
-    console.log(JSON.stringify(output));
-  } else {
-    const output = {
-      continue: true,
-      systemMessage: `[PreCompact] Consider updating ledger before compacting: /continuity_ledger
-Ledger: ${mostRecent}`
-    };
-    console.log(JSON.stringify(output));
   }
+  const output = {
+    continue: true,
+    systemMessage: ledgerMessage || "[PreCompact] No continuity data to preserve"
+  };
+  console.log(JSON.stringify(output));
 }
 function generateAutoSummary(projectDir, sessionId) {
   const timestamp = (/* @__PURE__ */ new Date()).toISOString();

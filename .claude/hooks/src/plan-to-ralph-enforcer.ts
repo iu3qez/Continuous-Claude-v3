@@ -23,6 +23,7 @@ import { readStateWithLock } from './shared/atomic-write.js';
 import { isRalphActive } from './shared/state-schema.js';
 import { createLogger } from './shared/logger.js';
 import { logHook } from './shared/session-activity.js';
+import { isCodeFile, isAllowedConfigFile } from './shared/file-classification.js';
 
 const log = createLogger('plan-to-ralph-enforcer');
 
@@ -88,44 +89,6 @@ export function decidePlanEnforcement(params: DecisionInput): DecisionResult {
 
   // Not a code file and not a recognized config file -> allow (fail open)
   return { block: false };
-}
-
-// ---------------------------------------------------------------------------
-// File classification helpers
-// ---------------------------------------------------------------------------
-
-function isCodeFile(filePath: string): boolean {
-  const codeExtensions = [
-    '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs',
-    '.py', '.pyi',
-    '.go',
-    '.rs',
-    '.java', '.kt', '.scala',
-    '.c', '.cpp', '.h', '.hpp',
-    '.cs',
-    '.rb',
-    '.php',
-    '.swift',
-    '.vue', '.svelte',
-  ];
-  return codeExtensions.some(ext => filePath.endsWith(ext));
-}
-
-function isAllowedConfigFile(filePath: string): boolean {
-  const configPatterns = [
-    /\.ralph\//,
-    /IMPLEMENTATION_PLAN\.md$/,
-    /tasks\/.*\.md$/,
-    /\.json$/,
-    /\.yaml$/,
-    /\.yml$/,
-    /\.env/,
-    /\.gitignore$/,
-    /package\.json$/,
-    /tsconfig\.json$/,
-    /\.md$/,
-  ];
-  return configPatterns.some(p => p.test(filePath));
 }
 
 // ---------------------------------------------------------------------------

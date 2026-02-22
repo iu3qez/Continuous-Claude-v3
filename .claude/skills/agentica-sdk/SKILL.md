@@ -146,7 +146,7 @@ agent = await spawn(
 )
 
 # In decorator
-@agentic(model="anthropic:claude-sonnet-4-6")
+@agentic(model="anthropic:claude-sonnet-4.5")
 async def analyze(text: str) -> dict:
     """Analyze text."""
     ...
@@ -155,7 +155,7 @@ async def analyze(text: str) -> dict:
 **Available models:**
 - `openai:gpt-3.5-turbo`, `openai:gpt-4o`, `openai:gpt-4.1`, `openai:gpt-5`
 - `anthropic:claude-sonnet-4`, `anthropic:claude-opus-4.1`
-- `anthropic:claude-sonnet-4-6`, `anthropic:claude-opus-4-6`
+- `anthropic:claude-sonnet-4.5`, `anthropic:claude-opus-4.5`
 - Any OpenRouter slug (e.g., `google/gemini-2.5-flash`)
 
 ## Persistence (Stateful Agents)

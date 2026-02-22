@@ -79,7 +79,7 @@ function writeLog(entry) {
   }
 }
 function createLogger(hookName) {
-  function log4(level, msg, data) {
+  function log3(level, msg, data) {
     if (!shouldLog(level)) return;
     const entry = {
       ts: (/* @__PURE__ */ new Date()).toISOString(),
@@ -97,20 +97,17 @@ function createLogger(hookName) {
     }
   }
   return {
-    debug: (msg, data) => log4("debug", msg, data),
-    info: (msg, data) => log4("info", msg, data),
-    warn: (msg, data) => log4("warn", msg, data),
-    error: (msg, data) => log4("error", msg, data)
+    debug: (msg, data) => log3("debug", msg, data),
+    info: (msg, data) => log3("info", msg, data),
+    warn: (msg, data) => log3("warn", msg, data),
+    error: (msg, data) => log3("error", msg, data)
   };
 }
-
-// src/shared/atomic-write.ts
-var log = createLogger("atomic-write");
 
 // src/shared/state-schema.ts
 import { existsSync as existsSync3, readFileSync } from "fs";
 import { join as join3 } from "path";
-var log2 = createLogger("state-schema");
+var log = createLogger("state-schema");
 function readRalphUnifiedState(projectDir) {
   const dir = projectDir || process.env.CLAUDE_PROJECT_DIR || process.cwd();
   const statePath = join3(dir, ".ralph", "state.json");
@@ -119,7 +116,7 @@ function readRalphUnifiedState(projectDir) {
     const content = readFileSync(statePath, "utf-8");
     const state = JSON.parse(content);
     if (!state.version || !state.version.startsWith("2.")) {
-      log2.warn("Ralph unified state version mismatch (expected 2.x) \u2014 returning null", {
+      log.warn("Ralph unified state version mismatch (expected 2.x) \u2014 returning null", {
         version: state.version,
         statePath: join3(dir, ".ralph", "state.json")
       });
@@ -127,7 +124,7 @@ function readRalphUnifiedState(projectDir) {
     }
     return state;
   } catch (err) {
-    log2.warn("Failed to read Ralph unified state", { error: String(err) });
+    log.warn("Failed to read Ralph unified state", { error: String(err) });
     return null;
   }
 }
@@ -199,26 +196,7 @@ function logHook(sessionId, hookName) {
   writeFileSync(filePath, JSON.stringify(activity), { encoding: "utf-8" });
 }
 
-// src/ralph-delegation-enforcer.ts
-var log3 = createLogger("ralph-delegation-enforcer");
-var STATE_BASE_NAME = "ralph-state";
-var STATE_TTL = 12 * 60 * 60 * 1e3;
-function readStdin() {
-  return readFileSync3(0, "utf-8");
-}
-function makeBlockOutput(reason) {
-  const output = {
-    hookSpecificOutput: {
-      hookEventName: "PreToolUse",
-      permissionDecision: "deny",
-      permissionDecisionReason: reason
-    }
-  };
-  console.log(JSON.stringify(output));
-}
-function makeAllowOutput() {
-  console.log(JSON.stringify({}));
-}
+// src/shared/file-classification.ts
 function isCodeFile(filePath) {
   const codeExtensions = [
     ".ts",
@@ -247,6 +225,42 @@ function isCodeFile(filePath) {
   ];
   return codeExtensions.some((ext) => filePath.endsWith(ext));
 }
+function isAllowedConfigFile(filePath) {
+  const configPatterns = [
+    /\.ralph\//,
+    /IMPLEMENTATION_PLAN\.md$/,
+    /tasks\/.*\.md$/,
+    /\.json$/,
+    /\.yaml$/,
+    /\.yml$/,
+    /\.env/,
+    /\.gitignore$/,
+    /package\.json$/,
+    /tsconfig\.json$/,
+    /\.md$/
+  ];
+  return configPatterns.some((p) => p.test(filePath));
+}
+
+// src/ralph-delegation-enforcer.ts
+var log2 = createLogger("ralph-delegation-enforcer");
+var STATE_BASE_NAME = "ralph-state";
+function readStdin() {
+  return readFileSync3(0, "utf-8");
+}
+function makeBlockOutput(reason) {
+  const output = {
+    hookSpecificOutput: {
+      hookEventName: "PreToolUse",
+      permissionDecision: "deny",
+      permissionDecisionReason: reason
+    }
+  };
+  console.log(JSON.stringify(output));
+}
+function makeAllowOutput() {
+  console.log(JSON.stringify({}));
+}
 function isTestCommand(command) {
   const testPatterns = [
     /\bnpm\s+(run\s+)?test/i,
@@ -266,22 +280,6 @@ function isTestCommand(command) {
     /\bgolangci-lint/i
   ];
   return testPatterns.some((p) => p.test(command));
-}
-function isAllowedConfigFile(filePath) {
-  const configPatterns = [
-    /\.ralph\//,
-    /IMPLEMENTATION_PLAN\.md$/,
-    /tasks\/.*\.md$/,
-    /\.json$/,
-    /\.yaml$/,
-    /\.yml$/,
-    /\.env/,
-    /\.gitignore$/,
-    /package\.json$/,
-    /tsconfig\.json$/,
-    /\.md$/
-  ];
-  return configPatterns.some((p) => p.test(filePath));
 }
 async function main() {
   try {
@@ -321,7 +319,7 @@ async function main() {
       } catch {
       }
     }
-    log3.info(`Enforcing delegation: tool=${input.tool_name}`, { storyId, sessionId, source: ralphStatus.source });
+    log2.info(`Enforcing delegation: tool=${input.tool_name}`, { storyId, sessionId, source: ralphStatus.source });
     try {
       logHook(sessionId || "", "ralph-delegation-enforcer");
     } catch {

@@ -119,7 +119,7 @@ research_agent = await spawn(
         "nia_search": nia_search,
         "perplexity_search": perplexity_search
     },
-    model="anthropic:claude-sonnet-4-6"
+    model="anthropic:claude-sonnet-4.5"
 )
 
 # Use the agent

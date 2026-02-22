@@ -8,15 +8,14 @@
  * Runs on PreToolUse:Edit, PreToolUse:Write, PreToolUse:Bash
  */
 
-import { readFileSync, existsSync, writeFileSync } from 'fs';
-import { tmpdir } from 'os';
+import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { spawnSync } from 'child_process';
-import { getSessionStatePath, getStatePathWithMigration, cleanupOldStateFiles, hasOtherActiveSessions } from './shared/session-isolation.js';
+import { cleanupOldStateFiles } from './shared/session-isolation.js';
 import { createLogger } from './shared/logger.js';
-import { writeStateWithLock, readStateWithLock } from './shared/atomic-write.js';
-import { validateRalphState, isRalphActive, readRalphUnifiedState } from './shared/state-schema.js';
+import { isRalphActive } from './shared/state-schema.js';
 import { logHook } from './shared/session-activity.js';
+import { isCodeFile, isAllowedConfigFile } from './shared/file-classification.js';
 
 const log = createLogger('ralph-delegation-enforcer');
 
@@ -30,59 +29,8 @@ interface HookInput {
   };
 }
 
-interface RalphState {
-  active: boolean;
-  storyId: string;
-  activatedAt: number;
-  lastActivity?: number;  // For heartbeat mechanism
-  sessionId?: string;     // Track which session owns this state
-}
-
 // Use session-specific state files to prevent cross-terminal collision
 const STATE_BASE_NAME = 'ralph-state';
-const STATE_TTL = 12 * 60 * 60 * 1000; // Extended to 12 hours for long sessions
-const TTL_WARNING_THRESHOLD = 0.8;     // Warn at 80% of TTL
-
-function getRalphStateFile(sessionId?: string): string {
-  return getStatePathWithMigration(STATE_BASE_NAME, sessionId);
-}
-
-function readRalphState(sessionId?: string): RalphState | null {
-  const stateFile = getRalphStateFile(sessionId);
-  if (!existsSync(stateFile)) {
-    return null;
-  }
-  try {
-    const content = readStateWithLock(stateFile);
-    if (!content) return null;
-    const state = validateRalphState(JSON.parse(content), sessionId);
-    if (!state) return null;
-
-    // Check TTL based on lastActivity (heartbeat) or activatedAt
-    const lastTime = state.lastActivity || state.activatedAt;
-    const elapsed = Date.now() - lastTime;
-
-    if (elapsed > STATE_TTL) {
-      return null;
-    }
-
-    // Warn if approaching TTL
-    if (elapsed > STATE_TTL * TTL_WARNING_THRESHOLD) {
-      const remainingHours = ((STATE_TTL - elapsed) / (60 * 60 * 1000)).toFixed(1);
-      log.warn(`Session expiring in ${remainingHours}h. Activity will extend TTL.`, { sessionId });
-    }
-
-    return state;
-  } catch (err) {
-    // Log corruption for debugging but fail CLOSED (return null = no enforcement bypass)
-    log.error(`State file corrupted or invalid. Enforcement remains active.`, { error: String(err), sessionId });
-    // On corruption, we could either:
-    // 1. Fail open (return null) - dangerous, allows bypass
-    // 2. Fail closed (return a minimal active state) - safer
-    // Choosing fail closed for security
-    return null;
-  }
-}
 
 function readStdin(): string {
   return readFileSync(0, 'utf-8');
@@ -101,23 +49,6 @@ function makeBlockOutput(reason: string): void {
 
 function makeAllowOutput(): void {
   console.log(JSON.stringify({}));
-}
-
-function isCodeFile(filePath: string): boolean {
-  const codeExtensions = [
-    '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs',
-    '.py', '.pyi',
-    '.go',
-    '.rs',
-    '.java', '.kt', '.scala',
-    '.c', '.cpp', '.h', '.hpp',
-    '.cs',
-    '.rb',
-    '.php',
-    '.swift',
-    '.vue', '.svelte'
-  ];
-  return codeExtensions.some(ext => filePath.endsWith(ext));
 }
 
 function isTestCommand(command: string): boolean {
@@ -139,23 +70,6 @@ function isTestCommand(command: string): boolean {
     /\bgolangci-lint/i
   ];
   return testPatterns.some(p => p.test(command));
-}
-
-function isAllowedConfigFile(filePath: string): boolean {
-  const configPatterns = [
-    /\.ralph\//,
-    /IMPLEMENTATION_PLAN\.md$/,
-    /tasks\/.*\.md$/,
-    /\.json$/,
-    /\.yaml$/,
-    /\.yml$/,
-    /\.env/,
-    /\.gitignore$/,
-    /package\.json$/,
-    /tsconfig\.json$/,
-    /\.md$/
-  ];
-  return configPatterns.some(p => p.test(filePath));
 }
 
 async function main() {

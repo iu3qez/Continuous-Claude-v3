@@ -1881,5 +1881,7 @@
   },
   "critical_info": {
     "env_vars": ".env.example"
-  }
+  },
+  "_stale": true,
+  "_invalidated_at": "2026-02-22T00:36:48.126Z"
 }

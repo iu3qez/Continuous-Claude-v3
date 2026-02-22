@@ -283,27 +283,7 @@ function logHook(sessionId, hookName) {
   writeFileSync2(filePath, JSON.stringify(activity), { encoding: "utf-8" });
 }
 
-// src/plan-to-ralph-enforcer.ts
-var log3 = createLogger("plan-to-ralph-enforcer");
-function decidePlanEnforcement(params) {
-  const { planApproved, ralphActive, filePath } = params;
-  if (!planApproved) {
-    return { block: false };
-  }
-  if (ralphActive) {
-    return { block: false };
-  }
-  if (isAllowedConfigFile(filePath)) {
-    return { block: false };
-  }
-  if (isCodeFile(filePath)) {
-    return {
-      block: true,
-      reason: "Plan approved -- direct code edits are blocked. Use /ralph to delegate implementation to agents."
-    };
-  }
-  return { block: false };
-}
+// src/shared/file-classification.ts
 function isCodeFile(filePath) {
   const codeExtensions = [
     ".ts",
@@ -347,6 +327,28 @@ function isAllowedConfigFile(filePath) {
     /\.md$/
   ];
   return configPatterns.some((p) => p.test(filePath));
+}
+
+// src/plan-to-ralph-enforcer.ts
+var log3 = createLogger("plan-to-ralph-enforcer");
+function decidePlanEnforcement(params) {
+  const { planApproved, ralphActive, filePath } = params;
+  if (!planApproved) {
+    return { block: false };
+  }
+  if (ralphActive) {
+    return { block: false };
+  }
+  if (isAllowedConfigFile(filePath)) {
+    return { block: false };
+  }
+  if (isCodeFile(filePath)) {
+    return {
+      block: true,
+      reason: "Plan approved -- direct code edits are blocked. Use /ralph to delegate implementation to agents."
+    };
+  }
+  return { block: false };
 }
 function makeBlockOutput(reason) {
   const output = {
