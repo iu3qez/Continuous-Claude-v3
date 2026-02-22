@@ -65,7 +65,7 @@ claude --agents '{
 name: agent-name
 description: When/why to use this agent
 tools: Read, Edit, Bash      # Optional, inherits all if omitted
-model: sonnet                 # sonnet, haiku, claude-opus-4-5-20251101, inherit
+model: sonnet                 # sonnet, haiku, claude-opus-4-6, inherit
 ---
 
 System prompt content here...
@@ -78,7 +78,7 @@ System prompt content here...
 | `name` | Yes | lowercase, hyphens |
 | `description` | Yes | When to use |
 | `tools` | No | Tool list (inherits all if omitted) |
-| `model` | No | `sonnet`, `haiku`, `claude-opus-4-5-20251101`, `inherit` |
+| `model` | No | `sonnet`, `haiku`, `claude-opus-4-6`, `inherit` |
 
 ## Built-In Agents
 

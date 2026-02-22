@@ -53,11 +53,11 @@ model: opus
 
 | Alias | Model | Use Case |
 |-------|-------|----------|
-| opus | Claude Opus 4.5 | Complex analysis, architecture, critical reviews |
-| sonnet | Claude Sonnet 4 | Standard tasks, balanced cost/performance |
+| opus | Claude Opus 4.6 | Complex analysis, architecture, critical reviews |
+| sonnet | Claude Sonnet 4.6 | Standard tasks, balanced cost/performance |
 | haiku | Claude Haiku | Fast, simple tasks, exploration |
 
-Never use full IDs like `claude-opus-4-5-20251101` — they won't be recognized.
+Never use full IDs like `claude-opus-4-6` — they won't be recognized.
 
 ---
 
