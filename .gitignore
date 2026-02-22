@@ -111,8 +111,9 @@ opc/:memory:/
 # OPC .claude (wizard uses root .claude, not this)
 opc/.claude/
 
-# Frontend prototypes - node_modules only
-spark-frontend-experiment/nexus/node_modules/
+# Frontend experiments (local prototypes, not for release)
+spark-frontend-experiment/
+forge-landing/
 
 # OPC tool caches
 opc/.venv/

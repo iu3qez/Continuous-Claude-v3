@@ -1,4 +1,5 @@
 # Claude Bridge HQ — Section Schema & Selection Strings
+## v1.5 | 2026-02-22
 
 ## Page URL
 https://www.notion.so/30e76fd7ac8281e99fe1c0b257088b34
@@ -48,7 +49,7 @@ selection_with_ellipsis: "## 📌 Key Decisions Log...at the top.*"
 ### YYYY-MM-DD — [Decision Title]
 - **Decision:** [What was decided]
 - **Rationale:** [Why]
-- **Decided by:** [Dave / Eve / Claude Code / Dave + Eve]
+- **Decided by:** [Dave / Eve / Donna / Claude Code / combination]
 ```
 
 ---
@@ -78,27 +79,27 @@ selection_with_ellipsis: "## 🧠 Architecture & Technical Notes...Keep this eve
 **Update trigger:** Eve needs Code to do something
 **Clear trigger:** After Claude Code has acknowledged/acted on the item
 
-**Selection string for adding item:**
+**Selection string for adding one-liner:**
 ```
 selection_with_ellipsis: "## 🔄 Handoff Queue: Eve → Claude Code...move to Implementation Log.*"
 ```
 
 **Command:** `insert_content_after` the blockquote
-**Empty queue state:** Queue shows `*Queue clear — no pending items.*` with an Archive page link. Add new items after the blockquote intro (target the selection string above), not after the "Queue clear" text (which contains a page mention that breaks selection strings in Claude Code).
 
-**Format for handoff item:**
+**Format (v2 — one-liner + child page):**
+1. Create child page under Bridge HQ (`30e76fd7-ac82-81e9-9fe1-c0b257088b34`) using `references/handoff-templates/eve-to-code.md` template
+2. Insert one-liner into HQ:
 ```markdown
-**[HANDOFF] YYYY-MM-DD — [Short Title]** [status emoji] [STATUS]
-**From:** Eve | **To:** Claude Code | **Status:** [status emoji] [Status]
-**Context:** [What Dave and Eve discussed / decided]
-**Action needed:** [Specific thing Code should do]
-**Priority:** [High / Mid / Low]
-**Related files/URLs:** [if any]
-**Write back:** [What Code should confirm when done]
+🟡 [HANDOFF] YYYY-MM-DD — [Title] → [Eve→Code] [Title] — YYYY-MM-DD](notion-url)
+	From: Eve | Priority: [High/Mid/Low] | [One sentence summary]
 ```
 
 **Status values:** 🟡 Pending | 🔵 In Progress | ✅ Done
-**After Code acts:** Update status to ✅ Done IN the queue entry (don't delete — Eve sweeps on `bridge sync`)
+**Status sync:** Update emoji in BOTH HQ one-liner and child page Status field
+**After Code acts:** Update status to ✅ Done (don't delete — Eve sweeps on `bridge sync`)
+
+**Empty queue state:** `*Queue clear — no pending items. Completed handoffs in Claude Bridge Archive.*`
+Add new items after the blockquote intro (target the selection string above), not after the "Queue clear" text (which contains a page mention that breaks selection strings in Claude Code).
 
 ---
 
@@ -107,26 +108,27 @@ selection_with_ellipsis: "## 🔄 Handoff Queue: Eve → Claude Code...move to I
 **Update trigger:** Code completes significant work
 **Clear trigger:** After Eve has surfaced the item to Dave
 
-**Selection string for adding item:**
+**Selection string for adding one-liner:**
 ```
 selection_with_ellipsis: "## 🔄 Handoff Queue: Claude Code → Eve...conversations with Dave.*"
 ```
 
 **Command:** `insert_content_after` the blockquote
-**Empty queue state:** Queue shows `*Queue clear — no pending items.*` with an Archive page link. Add new items after the blockquote intro (target the selection string above), not after the "Queue clear" text (which contains a page mention that breaks selection strings in Claude Code).
 
-**Format for write-back item:**
+**Format (v2 — one-liner + child page):**
+1. Create child page under Bridge HQ using `references/handoff-templates/code-to-eve.md` template
+2. Insert one-liner into HQ:
 ```markdown
-**[HANDOFF] YYYY-MM-DD — [Short Title]** [status emoji] [STATUS]
-**From:** Claude Code | **To:** Eve | **Status:** 🟡 Unread
-**What was built/decided:** [Summary]
-**Dave needs to know:** [Key points to surface]
-**Files/PRs/URLs:** [if any]
-**Write back:** [What Eve should do with this — surface to Dave, review, etc.]
+🟡 [HANDOFF] YYYY-MM-DD — [Title] → [Code→Eve] [Title] — YYYY-MM-DD](notion-url)
+	From: Code | Priority: [High/Mid/Low] | [One sentence summary]
 ```
 
 **Status values:** 🟡 Unread | ✅ Read (surfaced to Dave)
+**Status sync:** Update emoji in BOTH HQ one-liner and child page Status field
 **After Eve reads and surfaces:** Update status to ✅ Read
+
+**Empty queue state:** `*Queue clear — no pending items. Completed handoffs in Claude Bridge Archive.*`
+Add new items after the blockquote intro (target the selection string above).
 
 ---
 
@@ -204,8 +206,8 @@ selection_with_ellipsis: "## 📚 Implementation Log...Most recent at top.*"
 ---
 
 ### 8. Bridge Protocol (reference only)
-**Purpose:** Instructions for both Claude instances — do not modify without Dave's instruction
-**Update trigger:** Only when the protocol itself changes (Eve or Dave decision)
+**Purpose:** Instructions for all three Claude instances — do not modify without Dave's instruction
+**Update trigger:** Only when the protocol itself changes (Eve, Donna, or Dave decision)
 
 ---
 
@@ -232,17 +234,104 @@ Always `notion-fetch` the Archive page first, then use `insert_content_after` ta
 
 ---
 
-## Quick Reference: Command × Section Matrix
+### 10. Handoff Queue: Donna → Claude Code
+**Purpose:** Work, context, or instructions Donna is passing to Claude Code
+**Update trigger:** Donna needs Code to do something
+**Clear trigger:** After Claude Code has acknowledged/acted on the item
+
+**Selection string for adding one-liner:**
+```
+selection_with_ellipsis: "## 🔄 Handoff Queue: Donna → Claude Code...move to Implementation Log.*"
+```
+
+**Command:** `insert_content_after` the blockquote
+
+**Format (v2 — one-liner + child page):**
+1. Create child page under Bridge HQ using `references/handoff-templates/donna-to-code.md` template
+2. Insert one-liner into HQ:
+```markdown
+🟡 [HANDOFF] YYYY-MM-DD — [Title] → [Donna→Code] [Title] — YYYY-MM-DD](notion-url)
+	From: Donna | Priority: [High/Mid/Low] | [One sentence summary]
+```
+
+**Status values:** 🟡 Pending | 🔵 In Progress | ✅ Done
+**Status sync:** Update emoji in BOTH HQ one-liner and child page Status field
+**After Code acts:** Update status to ✅ Done (don't delete — Donna sweeps on `bridge sync`)
+
+**Empty queue state:** `*Queue clear — no pending items. Completed handoffs in Claude Bridge Archive.*`
+Add new items after the blockquote intro (target the selection string above).
+
+---
+
+### 11. Handoff Queue: Claude Code → Donna
+**Purpose:** What Claude Code has built or needs Donna/Dave to know
+**Update trigger:** Code completes significant work for Donna
+**Clear trigger:** After Donna has surfaced the item to Dave
+
+**Selection string for adding one-liner:**
+```
+selection_with_ellipsis: "## 🔄 Handoff Queue: Claude Code → Donna...conversations with Dave.*"
+```
+
+**Command:** `insert_content_after` the blockquote
+
+**Format (v2 — one-liner + child page):**
+1. Create child page under Bridge HQ using `references/handoff-templates/code-to-donna.md` template
+2. Insert one-liner into HQ:
+```markdown
+🟡 [HANDOFF] YYYY-MM-DD — [Title] → [Code→Donna] [Title] — YYYY-MM-DD](notion-url)
+	From: Code | Priority: [High/Mid/Low] | [One sentence summary]
+```
+
+**Status values:** 🟡 Unread | ✅ Read (surfaced to Dave)
+**Status sync:** Update emoji in BOTH HQ one-liner and child page Status field
+**After Donna reads and surfaces:** Update status to ✅ Read
+
+**Empty queue state:** `*Queue clear — no pending items. Completed handoffs in Claude Bridge Archive.*`
+Add new items after the blockquote intro (target the selection string above).
+
+---
+
+### 12. Handoff Child Pages
+**Purpose:** Full handoff content stored as Notion child pages of Bridge HQ
+**Parent:** Always Bridge HQ page ID: `30e76fd7-ac82-81e9-9fe1-c0b257088b34`
+
+**Naming convention:** `[Queue] Title — YYYY-MM-DD`
+- `[Eve→Code] /codex-review Setup — 2026-02-22`
+- `[Code→Donna] NorthStar Update — 2026-02-22`
+- `[Donna→Code] Bridge Format v2 — 2026-02-22`
+
+**Templates:** `references/handoff-templates/`
+| Template | Use When |
+|----------|----------|
+| `eve-to-code.md` | Eve passing work to Code |
+| `donna-to-code.md` | Donna passing work to Code |
+| `code-to-eve.md` | Code writing back to Eve |
+| `code-to-donna.md` | Code writing back to Donna |
+
+**Creation:** Use `notion-create-pages` with parent `page_id: "30e76fd7-ac82-81e9-9fe1-c0b257088b34"`
+
+**Status sync:** The Status field in the child page header MUST match the emoji on the corresponding HQ one-liner. Update both when status changes.
+
+---
+
+## Quick Reference: Command x Section Matrix
 
 | What you want to do | Section | Command |
 |--------------------|---------|---------|
 | Update current focus | Active Context | `replace_content_range` |
 | Log a decision | Key Decisions Log | `insert_content_after` (top) |
-| Pass work to Code | Handoff Queue: Eve→Code | `insert_content_after` |
-| Code writing back | Handoff Queue: Code→Eve | `insert_content_after` |
+| Pass work Eve→Code | Handoff Queue: Eve→Code | Create child page + `insert_content_after` one-liner |
+| Code writing back to Eve | Handoff Queue: Code→Eve | Create child page + `insert_content_after` one-liner |
+| Pass work Donna→Code | Handoff Queue: Donna→Code | Create child page + `insert_content_after` one-liner |
+| Code writing back to Donna | Handoff Queue: Code→Donna | Create child page + `insert_content_after` one-liner |
 | Log completed work | Implementation Log | `insert_content_after` (top) |
-| Update sprint item status | Sprint State | `replace_content_range` (callout headline — no tables) |
+| Update sprint item status | Sprint State | `replace_content_range` (callout headline) |
 | Add sprint item | Sprint State | `insert_content_after` (last detail line) |
 | Add tech notes | Architecture Notes | `insert_content_after` |
 | Look up past work | Archive | `notion-fetch` Archive page |
 | Sweep completed items | Archive | `insert_content_after` (top of Archive) |
+
+---
+
+*bridge-schema v1.5 | 2026-02-22 | Child page handoff format + Donna queues*
