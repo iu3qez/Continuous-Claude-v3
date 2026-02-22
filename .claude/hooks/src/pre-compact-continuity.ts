@@ -27,9 +27,12 @@ function getRalphStateYaml(projectDir: string): string | null {
     const hasActive = state.session?.active === true;
     const inProgress = (state.tasks || []).filter(t => t.status === 'in_progress' || t.status === 'in-progress');
     const completed = (state.tasks || []).filter(t => t.status === 'complete' || t.status === 'completed');
+    const problemTasks = (state.tasks || []).filter(t =>
+      ['failed', 'blocked', 'paused', 'cancelled'].includes(t.status)
+    );
     const total = (state.tasks || []).length;
 
-    if (!hasActive && inProgress.length === 0) return null;
+    if (!hasActive && inProgress.length === 0 && problemTasks.length === 0) return null;
 
     const currentTaskName = inProgress.length > 0
       ? (inProgress[0].name || inProgress[0].id || 'current task').replace(/"/g, '\\"')
@@ -57,6 +60,10 @@ function getRalphStateYaml(projectDir: string): string | null {
     const pending = (state.tasks || []).filter(t => t.status === 'pending');
     if (pending.length > 0) {
       lines.push(`  pending_tasks: [${pending.slice(0, 10).map(t => `"${t.id}"`).join(', ')}]`);
+    }
+
+    if (problemTasks.length > 0) {
+      lines.push(`  problem_tasks: [${problemTasks.slice(0, 10).map(t => `"${t.id}(${t.status})"`).join(', ')}]`);
     }
 
     return lines.join('\n');

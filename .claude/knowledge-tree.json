@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "updated_at": "2026-02-21T22:08:50.634766+00:00",
+  "updated_at": "2026-02-22T00:10:13.681681+00:00",
   "project": {
     "name": "continuous-claude",
     "description": "> Give Claude a notebook, memory, specialized assistants, and autonomous development capability — so every conversation builds on the last [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE) [![Claude Code](https://img.shields.io/badge/Claude-Code-orange.svg)](https://claude.ai/code)",
@@ -1573,6 +1573,14 @@
     "current": null,
     "completed": [
       {
+        "title": "[fix](hooks) address 11 review findings from Ralph dev system audit (2026-02-22) `69b31b0`",
+        "completed": null
+      },
+      {
+        "title": "[fix](skill) bridge-schema.md v1.3 — table replacement must use HTML, not Markdown pipes (2026-02-21) `7c6a352`",
+        "completed": null
+      },
+      {
         "title": "[fix] resolve 6 tsc errors, update docs to match reality (2026-02-21) `28f830c`",
         "completed": null
       },
@@ -1873,7 +1881,5 @@
   },
   "critical_info": {
     "env_vars": ".env.example"
-  },
-  "_stale": true,
-  "_invalidated_at": "2026-02-21T22:10:45.887Z"
+  }
 }
