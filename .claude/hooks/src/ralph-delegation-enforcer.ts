@@ -8,7 +8,7 @@
  * Runs on PreToolUse:Edit, PreToolUse:Write, PreToolUse:Bash
  */
 
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync, statSync } from 'fs';
 import { join } from 'path';
 import { spawnSync } from 'child_process';
 import { cleanupOldStateFiles } from './shared/session-isolation.js';
@@ -107,15 +107,21 @@ async function main() {
     const storyId = ralphStatus.storyId;
 
     // Update heartbeat — unified state uses ralph-state-v2.py, legacy uses temp file
+    // Debounce: only spawn if state.json mtime is older than 5 minutes
     if (ralphStatus.source === 'unified') {
       try {
-        const homeDir = process.env.HOME || process.env.USERPROFILE || '';
-        const v2Script = join(homeDir, '.claude', 'scripts', 'ralph', 'ralph-state-v2.py');
-        if (existsSync(v2Script)) {
-          spawnSync('python', [v2Script, '-p', projectDir, 'session-heartbeat'], {
-            encoding: 'utf-8',
-            timeout: 3000,
-          });
+        const statePath = join(projectDir, '.ralph', 'state.json');
+        const stMtime = existsSync(statePath) ? statSync(statePath).mtimeMs : 0;
+        const HEARTBEAT_INTERVAL = 5 * 60 * 1000; // 5 minutes
+        if (Date.now() - stMtime > HEARTBEAT_INTERVAL) {
+          const homeDir = process.env.HOME || process.env.USERPROFILE || '';
+          const v2Script = join(homeDir, '.claude', 'scripts', 'ralph', 'ralph-state-v2.py');
+          if (existsSync(v2Script)) {
+            spawnSync('python', [v2Script, '-p', projectDir, 'session-heartbeat'], {
+              encoding: 'utf-8',
+              timeout: 3000,
+            });
+          }
         }
       } catch { /* ignore heartbeat failures */ }
     }

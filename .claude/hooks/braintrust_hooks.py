@@ -50,7 +50,7 @@ def log(level: str, message: str):
     """Log to file."""
     ensure_dirs()
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    with open(LOG_FILE, "a") as f:
+    with open(LOG_FILE, "a", encoding="utf-8") as f:
         f.write(f"{timestamp} [{level}] {message}\n")
 
 
@@ -498,7 +498,7 @@ def stop(input_data: dict) -> dict:
         return False
 
     # Read and process JSONL
-    with open(conv_file, "r") as f:
+    with open(conv_file, "r", encoding="utf-8", errors="replace") as f:
         for line in f:
             line_num += 1
             if line_num <= turn_last_line:

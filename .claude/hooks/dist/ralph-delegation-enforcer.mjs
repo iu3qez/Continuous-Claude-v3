@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 // src/ralph-delegation-enforcer.ts
-import { readFileSync as readFileSync3, existsSync as existsSync5 } from "fs";
+import { readFileSync as readFileSync3, existsSync as existsSync5, statSync as statSync3 } from "fs";
 import { join as join5 } from "path";
 import { spawnSync } from "child_process";
 
@@ -308,13 +308,18 @@ async function main() {
     const storyId = ralphStatus.storyId;
     if (ralphStatus.source === "unified") {
       try {
-        const homeDir = process.env.HOME || process.env.USERPROFILE || "";
-        const v2Script = join5(homeDir, ".claude", "scripts", "ralph", "ralph-state-v2.py");
-        if (existsSync5(v2Script)) {
-          spawnSync("python", [v2Script, "-p", projectDir, "session-heartbeat"], {
-            encoding: "utf-8",
-            timeout: 3e3
-          });
+        const statePath = join5(projectDir, ".ralph", "state.json");
+        const stMtime = existsSync5(statePath) ? statSync3(statePath).mtimeMs : 0;
+        const HEARTBEAT_INTERVAL = 5 * 60 * 1e3;
+        if (Date.now() - stMtime > HEARTBEAT_INTERVAL) {
+          const homeDir = process.env.HOME || process.env.USERPROFILE || "";
+          const v2Script = join5(homeDir, ".claude", "scripts", "ralph", "ralph-state-v2.py");
+          if (existsSync5(v2Script)) {
+            spawnSync("python", [v2Script, "-p", projectDir, "session-heartbeat"], {
+              encoding: "utf-8",
+              timeout: 3e3
+            });
+          }
         }
       } catch {
       }
