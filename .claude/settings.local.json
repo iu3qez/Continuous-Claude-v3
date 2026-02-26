@@ -8,7 +8,8 @@
       "Bash(findstr:*)",
       "Bash(tldr:*)",
       "Bash(node:*)",
-      "Bash($env:DEBUG=\"tldr*\")"
+      "Bash($env:DEBUG=\"tldr*\")",
+      "Bash(git add:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
