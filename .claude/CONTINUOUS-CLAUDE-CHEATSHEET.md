@@ -1,4 +1,4 @@
-﻿# Continuous-Claude Windows Cheat Sheet
+﻿# Continuous-Claude Cheat Sheet
 
 > **See also:** [Architecture Docs](docs/architecture/INDEX.md) for system overview and navigation
 
@@ -6,26 +6,26 @@
 
 ```powershell
 # Check status
-python C:\Users\david.hayes\.claude\scripts\core\core\memory_daemon.py status
+python ~/.claude/scripts\core\core\memory_daemon.py status
 
 # Start manually
-C:\Users\david.hayes\.claude\scripts\start-memory-daemon.ps1
+~/.claude/scripts\start-memory-daemon.ps1
 
 # Stop
-python C:\Users\david.hayes\.claude\scripts\core\core\memory_daemon.py stop
+python ~/.claude/scripts\core\core\memory_daemon.py stop
 ```
 
 ## Docker Services (PostgreSQL - Port 5432)
 
 ```powershell
 # Start PostgreSQL (auto-starts on session via session-start-docker hook)
-& "C:\Program Files\Docker\Docker\resources\bin\docker.exe" compose -f "C:\Users\david.hayes\.claude\docker\docker-compose.yml" up -d
+& "C:\Program Files\Docker\Docker\resources\bin\docker.exe" compose -f "~/.claude/docker\docker-compose.yml" up -d
 
 # Check status
 & "C:\Program Files\Docker\Docker\resources\bin\docker.exe" ps --filter "name=continuous-claude-postgres"
 
 # Stop PostgreSQL
-& "C:\Program Files\Docker\Docker\resources\bin\docker.exe" compose -f "C:\Users\david.hayes\.claude\docker\docker-compose.yml" down
+& "C:\Program Files\Docker\Docker\resources\bin\docker.exe" compose -f "~/.claude/docker\docker-compose.yml" down
 
 # View logs
 & "C:\Program Files\Docker\Docker\resources\bin\docker.exe" logs continuous-claude-postgres
@@ -49,21 +49,21 @@ Start-ScheduledTask -TaskName 'ClaudeMemoryDaemon'
 Unregister-ScheduledTask -TaskName 'ClaudeMemoryDaemon' -Confirm:$false
 
 # Re-create auto-start
-C:\Users\david.hayes\.claude\scripts\setup-task-scheduler.ps1
+~/.claude/scripts\setup-task-scheduler.ps1
 ```
 
 ## Hooks
 
 ```powershell
 # Rebuild TypeScript hooks after changes
-cd C:\Users\david.hayes\.claude\hooks
+cd ~/.claude/hooks
 npm run build
 
 # Build single hook
 node node_modules/esbuild/bin/esbuild src/my-hook.ts --bundle --platform=node --format=esm --outdir=dist --out-extension:.js=.mjs
 
 # Test a hook manually (example)
-echo '{}' | node C:\Users\david.hayes\.claude\hooks\dist\session-register.mjs
+echo '{}' | node ~/.claude/hooks\dist\session-register.mjs
 ```
 
 ### Key Hooks
@@ -93,12 +93,12 @@ echo '{}' | node C:\Users\david.hayes\.claude\hooks\dist\session-register.mjs
 
 ```powershell
 # Manual sync (if needed)
-cd C:\Users\david.hayes\continuous-claude\scripts
+cd ~/continuous-claude\scripts
 bash sync-claude.sh --to-repo --dry-run  # Preview
 bash sync-claude.sh --to-repo            # Apply
 
 # Pull team updates
-cd C:\Users\david.hayes\continuous-claude && git pull
+cd ~/continuous-claude && git pull
 bash scripts/sync-claude.sh --from-repo
 ```
 
@@ -156,12 +156,12 @@ The post-plan-roadmap hook checks 3 locations (in order):
 
 ```powershell
 # Stop everything first
-python C:\Users\david.hayes\.claude\scripts\core\core\memory_daemon.py stop
-& "C:\Program Files\Docker\Docker\resources\bin\docker.exe" compose -f "C:\Users\david.hayes\.claude\docker\docker-compose.yml" down
+python ~/.claude/scripts\core\core\memory_daemon.py stop
+& "C:\Program Files\Docker\Docker\resources\bin\docker.exe" compose -f "~/.claude/docker\docker-compose.yml" down
 
 # Restore from backup
-Remove-Item "C:\Users\david.hayes\.claude" -Recurse -Force
-Copy-Item "C:\Users\david.hayes\claude-archives\superClaude-v4.1.0-20260110-175711" "C:\Users\david.hayes\.claude" -Recurse
+Remove-Item "~/.claude" -Recurse -Force
+Copy-Item "~/claude-archives/superClaude-v4.1.0-20260110-175711" "~/.claude" -Recurse
 ```
 
 ## Key Directories
@@ -204,20 +204,20 @@ The system loads DATABASE_URL in this order:
 
 ```powershell
 # Check if daemon is running
-python C:\Users\david.hayes\.claude\scripts\core\core\memory_daemon.py status
+python ~/.claude/scripts\core\core\memory_daemon.py status
 
 # Check Docker
 & "C:\Program Files\Docker\Docker\resources\bin\docker.exe" ps
 
 # Check hook logs (if any errors)
-Get-Content C:\Users\david.hayes\.claude\memory-daemon.log -Tail 20
+Get-Content ~/.claude/memory-daemon.log -Tail 20
 
 # Verify settings.json is valid JSON
-Get-Content C:\Users\david.hayes\.claude\settings.json | ConvertFrom-Json
+Get-Content ~/.claude/settings.json | ConvertFrom-Json
 ```
 
 ---
-*Created: 2026-01-10 | Continuous-Claude-v3 Windows Adaptation*
+*Created: 2026-01-10 | Continuous-Claude-v3*
 
 ---
 

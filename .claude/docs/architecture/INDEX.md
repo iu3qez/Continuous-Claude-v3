@@ -56,10 +56,10 @@
 - [Workflows](subsystems/workflows.md) - Ralph, Maestro, compound workflows
 
 **Comprehensive Documentation (continuous-claude/docs/):**
-- [ARCHITECTURE.md](file:///C:/Users/david.hayes/continuous-claude/docs/ARCHITECTURE.md) - Full system architecture with TLDR analysis
-- [memory-architecture.md](file:///C:/Users/david.hayes/continuous-claude/docs/memory-architecture.md) - Complete memory system with Mermaid diagrams
-- [hooks/README.md](file:///C:/Users/david.hayes/continuous-claude/docs/hooks/README.md) - Full hook reference (718 lines)
-- [agents/README.md](file:///C:/Users/david.hayes/continuous-claude/docs/agents/README.md) - Agent selection guide (750 lines)
+- [ARCHITECTURE.md](../../../docs/ARCHITECTURE.md) - Full system architecture with TLDR analysis
+- [memory-architecture.md](../../../docs/memory-architecture.md) - Complete memory system with Mermaid diagrams
+- [hooks/README.md](../../../docs/hooks/README.md) - Full hook reference (718 lines)
+- [agents/README.md](../../../docs/agents/README.md) - Agent selection guide (750 lines)
 
 **User Guides:**
 - [CONTINUOUS-CLAUDE-GUIDE.md](../../CONTINUOUS-CLAUDE-GUIDE.md) - User guide with essential commands

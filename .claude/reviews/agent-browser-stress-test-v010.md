@@ -205,7 +205,7 @@
 **BUG-001: ab CLI completely non-functional on Windows**
 - **Severity:** CRITICAL
 - **Component:** agent-browser daemon (Rust binary)
-- **Error:** `Daemon failed to start (socket: C:\Users\david.hayes\.agent-browser\default.sock)`
+- **Error:** `Daemon failed to start (socket: ~/.agent-browser/default.sock)`
 - **Root Cause:** The Rust daemon attempts to create a Unix domain socket, which fails on Windows. The `--cdp` and `--auto-connect` flags don't bypass daemon initialization.
 - **Impact:** 100% of ab CLI commands fail. Zero Windows CLI functionality.
 - **Workaround:** Use playwright-core directly via `chromium.connectOverCDP()`

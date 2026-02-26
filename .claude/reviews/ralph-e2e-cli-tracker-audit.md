@@ -152,4 +152,4 @@ The only gaps are packaging nits that any real project would address before publ
 
 ---
 
-*Audit conducted on CLI Task Tracker at `C:\Users\david.hayes\cli-task-tracker`*
+*Audit conducted on CLI Task Tracker at `~/cli-task-tracker`*

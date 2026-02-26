@@ -93,7 +93,7 @@ Windows uses backslashes (`\`) but the codebase expects forward slashes (`/`) in
 
 - **Environment variables**: Use forward slashes in `.env` paths
   ```bash
-  CLAUDE_OPC_DIR=C:/Users/david.hayes/continuous-claude/opc
+  CLAUDE_OPC_DIR=$HOME/continuous-claude/opc
   ```
 - **Docker paths**: Always use forward slashes
 - **Node scripts**: Auto-converts paths (no action needed)

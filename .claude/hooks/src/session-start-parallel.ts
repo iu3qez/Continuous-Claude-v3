@@ -163,7 +163,7 @@ export async function main(): Promise<void> {
     input = {} as SessionStartInput;
   }
 
-  const hooksDir = 'C:/Users/david.hayes/.claude/hooks';
+  const hooksDir = `${homeDir}/.claude/hooks`.replace(/\\/g, '/');
   const distDir = `${hooksDir}/dist`;
 
   // Run all tasks in parallel
